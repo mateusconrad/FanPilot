@@ -35,7 +35,7 @@ $refs = @(
 ) | ForEach-Object { "/r:$_" }
 
 & $csc /nologo /target:exe /platform:x64 /optimize+ /warn:4 `
-    "/win32manifest:$root\app.manifest" "/out:$bin\FanPilot.exe" @refs (Get-ChildItem "$root\src\*.cs").FullName
+    "/win32manifest:$root\app.manifest" "/win32icon:$root\assets\brand\fanpilot.ico" "/out:$bin\FanPilot.exe" @refs (Get-ChildItem "$root\src\*.cs").FullName
 if ($LASTEXITCODE -ne 0) { throw "csc falhou ($LASTEXITCODE)" }
 
 # Gigabyte DLLs are NOT copied: they are resolved at runtime from the GCC install (see Program.cs).
