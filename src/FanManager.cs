@@ -54,7 +54,7 @@ sealed class FanManager
     {
         if (on == TurboActive) return;
         int n = _bridge.CountFans();
-        if (on && n == 0) throw new ArgumentException("Esta placa-mãe não oferece controle de fans pelo GccWeb.");
+        if (on && n == 0) throw new ArgumentException("Esta placa-mãe não oferece controle de fans pelo FanPilot.");
         if (on)
         {
             lock (_sync)

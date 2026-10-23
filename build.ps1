@@ -1,4 +1,4 @@
-# Builds bin\GccWeb.exe with the C# compiler that ships with Windows (.NET Framework 4.x). No SDK needed.
+# Builds bin\FanPilot.exe with the C# compiler that ships with Windows (.NET Framework 4.x). No SDK needed.
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
@@ -35,10 +35,10 @@ $refs = @(
 ) | ForEach-Object { "/r:$_" }
 
 & $csc /nologo /target:exe /platform:x64 /optimize+ /warn:4 `
-    "/win32manifest:$root\app.manifest" "/out:$bin\GccWeb.exe" @refs (Get-ChildItem "$root\src\*.cs").FullName
+    "/win32manifest:$root\app.manifest" "/out:$bin\FanPilot.exe" @refs (Get-ChildItem "$root\src\*.cs").FullName
 if ($LASTEXITCODE -ne 0) { throw "csc falhou ($LASTEXITCODE)" }
 
 # Gigabyte DLLs are NOT copied: they are resolved at runtime from the GCC install (see Program.cs).
 Remove-Item -Recurse -Force "$bin\wwwroot" -ErrorAction SilentlyContinue
 Copy-Item -Recurse "$root\wwwroot" "$bin\wwwroot"
-Write-Host "OK -> $bin\GccWeb.exe"
+Write-Host "OK -> $bin\FanPilot.exe"

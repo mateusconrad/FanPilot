@@ -30,5 +30,5 @@ SOFTWARE.
 
 ## Gigabyte Control Center
 
-O GccWeb **não inclui** nenhum arquivo da Gigabyte. As DLLs cliente do GCC são carregadas em tempo de execução
+O FanPilot **não inclui** nenhum arquivo da Gigabyte. As DLLs cliente do GCC são carregadas em tempo de execução
 a partir da instalação do próprio usuário.

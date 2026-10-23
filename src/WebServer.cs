@@ -158,7 +158,7 @@ sealed class WebServer
     // Custom header forces a CORS preflight (which we never grant), and Origin must match when present.
     static bool SameOriginPost(Req r)
     {
-        if (r.Ctx.Request.Headers["X-GCCW"] != "1") return false;
+        if (r.Ctx.Request.Headers["X-FanPilot"] != "1") return false;
         string origin = r.Ctx.Request.Headers["Origin"];
         if (string.IsNullOrEmpty(origin)) return true;
         Uri o;
@@ -323,7 +323,7 @@ sealed class WebServer
     static void Html(HttpListenerContext ctx, int status, string message, string head = "")
     {
         string html = "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>" + head +
-            "<link rel=stylesheet href=/style.css><main class=locked><h1>PC Monitor</h1><p>" + WebUtility.HtmlEncode(message) + "</p></main>";
+            "<link rel=stylesheet href=/style.css><main class=locked><h1>FanPilot</h1><p>" + WebUtility.HtmlEncode(message) + "</p></main>";
         var bytes = Encoding.UTF8.GetBytes(html);
         ctx.Response.StatusCode = status;
         ctx.Response.ContentType = "text/html; charset=utf-8";

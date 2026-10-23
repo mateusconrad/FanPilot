@@ -36,11 +36,11 @@ static class App
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
         string dataDir = Path.Combine(baseDir, "data");
         Directory.CreateDirectory(dataDir);
-        Log.FilePath = Path.Combine(dataDir, "gccweb.log");
+        Log.FilePath = Path.Combine(dataDir, "fanpilot.log");
 
         if (!new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
         {
-            Console.WriteLine("GccWeb precisa rodar como Administrador (a porta IPC do EasyTuneEngineService só aceita administradores).");
+            Console.WriteLine("FanPilot precisa rodar como Administrador (a porta IPC do EasyTuneEngineService só aceita administradores).");
             return 2;
         }
         if (!Directory.Exists(Program.GccLibDir))
@@ -67,7 +67,7 @@ static class App
         server.Start();
 
         string pairUrl = "http://localhost:" + cfg.Port + "/pair";
-        Log.Info("GccWeb rodando na porta " + cfg.Port + ". Endereços na rede: " + string.Join(", ", NetworkInfo.CandidateHosts(cfg).Select(h => "http://" + h + ":" + cfg.Port)));
+        Log.Info("FanPilot rodando na porta " + cfg.Port + ". Endereços na rede: " + string.Join(", ", NetworkInfo.CandidateHosts(cfg).Select(h => "http://" + h + ":" + cfg.Port)));
         Log.Info("Para parear o celular, abra " + pairUrl + " neste PC e escaneie o QR code.");
         if (!args.Contains("--no-browser")) try { Process.Start(pairUrl); } catch { }
 
