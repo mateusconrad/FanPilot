@@ -22,7 +22,11 @@ static class Program
 
     static Assembly ResolveGigabyteAssembly(object sender, ResolveEventArgs e)
     {
-        string path = Path.Combine(GccLibDir, new AssemblyName(e.Name).Name + ".dll");
+        // Only Gigabyte's own assemblies: GCC's folder may hold other copies of libraries FanPilot ships itself
+        // (System.Memory etc. for LibreHardwareMonitor), and those must come from FanPilot's folder.
+        string name = new AssemblyName(e.Name).Name;
+        if (!name.StartsWith("Gigabyte.", StringComparison.OrdinalIgnoreCase)) return null;
+        string path = Path.Combine(GccLibDir, name + ".dll");
         return File.Exists(path) ? Assembly.LoadFrom(path) : null;
     }
 

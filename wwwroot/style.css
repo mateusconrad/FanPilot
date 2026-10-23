@@ -169,6 +169,7 @@ main { max-width: 760px; margin: 0 auto; padding: 16px; display: grid; grid-temp
   @starting-style { opacity: 0; transform: translateY(-4px); }
 }
 #rpmNote:empty { display: none; }
+.fan-mode { margin: 0 0 10px; }
 #rpmNote { margin: 8px 0 0; }
 .pill { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--ink-2); margin-left: 6px; vertical-align: 1px; }
 

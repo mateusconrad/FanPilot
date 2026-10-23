@@ -14,7 +14,6 @@ sealed class WebServer
     readonly Sampler _sampler;
     readonly FanManager _fans;
     readonly GpuMonitor _gpu;
-    readonly GigabyteBridge _bridge;
     readonly HttpListener _listener = new HttpListener();
 
     static readonly Dictionary<string, string> ContentTypes = new Dictionary<string, string> {
@@ -23,9 +22,9 @@ sealed class WebServer
         { ".json", "application/json; charset=utf-8" }, { ".webmanifest", "application/manifest+json" }
     };
 
-    public WebServer(AppConfig cfg, string root, AuthManager auth, Sampler sampler, FanManager fans, GpuMonitor gpu, GigabyteBridge bridge)
+    public WebServer(AppConfig cfg, string root, AuthManager auth, Sampler sampler, FanManager fans, GpuMonitor gpu)
     {
-        _cfg = cfg; _root = root; _auth = auth; _sampler = sampler; _fans = fans; _gpu = gpu; _bridge = bridge;
+        _cfg = cfg; _root = root; _auth = auth; _sampler = sampler; _fans = fans; _gpu = gpu;
     }
 
     public void Start()

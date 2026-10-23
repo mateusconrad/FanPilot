@@ -6,6 +6,8 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Threading;
 
@@ -40,27 +42,28 @@ static class App
 
         if (!new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
         {
-            Console.WriteLine("FanPilot precisa rodar como Administrador (a porta IPC do EasyTuneEngineService só aceita administradores).");
+            Console.WriteLine("FanPilot precisa rodar como Administrador (o acesso aos sensores e fans da placa-mãe exige).");
             return 2;
         }
-        if (!Directory.Exists(Program.GccLibDir))
-        {
-            Console.WriteLine("Gigabyte Control Center não encontrado (procurado em " + Program.GccLibDir + "). Instale o GCC da Gigabyte para a sua placa-mãe.");
-            return 3;
-        }
         MachineData.Check(dataDir);
-
         var cfg = AppConfig.Load(Path.Combine(dataDir, "config.json"));
-        var bridge = new GigabyteBridge();
+        if (args.Contains("--diagnose")) return Diagnose.Run(dataDir, cfg);
+
+        IBoard bridge;
+        try { bridge = Boards.Create(cfg); }
+        catch (InvalidOperationException ex) { Console.WriteLine(ex.Message); return 3; }
+        Log.Info("Placa-mãe via " + bridge.BackendName + (bridge.HardwareCurves ? " (curvas no chip)" : " (curvas executadas pelo FanPilot)"));
+        if (bridge.Notice != null) Log.Warn(bridge.Notice);
+
         var fans = new FanManager(bridge, cfg, dataDir);
         var gpu = new GpuMonitor(cfg.GpuSafetyTemp);
         var auth = new AuthManager(dataDir, cfg);
         var sampler = new Sampler(bridge, gpu);
-        var server = new WebServer(cfg, Path.Combine(baseDir, "wwwroot"), auth, sampler, fans, gpu, bridge);
+        var server = new WebServer(cfg, Path.Combine(baseDir, "wwwroot"), auth, sampler, fans, gpu);
 
         var stop = new ManualResetEvent(false);
-        Console.CancelKeyPress += (s, e) => { e.Cancel = true; stop.Set(); };
-        AppDomain.CurrentDomain.ProcessExit += (s, e) => gpu.Shutdown();
+        // Software-curve boards must get their fans back on every way out: hook all the ones Windows tells us about.
+        Exit.Register(stop, () => { server.Stop(); bridge.Shutdown(); gpu.Shutdown(); });
 
         try { fans.Start(); } catch (Exception ex) { Log.Warn("Fan manager: " + ex.Message); }
         sampler.Start();
@@ -72,10 +75,76 @@ static class App
         if (!args.Contains("--no-browser")) try { Process.Start(pairUrl); } catch { }
 
         stop.WaitOne();
-        Log.Info("Encerrando: fan da GPU volta para automático; curvas da placa-mãe permanecem no chip (com ponto de segurança).");
-        server.Stop();
-        gpu.Shutdown();
+        Log.Info(bridge.HardwareCurves
+            ? "Encerrando: fan da GPU volta para automático; curvas da placa-mãe permanecem no chip (com ponto de segurança)."
+            : "Encerrando: fans da placa-mãe e da GPU voltam ao controle automático (BIOS/driver).");
+        Exit.Cleanup();
         return 0;
+    }
+}
+
+static class Boards
+{
+    // "auto": Gigabyte Control Center when installed (curves in hardware), else LibreHardwareMonitor.
+    public static IBoard Create(AppConfig cfg)
+    {
+        bool gcc = Directory.Exists(Program.GccLibDir);
+        if (cfg.Backend == "gigabyte" && !gcc)
+            throw new InvalidOperationException("config.json pede \"backend\": \"gigabyte\", mas o Gigabyte Control Center não foi encontrado (procurado em " + Program.GccLibDir + ").");
+        if (cfg.Backend == "gigabyte" || (cfg.Backend == "auto" && gcc)) return CreateGigabyte();
+        return new LhmBoard();
+    }
+
+#if NO_GIGABYTE
+    // Built without Gigabyte Control Center installed (build.ps1 warns): only LibreHardwareMonitor is available.
+    static IBoard CreateGigabyte()
+    {
+        Log.Warn("Este FanPilot foi compilado sem suporte ao Gigabyte Control Center; usando o LibreHardwareMonitor.");
+        return new LhmBoard();
+    }
+#else
+    // Separate and never inlined: Gigabyte's assemblies only exist where GCC is installed, so nothing that touches
+    // their types may be compiled on the LibreHardwareMonitor path.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    static IBoard CreateGigabyte() { return new GigabyteBridge(); }
+#endif
+}
+
+// Runs the cleanup once on Ctrl+C, closing the console window, logoff, shutdown, or an unhandled exception.
+// A forced kill (Task Manager "End task" on the process, a crash of the runtime) cannot be intercepted.
+static class Exit
+{
+    delegate bool ConsoleCtrlHandler(int ctrlType);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern bool SetConsoleCtrlHandler(ConsoleCtrlHandler handler, bool add);
+
+    const int CtrlC = 0, CtrlBreak = 1, CtrlClose = 2, CtrlLogoff = 5, CtrlShutdown = 6;
+    static ConsoleCtrlHandler _handler; // kept referenced so the GC doesn't collect the callback
+    static Action _cleanup;
+    static int _done;
+
+    public static void Register(ManualResetEvent stop, Action cleanup)
+    {
+        _cleanup = cleanup;
+        _handler = type =>
+        {
+            if (type == CtrlC || type == CtrlBreak) { stop.Set(); return true; } // Main cleans up and returns
+            Cleanup(); // close/logoff/shutdown: Windows ends the process right after this returns
+            return true;
+        };
+        SetConsoleCtrlHandler(_handler, true);
+        AppDomain.CurrentDomain.ProcessExit += (s, e) => Cleanup();
+        AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+        {
+            Log.Warn("Erro fatal: " + e.ExceptionObject);
+            Cleanup();
+        };
+    }
+
+    public static void Cleanup()
+    {
+        if (Interlocked.Exchange(ref _done, 1) == 1 || _cleanup == null) return;
+        try { _cleanup(); } catch (Exception ex) { Log.Warn("Encerramento: " + ex.Message); }
     }
 }
 
@@ -105,7 +174,7 @@ static class NetworkInfo
 sealed class Sampler
 {
     const int HistorySize = 600;
-    readonly GigabyteBridge _bridge;
+    readonly IBoard _bridge;
     readonly GpuMonitor _gpu;
     readonly object _sync = new object();
     readonly LinkedList<Dictionary<string, object>> _history = new LinkedList<Dictionary<string, object>>();
@@ -113,7 +182,7 @@ sealed class Sampler
     volatile string _latestJson = "{}";
     Thread _thread;
 
-    public Sampler(GigabyteBridge bridge, GpuMonitor gpu) { _bridge = bridge; _gpu = gpu; }
+    public Sampler(IBoard bridge, GpuMonitor gpu) { _bridge = bridge; _gpu = gpu; }
 
     public string LatestJson { get { return _latestJson; } }
 
@@ -144,7 +213,8 @@ sealed class Sampler
     {
         long t = (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
         var snap = new Dictionary<string, object> { { "t", t } };
-        var service = new Dictionary<string, object> { { "ok", true } };
+        var service = new Dictionary<string, object> { { "ok", true }, { "backend", _bridge.BackendName } };
+        if (_bridge.Notice != null) service["notice"] = _bridge.Notice;
         try
         {
             snap["sensors"] = _bridge.ReadSensors().Select(s => new Dictionary<string, object> {

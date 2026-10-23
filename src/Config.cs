@@ -21,6 +21,8 @@ sealed class AppConfig
     public int GpuSafetyTemp = 83;
     public int PairCodeTtlSeconds = 180;
     public int SessionDays = 30;
+    // "auto" (Gigabyte Control Center if installed, else LibreHardwareMonitor), "gigabyte" or "lhm".
+    public string Backend = "auto";
 
     public static AppConfig Load(string path)
     {
@@ -36,6 +38,7 @@ sealed class AppConfig
             cfg.GpuSafetyTemp = Json.GetInt(d, "gpuSafetyTemp", cfg.GpuSafetyTemp);
             cfg.PairCodeTtlSeconds = Json.GetInt(d, "pairCodeTtlSeconds", cfg.PairCodeTtlSeconds);
             cfg.SessionDays = Json.GetInt(d, "sessionDays", cfg.SessionDays);
+            cfg.Backend = Json.GetString(d, "backend", cfg.Backend);
         }
         else
         {
@@ -46,6 +49,8 @@ sealed class AppConfig
         cfg.FixedModeSafetyTemp = Clamp(cfg.FixedModeSafetyTemp, 75, 95);
         cfg.MaxFullSpeedTemp = Clamp(cfg.MaxFullSpeedTemp, 50, 100);
         cfg.GpuSafetyTemp = Clamp(cfg.GpuSafetyTemp, 60, 90);
+        cfg.Backend = (cfg.Backend ?? "auto").Trim().ToLowerInvariant();
+        if (cfg.Backend != "gigabyte" && cfg.Backend != "lhm") cfg.Backend = "auto";
         return cfg;
     }
 
@@ -54,7 +59,8 @@ sealed class AppConfig
         return new Dictionary<string, object> {
             { "port", Port }, { "publicHost", PublicHost }, { "minDutyPercent", MinDutyPercent },
             { "fixedModeSafetyTemp", FixedModeSafetyTemp }, { "maxFullSpeedTemp", MaxFullSpeedTemp },
-            { "gpuSafetyTemp", GpuSafetyTemp }, { "pairCodeTtlSeconds", PairCodeTtlSeconds }, { "sessionDays", SessionDays }
+            { "gpuSafetyTemp", GpuSafetyTemp }, { "pairCodeTtlSeconds", PairCodeTtlSeconds }, { "sessionDays", SessionDays },
+            { "backend", Backend }
         };
     }
 

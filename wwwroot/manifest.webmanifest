@@ -1,7 +1,7 @@
 {
   "name": "FanPilot",
   "short_name": "FanPilot",
-  "description": "Temperaturas e fans da sua placa-mãe Gigabyte, no celular.",
+  "description": "Temperaturas e fans da sua placa-mãe, no celular.",
   "lang": "pt-BR",
   "start_url": "/",
   "scope": "/",

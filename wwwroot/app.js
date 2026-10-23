@@ -241,7 +241,7 @@
     $('rpmLegend').innerHTML = fans.map((s) => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join('');
     if (!fans.length) {
       $('rpmNote').textContent = state.fans && state.fans.supported === false
-        ? 'Esta placa-mãe não informa fans para o FanPilot.'
+        ? (state.fans.notice || 'Esta placa-mãe não informa fans para o FanPilot.')
         : 'Nenhum fan com leitura de RPM no momento.';
     } else if (state.fans) {
       const silent = state.fans.fans.filter((f, i) => !fans.some((s) => s.key === 'fan-' + i)).map((f) => f.title);
@@ -288,12 +288,18 @@
     return points[points.length - 1][1];
   }
 
+  // Header left to the BIOS on boards where FanPilot runs the curves (LibreHardwareMonitor); it has no points.
+  const BIOS = 'BiosDefault';
+  // false on those boards: closing FanPilot hands every fan back to the BIOS, and the panel says so.
+  const hardwareCurves = () => !state.fans || state.fans.hardwareCurves !== false;
+
   function fanDescription(f, snap) {
     const req = f.request;
     let mode;
     if (state.fans.turbo) mode = 'Turbo 100%';
     else if (f.managed && req && req.mode === 'fixed') mode = `Fixo ${req.percent}%`;
     else if (f.managed) mode = 'Curva personalizada';
+    else if (f.mode === BIOS) mode = 'Controle da BIOS';
     else if (f.points.every((p) => p[1] >= 255)) mode = 'Velocidade máxima (perfil do GCC)';
     else mode = 'Curva original';
     const temps = snap && snap.tempInputs;
@@ -308,10 +314,12 @@
     if (!state.fans) return;
     $('turboBtn').hidden = !state.fans.fans.length;
     $('fanSub').hidden = !state.fans.fans.length;
+    $('fanMode').hidden = hardwareCurves() || !state.fans.fans.length;
     if (!state.fans.supported) {
       box.innerHTML = '<p class="hint"></p>';
-      box.firstChild.textContent = `Esta placa-mãe (${state.fans.board || 'desconhecida'}) não oferece controle de fans pelo ` +
-        'caminho que o FanPilot usa. O monitoramento continua funcionando.';
+      box.firstChild.textContent = (state.fans.notice ||
+        `Esta placa-mãe (${state.fans.board || 'desconhecida'}) não oferece controle de fans pelo caminho que o FanPilot usa.`) +
+        ' O monitoramento continua funcionando.';
       return;
     }
     if (!state.fans.fans.length) { box.innerHTML = '<p class="hint">Controle de fans indisponível.</p>'; return; }
@@ -398,6 +406,8 @@
 
   // Editor works in [temp, percent] with the fan's own point count; hardware readbacks may differ, so resample.
   function toEditorPoints(points, limits, n) {
+    // A fan on the BIOS has no curve to start from: open the editor on the "Padrão" preset.
+    if (!points.length) return normalize(resample(PRESETS['Padrão'].map(([t, p]) => [Math.min(t, limits.maxFullSpeedTemp), p]), n), limits);
     let pts = points.map(([t, pwm]) => [Math.round(t), pct(pwm)]);
     if (pts.length !== n) {
       const temps = [0, 30, 40, 50, 60, 70, 75, Math.min(85, limits.maxFullSpeedTemp)];
@@ -442,9 +452,13 @@
     $('edStyle').value = state.editor.style;
     $('edFixedSlider').min = limits.minDutyPercent;
     $('edFixedSlider').value = state.editor.percent;
-    $('edFixedHint').textContent = `Proteção: o chip ainda vai a 100% se o sensor passar de ${limits.fixedModeSafetyTemp} °C.`;
-    $('edLimits').textContent = `Mínimo ${limits.minDutyPercent}% em qualquer ponto; 100% no máximo a ${limits.maxFullSpeedTemp} °C. A curva roda no chip da placa-mãe (continua valendo mesmo se o PC/FanPilot fechar).`;
-    $('edRestore').disabled = !f.hasBackup;
+    const hw = hardwareCurves();
+    $('edFixedHint').textContent = `Proteção: ${hw ? 'o chip' : 'o FanPilot'} ainda vai a 100% se o sensor passar de ${limits.fixedModeSafetyTemp} °C.`;
+    $('edLimits').textContent = `Mínimo ${limits.minDutyPercent}% em qualquer ponto; 100% no máximo a ${limits.maxFullSpeedTemp} °C. ` + (hw
+      ? 'A curva roda no chip da placa-mãe (continua valendo mesmo se o PC/FanPilot fechar).'
+      : 'A curva é executada pelo FanPilot a cada segundo. Se ele fechar, ou o sensor de referência parar de responder, o fan volta ao controle da BIOS.');
+    $('edRestore').textContent = hw ? 'Restaurar original' : 'Devolver à BIOS';
+    $('edRestore').disabled = !f.hasBackup || (!hw && !f.managed);
     show($('sheet'));
     show($('backdrop'));
     document.body.classList.add('sheet-open');
@@ -601,7 +615,7 @@
     $('edRestore').disabled = true;
     try {
       await api('/api/fans/' + e.index + '/restore', {});
-      toast('Curva original restaurada');
+      toast(hardwareCurves() ? 'Curva original restaurada' : 'Fan devolvido ao controle da BIOS');
       await loadFans();
       closeEditor();
     } catch (err) { toast(err.message, true); }
@@ -715,7 +729,7 @@
     state.snap = snap;
     pushHistory(snap);
     const svc = snap.service || {};
-    setStatus(svc.ok, svc.ok ? 'ao vivo' : 'serviço Gigabyte indisponível');
+    setStatus(svc.ok, svc.ok ? 'ao vivo' : 'sensores da placa indisponíveis');
     renderTiles(snap);
     renderCharts();
     renderFans();

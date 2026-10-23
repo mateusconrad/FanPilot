@@ -3,8 +3,10 @@
 param([switch]$Remove)
 $task = 'FanPilot'
 if ($Remove) { Unregister-ScheduledTask -TaskName $task -Confirm:$false; Write-Host 'Tarefa removida.'; return }
-$exe = Join-Path (Split-Path $PSScriptRoot) 'bin\FanPilot.exe'
-if (-not (Test-Path $exe)) { throw "Compile primeiro (build.ps1): $exe não existe" }
+# bin\FanPilot.exe in the repository, FanPilot.exe next to scripts\ in a release zip.
+$parent = Split-Path $PSScriptRoot
+$exe = @((Join-Path $parent 'bin\FanPilot.exe'), (Join-Path $parent 'FanPilot.exe')) | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $exe) { throw "FanPilot.exe não encontrado (compile com build.ps1 ou extraia o zip da release)" }
 $action = New-ScheduledTaskAction -Execute $exe -Argument '--no-browser' -WorkingDirectory (Split-Path $exe)
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
 $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest -LogonType Interactive

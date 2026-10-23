@@ -1,4 +1,4 @@
-// Policy layer over GigabyteBridge: validation/safety, original-curve backup, persistence and a watchdog that
+// Policy layer over an IBoard (Gigabyte Control Center or LibreHardwareMonitor): validation/safety, original-curve backup, persistence and a watchdog that
 // re-applies the user's curves if something else (sleep/resume, GCC, BIOS) overwrites them.
 using System;
 using System.Collections.Generic;
@@ -14,7 +14,7 @@ sealed class FanManager
     // Flat part of the fixed-mode curve for 8 points; other counts spread their points over the same 0..70 C range.
     static readonly double[] FixedModeTemps8 = { 0, 20, 30, 40, 50, 60, 70 };
 
-    readonly GigabyteBridge _bridge;
+    readonly IBoard _bridge;
     readonly AppConfig _cfg;
     readonly string _backupPath, _desiredPath, _turboPath;
     readonly object _sync = new object();
@@ -27,7 +27,7 @@ sealed class FanManager
     Dictionary<int, Dictionary<string, object>> _desired = new Dictionary<int, Dictionary<string, object>>();
     Timer _watchdog;
 
-    public FanManager(GigabyteBridge bridge, AppConfig cfg, string dataDir)
+    public FanManager(IBoard bridge, AppConfig cfg, string dataDir)
     {
         _bridge = bridge;
         _cfg = cfg;
@@ -108,6 +108,9 @@ sealed class FanManager
     public void Start()
     {
         EnsureBackup();
+        // Software-curve boards start with every header on the BIOS: put the user's curves back right away instead
+        // of letting the watchdog find them "changed externally" a few seconds later.
+        if (!_bridge.HardwareCurves) ReapplyDesired();
         _watchdog = new Timer(_ => Watchdog(), null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15));
     }
 
@@ -156,6 +159,10 @@ sealed class FanManager
         }
         return new Dictionary<string, object> {
             { "supported", _bridge.FanControlSupported },
+            { "backend", _bridge.BackendName },
+            // false: FanPilot runs the curves; the panel explains that closing it hands the fans to the BIOS.
+            { "hardwareCurves", _bridge.HardwareCurves },
+            { "notice", _bridge.Notice },
             { "board", MachineData.Board },
             { "fans", fans },
             { "tempInputs", _bridge.TempInputTitles },
@@ -273,6 +280,22 @@ sealed class FanManager
         var d = new Dictionary<string, object>();
         foreach (var kv in _desired) d[kv.Key.ToString()] = kv.Value;
         File.WriteAllText(_desiredPath, Json.Serialize(d), Encoding.UTF8);
+    }
+
+    void ReapplyDesired()
+    {
+        List<KeyValuePair<int, Dictionary<string, object>>> items;
+        lock (_sync) items = _desired.ToList();
+        foreach (var kv in items)
+        {
+            try
+            {
+                var result = _bridge.SetCurve(FanCurve.FromDictionary((Dictionary<string, object>)Json.Get(kv.Value, "curve")));
+                lock (_sync) if (_desired.ContainsKey(kv.Key)) { kv.Value["signature"] = result.Signature(); SaveDesired(); }
+            }
+            catch (Exception ex) { Log.Warn("Fan " + kv.Key + ": não foi possível reaplicar a curva salva: " + ex.Message); }
+        }
+        if (items.Count > 0) Log.Info(items.Count + " curva(s) salvas reaplicadas pelo FanPilot.");
     }
 
     void Watchdog()
