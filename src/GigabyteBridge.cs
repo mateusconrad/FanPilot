@@ -11,57 +11,7 @@ using Gigabyte.EnvironmentControl.Common.CoolingDevice.Fan.CoordinateSystem;
 using Gigabyte.Engine.EnvironmentControl.HardwareMonitor;
 using Gigabyte.Engine.EnvironmentControl.CoolingDevice.Fan;
 
-sealed class SensorReading
-{
-    public string Id;
-    public string Type;
-    public string Title;
-    public double Value;
-    public string Unit;
-}
-
-sealed class FanCurve
-{
-    public int Index;
-    public string Title;
-    public int TempInput;
-    // "SmartFanMode" (linear between points) or "StairStepMode" (steps); other values come from hardware only.
-    public string Mode;
-    public int DeltaT;
-    // [temperature C, pwm 0..255]
-    public List<double[]> Points = new List<double[]>();
-
-    public string Signature()
-    {
-        return TempInput + "|" + string.Join(";", Points.Select(p => (int)Math.Round(p[0]) + "," + (int)Math.Round(p[1])));
-    }
-
-    public Dictionary<string, object> ToDictionary()
-    {
-        return new Dictionary<string, object> {
-            { "index", Index }, { "title", Title }, { "tempInput", TempInput }, { "mode", Mode },
-            { "deltaT", DeltaT }, { "points", Points.Select(p => new[] { p[0], p[1] }).ToList() }
-        };
-    }
-
-    public static FanCurve FromDictionary(Dictionary<string, object> d)
-    {
-        var c = new FanCurve();
-        c.Index = Json.GetInt(d, "index", 0);
-        c.Title = Json.GetString(d, "title", "");
-        c.TempInput = Json.GetInt(d, "tempInput", 0);
-        c.Mode = Json.GetString(d, "mode", "SmartFanMode");
-        c.DeltaT = Json.GetInt(d, "deltaT", 1);
-        foreach (object p in Json.ToList(Json.Get(d, "points")))
-        {
-            var xy = Json.ToList(p);
-            c.Points.Add(new[] { Json.ToDouble(xy[0]), Json.ToDouble(xy[1]) });
-        }
-        return c;
-    }
-}
-
-sealed class GigabyteBridge
+sealed class GigabyteBridge : IBoard
 {
     readonly object _sync = new object();
     HardwareMonitorControlModule _hw;
@@ -79,6 +29,12 @@ sealed class GigabyteBridge
         ControlTitles = new string[0];
         TempInputTitles = new string[0];
     }
+
+    public string BackendName { get { return "Gigabyte Control Center"; } }
+    public bool HardwareCurves { get { return true; } }
+    public string Notice { get { return FanControlSupported ? null : "Esta placa-mãe não expõe o controle de fans de 3ª geração do GCC."; } }
+    // Curves live in the chip, nothing to hand back.
+    public void Shutdown() { }
 
     // Every call goes through here: serialized (the modules are not thread-safe) and retried, because the
     // first call on a fresh IPC connection reliably fails with "pipe is being closed" and a retry succeeds.

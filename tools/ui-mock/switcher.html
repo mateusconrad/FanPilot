@@ -30,7 +30,7 @@
   // State lives in the URL (?data=&w=&theme=&zoom=) so a reload or a screenshot tool reproduces it.
   const q = new URLSearchParams(location.search);
   const opts = {
-    data: [['demo', 'Demo'], ['worst', 'Pior caso'], ['unsupported', 'Sem controle'], ['down', 'Serviço fora'], ['turbo', 'Turbo']],
+    data: [['demo', 'Demo'], ['worst', 'Pior caso'], ['unsupported', 'Sem controle'], ['down', 'Serviço fora'], ['turbo', 'Turbo'], ['asus', 'ASUS'], ['nopawnio', 'Sem PawnIO']],
     width: [['320', '320'], ['390', '390'], ['1024', '1024']],
     theme: [['auto', 'Sistema'], ['light', 'Claro'], ['dark', 'Escuro']],
   };
@@ -63,7 +63,10 @@
     const act = q.get('open');
     if (act) setTimeout(() => {
       const d = f.contentDocument;
-      if (act === 'editor') d.querySelector('.fan') && d.querySelector('.fan').click();
+      if (act.startsWith('editor')) { // editor = first fan, editor2 = third fan, ...
+        const fan = d.querySelectorAll('.fan')[Number(act.slice(6)) || 0];
+        if (fan) fan.click();
+      }
       if (act === 'sensors') d.querySelector('details').open = true;
       if (act === 'preset') { // open the editor, pick a preset, sample the points mid-morph and after it
         d.querySelector('.fan').click();

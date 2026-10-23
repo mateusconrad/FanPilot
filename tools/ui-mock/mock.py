@@ -87,9 +87,30 @@ DOWN = dict(DEMO, service_down=True)
 # turbo: demo board with turbo on.
 TURBO = dict(DEMO, turbo=True)
 
+# asus: LibreHardwareMonitor path (Nuvoton NCT6798D, LHM's board names). FanPilot runs the curves; unmanaged
+# headers are on the BIOS (mode BiosDefault, no points).
+def bios_fan(i, title):
+    return {"index": i, "title": title, "tempInput": 0, "mode": "BiosDefault", "deltaT": 1, "points": [],
+            "pointCount": 8, "managed": False, "request": None, "hasBackup": True}
+
+ASUS = dict(DEMO,
+    board="ASUSTeK COMPUTER INC. ROG STRIX B550-F GAMING (WI-FI)",
+    backend="LibreHardwareMonitor", hardwareCurves=False,
+    temps=[("CPU", 61.4), ("CPU (2)", 58.0), ("Motherboard", 34.0), ("Chipset", 52.0), ("CPU Socket", 44.0)],
+    fans=[fan(0, "CPU Fan", 0, request={"mode": "curve"}), bios_fan(1, "CPU Optional Fan"), bios_fan(2, "Chassis Fan #1"),
+          bios_fan(3, "Chassis Fan #2"), fan(4, "AIO Pump", 0, points=FULL, request={"mode": "fixed", "percent": 100})],
+    rpm=[1180, 0, 860, 905, 2710],
+    volts=[("Vcore", 1.362), ("+12V", 12.096), ("+5V", 5.04), ("3VCC", 3.392)],
+    power=[("CPU Package", 88.4)], clocks=[("CPU", 4650)],
+    gpu=dict(DEMO["gpu"], name="NVIDIA GeForce RTX 3060 Ti"))
+
+# nopawnio: LibreHardwareMonitor without its driver: no board sensors, no fan control, GPU still fine.
+NOPAWNIO = dict(ASUS, fans=[], rpm=[], supported=False, temps=[("CPU", 61.4)],
+    notice="Instale o driver PawnIO (https://pawnio.eu) e reinicie o FanPilot para ler os sensores e controlar os fans da placa-mãe.")
+
 LAST_PROBE = {"result": None}  # filled by switcher.html?probe=1
 
-FIXTURES = {"demo": DEMO, "worst": WORST, "unsupported": UNSUPPORTED, "down": DOWN, "turbo": TURBO}
+FIXTURES = {"demo": DEMO, "worst": WORST, "unsupported": UNSUPPORTED, "down": DOWN, "turbo": TURBO, "asus": ASUS, "nopawnio": NOPAWNIO}
 
 
 def snapshot(fx, t_ms=None, wobble=0.0):
@@ -102,7 +123,9 @@ def snapshot(fx, t_ms=None, wobble=0.0):
     snap["sensors"] = sensors(temps, [(f["title"], r) for f, r in zip(fx["fans"], fx["rpm"])], fx["volts"], fx["power"], fx["clocks"])
     snap["fanRpm"] = list(fx["rpm"])
     snap["tempInputs"] = [v for _, v in temps]
-    snap["service"] = {"ok": True}
+    snap["service"] = {"ok": True, "backend": fx.get("backend", "Gigabyte Control Center")}
+    if fx.get("notice"):
+        snap["service"]["notice"] = fx["notice"]
     if "temp" in snap["gpu"]:
         snap["gpu"]["temp"] = round(snap["gpu"]["temp"] + wobble / 2)
     return snap
@@ -110,6 +133,8 @@ def snapshot(fx, t_ms=None, wobble=0.0):
 
 def fans_payload(fx):
     return {"supported": fx.get("supported", True), "board": fx["board"], "turbo": fx.get("turbo", False),
+            "backend": fx.get("backend", "Gigabyte Control Center"), "hardwareCurves": fx.get("hardwareCurves", True),
+            "notice": fx.get("notice"),
             "tempInputs": [n for n, _ in fx["temps"]],
             "limits": {"minDutyPercent": 20, "fixedModeSafetyTemp": 85, "maxFullSpeedTemp": 90}, "fans": fx["fans"]}
 

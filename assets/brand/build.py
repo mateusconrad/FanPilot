@@ -9,7 +9,7 @@ ROOT = HERE.parent.parent
 WWW = ROOT / "wwwroot"
 EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 FONT = '"Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif'
-TAGLINE = "Temperaturas e fans da sua placa-mãe Gigabyte, no celular."
+TAGLINE = "Temperaturas e fans da sua placa-mãe, no celular."
 
 
 def screenshot(html, out, w, h, scale=1):

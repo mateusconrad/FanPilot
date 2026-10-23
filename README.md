@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/brand/banner-dark.png">
-    <img alt="FanPilot — temperaturas e fans da sua placa-mãe Gigabyte, no celular" src="assets/brand/banner-light.png" width="560">
+    <img alt="FanPilot — temperaturas e fans da sua placa-mãe, no celular" src="assets/brand/banner-light.png" width="560">
   </picture>
 </p>
 
@@ -15,29 +15,39 @@ depois de parear o celular escaneando um QR code exibido no PC.
 
 Como funciona por baixo: veja [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEERING.md).
 
-> **Aviso:** projeto independente, **sem relação com a GIGABYTE** nem endossado por ela. "GIGABYTE", "Control
-> Center", "EasyTune" e "NVIDIA" são marcas de seus respectivos donos. O FanPilot não distribui arquivos da
-> Gigabyte: usa o GCC já instalado no seu PC. Ele altera o comportamento dos fans do seu hardware;
+> **Aviso:** projeto independente, **sem relação com GIGABYTE, ASUS, NVIDIA** ou outros fabricantes, e não
+> endossado por eles. "GIGABYTE", "Control Center", "EasyTune", "ASUS" e "NVIDIA" são marcas de seus respectivos
+> donos. O FanPilot não distribui arquivos da Gigabyte: usa o GCC já instalado no seu PC. Ele altera o
+> comportamento dos fans do seu hardware;
 > **use por sua conta e risco** (veja as [proteções](#proteções-de-hardware)). Sem garantia, conforme a
 > [licença](LICENSE).
 
 ## Requisitos
 
-- **Placa-mãe Gigabyte** com o **Gigabyte Control Center** instalado e o serviço **EasyTune Engine Service** rodando
-  (o FanPilot usa as DLLs cliente do GCC a partir da instalação, não as redistribui). A pasta do GCC é encontrada
-  pelo registro do instalador, então não precisa estar no local padrão.
 - Windows 10/11 64-bit (o .NET Framework 4.x necessário já vem no Windows).
+- Executar como **Administrador** (o `.exe` já pede elevação).
+- Uma das duas formas de acesso à placa-mãe (o FanPilot escolhe sozinho):
+  - **Placa Gigabyte com o Gigabyte Control Center** instalado e o serviço **EasyTune Engine Service** rodando.
+    As curvas ficam gravadas no chip da placa. O FanPilot usa as DLLs do GCC já instalado, não as redistribui.
+  - **Qualquer outra placa (ASUS, MSI, ASRock… ou Gigabyte sem GCC)** via
+    [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor), que precisa do driver
+    **[PawnIO](https://pawnio.eu)** instalado. Nessas placas o FanPilot executa as curvas (veja
+    [Placas sem GCC](#placas-sem-gcc-curvas-executadas-pelo-fanpilot)). **Em teste.**
 - GPU NVIDIA com driver (usa `nvml.dll`). Sem GPU NVIDIA, o resto funciona.
-- Executar como **Administrador** (exigência do serviço da Gigabyte; o `.exe` já pede elevação).
 
 ## Compilar e rodar
 
 ```powershell
-.\build.ps1                 # usa o csc.exe do .NET Framework que vem no Windows
-.\bin\FanPilot.exe            # pede UAC, abre http://localhost:8787/pair
-.\scripts\firewall.ps1      # (admin, uma vez) libera a porta 8787 no perfil de rede Privado
-.\scripts\autostart.ps1     # (admin, opcional) inicia elevado no logon, sem UAC
+.\build.ps1                     # csc.exe do Windows; baixa o LibreHardwareMonitor do NuGet (versões fixas, SHA-256 conferido)
+.\bin\FanPilot.exe              # pede UAC, abre http://localhost:8787/pair
+.\scripts\firewall.ps1          # (admin, uma vez) libera a porta 8787 no perfil de rede Privado
+.\scripts\autostart.ps1         # (admin, opcional) inicia elevado no logon, sem UAC
+.\scripts\package.ps1           # gera dist\FanPilot-<data>-<commit>.zip para distribuir (sem data\)
+.\bin\FanPilot.exe --diagnose   # relatório só de leitura da placa (para placas ainda não testadas)
 ```
+
+Compilar sem o GCC instalado também funciona: o build avisa e gera um FanPilot só com o LibreHardwareMonitor.
+Para distribuir, gere o zip num PC com GCC, assim ele atende os dois tipos de placa.
 
 No celular (mesma rede Wi-Fi): escaneie o QR da página `/pair`. O código vale ~3 min e é de uso único;
 o aparelho fica pareado por 30 dias de inatividade. A página `/pair` (só acessível no próprio PC) lista e
@@ -54,21 +64,25 @@ despareia aparelhos.
 
 ## Compatibilidade
 
-| Recurso | Funciona em |
-|---|---|
-| Monitoramento (temperaturas, RPM, tensões, clocks, potência) | Placas Gigabyte suportadas pelo GCC |
-| Controle de fans da placa-mãe | Placas em que o GCC usa o caminho de "3ª geração" (`SmartGuardianFanControlCoordinateSystem`). Nas outras, o painel avisa e mostra só o monitoramento. |
-| Fan e sensores da GPU | GPUs NVIDIA |
+| Recurso | Gigabyte com GCC | Outras placas (LibreHardwareMonitor + PawnIO) |
+|---|---|---|
+| Monitoramento (temperaturas, RPM, tensões, clocks, potência) | Placas suportadas pelo GCC | Placas cujo chip de sensores o LibreHardwareMonitor reconhece (Nuvoton, ITE, Fintek…) |
+| Controle de fans | Placas em que o GCC usa o caminho de "3ª geração" | Headers que o LibreHardwareMonitor consegue controlar |
+| Onde a curva roda | No chip (continua sem o FanPilot) | No FanPilot (ao fechar, os fans voltam à BIOS) |
+| Fan e sensores da GPU | GPUs NVIDIA | GPUs NVIDIA |
 
-Testado em: **B760M GAMING X AX** (GCC 26.03.26.01). O número de pontos da curva, os nomes dos headers e os
-sensores de referência são lidos da própria placa. Se testar em outra placa, abra uma issue contando o modelo e o
-resultado (os probes em `tools/` ajudam a diagnosticar).
+Testado em: **B760M GAMING X AX** (GCC 26.03.26.01). ASUS e outras placas: **em teste**, ainda sem placa
+confirmada. Se testar, siga [docs/TESTANDO-OUTRAS-PLACAS.md](docs/TESTANDO-OUTRAS-PLACAS.md) e abra uma issue
+com o modelo, o arquivo do `--diagnose` e o resultado.
 
-Uma atualização do GCC pode mudar a API interna que o FanPilot usa e quebrar o programa até ele ser ajustado.
+Para forçar um caminho, use `"backend"` no `config.json`: `"auto"` (padrão: GCC se instalado, senão
+LibreHardwareMonitor), `"gigabyte"` ou `"lhm"`. Uma atualização do GCC pode mudar a API interna que o FanPilot
+usa e quebrar o caminho Gigabyte até ele ser ajustado.
 
 ## Proteções de hardware
 
-- Curvas da placa-mãe rodam **no chip ITE** — continuam valendo se o FanPilot fechar.
+- **Gigabyte com GCC:** as curvas rodam **no chip ITE** — continuam valendo se o FanPilot fechar.
+  Nas outras placas, veja [Placas sem GCC](#placas-sem-gcc-curvas-executadas-pelo-fanpilot).
 - Toda curva: o mesmo número de pontos que a placa usa (8 na B760M), temperaturas crescentes, PWM nunca diminui com a temperatura, mínimo de 20%,
   100% obrigatório no último ponto (≤ 90 °C). O ponto 0 fica em 0 °C (o chip nunca desliga o fan).
 - Modo "Fixo": velocidade constante, mas o chip ainda vai a 100% acima de 85 °C.
@@ -80,21 +94,41 @@ Uma atualização do GCC pode mudar a API interna que o FanPilot usa e quebrar o
   (curva/fixo do FanPilot ou curva original). O estado sobrevive a um reinício (`bin\data\turbo.json`).
 - Fan da GPU em modo fixo volta sozinho para automático se a GPU chegar a 83 °C ou quando o FanPilot fecha.
 
+### Placas sem GCC: curvas executadas pelo FanPilot
+
+O LibreHardwareMonitor só consegue fixar uma porcentagem num header ou devolvê-lo à BIOS; o chip não guarda a
+curva. Por isso o FanPilot lê a temperatura e ajusta cada fan **uma vez por segundo**, com estas proteções:
+
+- **Fans que você não alterou ficam com a BIOS** ("Controle da BIOS" no painel). "Devolver à BIOS" desfaz uma
+  curva sua.
+- **Ao fechar** (janela, Ctrl+C, logoff, desligar o PC) ou **se o FanPilot der erro fatal**, todos os fans voltam
+  ao controle da BIOS.
+- **Sensor de referência sem leitura** (ou com valor impossível, como 127 °C de uma entrada desconectada): aquele
+  fan volta à BIOS até a leitura voltar.
+- **Falhas seguidas** do LibreHardwareMonitor (5 em sequência): todos os fans voltam à BIOS.
+- A velocidade é reaplicada a cada segundo, desfazendo o que a BIOS ou um app do fabricante tenha mudado.
+- **Limite:** se o processo for **encerrado à força** (Gerenciador de Tarefas > Finalizar tarefa, `taskkill /f`)
+  ou o PC travar, não há como reagir: o fan fica na última velocidade até a BIOS ou o FanPilot assumir de novo.
+  Por isso o piso de 20% e o 100% obrigatório até 90 °C valem aqui também, e o `autostart.ps1` configura a
+  tarefa agendada para tentar reiniciar o FanPilot.
+- Não use junto com o controle de fans do fabricante (**ASUS Armoury Crate / AI Suite "Fan Xpert"**, MSI Center
+  etc.): os dois vão disputar os fans. Desative o controle de fans de lá.
+
 Limites ajustáveis em `bin\data\config.json` (`minDutyPercent`, `fixedModeSafetyTemp`, `maxFullSpeedTemp`,
-`gpuSafetyTemp`, `port`, `publicHost`, `pairCodeTtlSeconds`, `sessionDays`).
+`gpuSafetyTemp`, `port`, `publicHost`, `pairCodeTtlSeconds`, `sessionDays`, `backend`).
 
 ## Operação
 
-- **Parar:** feche a janela do FanPilot ou pressione Ctrl+C nela. Ao sair, o fan da GPU volta para automático;
-  as curvas da placa-mãe ficam gravadas no chip.
+- **Parar:** feche a janela do FanPilot ou pressione Ctrl+C nela. Ao sair, o fan da GPU volta para automático.
+  Na Gigabyte com GCC as curvas ficam gravadas no chip; nas outras placas os fans voltam ao controle da BIOS.
 - **Log:** `bin\data\fanpilot.log` (pareamentos, mudanças de fan, reaplicações do watchdog, erros).
 - **Dados:** `bin\data\` guarda `config.json`, `sessions.json`, `backup-curves.json` (curvas originais, gravado
   só na primeira execução), `desired-curves.json` (curvas que o FanPilot mantém) e `machine.json` (identifica o PC
   e a placa-mãe).
 - **Outro PC / troca de placa-mãe:** se `bin\data\` vier de outro PC ou de outra placa, o FanPilot não aplica as
   curvas, o backup nem os pareamentos antigos: eles são movidos para `bin\data\outra-maquina-<data>\` e tudo
-  recomeça do zero (o `config.json` é mantido). Para levar o programa a outro PC, basta copiar `FanPilot.exe` e
-  `wwwroot\`.
+  recomeça do zero (o `config.json` é mantido). Para levar o programa a outro PC, use o zip gerado por
+  `scripts\package.ps1` (ou copie a pasta `bin\` sem a `data\`).
 - **GCC e FanPilot juntos:** não use os dois para controlar fans ao mesmo tempo — um sobrescreve o outro, e o
   watchdog do FanPilot vai reaplicar a curva dele a cada 15 s. Para voltar ao GCC, use "Restaurar original" em
   cada fan alterado (isso também tira o fan do watchdog). Só monitorar com os dois abertos não tem problema.
@@ -107,7 +141,9 @@ Limites ajustáveis em `bin\data\config.json` (`minDutyPercent`, `fixedModeSafet
 | QR aponta para IP errado | Escolha outro endereço na caixa da página `/pair` (ex.: o do Wi-Fi, não o `vEthernet`), ou fixe `publicHost` no `config.json`. |
 | "Código inválido ou expirado" | O código é de uso único e dura ~3 min; escaneie o QR atual de novo. Muitas tentativas erradas bloqueiam o IP por 1 min. |
 | Celular volta para a tela de bloqueio | Sessão revogada em `/pair`, cookies apagados ou 30 dias sem uso: pareie de novo. |
-| Status "serviço Gigabyte indisponível" | `EasyTuneEngineService` parado (`services.msc`) ou GCC atualizado/removido. A GPU continua funcionando. |
+| Status "sensores da placa indisponíveis" | Gigabyte: `EasyTuneEngineService` parado (`services.msc`) ou GCC atualizado/removido. A GPU continua funcionando. |
+| "Instale o driver PawnIO" | Placa sem GCC: instale o [PawnIO](https://pawnio.eu) e reinicie o FanPilot. |
+| Placa sem GCC não mostra fans | O LibreHardwareMonitor não reconheceu ou não controla o chip dessa placa. Rode `FanPilot.exe --diagnose` e abra uma issue com o arquivo gerado. |
 | FanPilot fecha logo ao abrir | Não está como Administrador, ou o GCC não está instalado. Veja o log. |
 | "Esta placa-mãe não oferece controle de fans" | A placa não usa o caminho de controle que o FanPilot implementa; só o monitoramento funciona. |
 | Fan da GPU não aceita modo fixo | Driver recusou o controle manual (mensagem com código NVML); o fan fica em automático. |
@@ -156,12 +192,14 @@ Programas de teste usados para validar a análise; precisam rodar como Administr
 ## Estrutura
 
 ```
-src/        C# 5 (.NET Framework 4.x): ponte Gigabyte, NVML, servidor HTTP/SSE, auth, política de fans
+src/        C# 5 (.NET Framework 4.x): IBoard + pontes Gigabyte (GCC) e LibreHardwareMonitor, NVML,
+            servidor HTTP/SSE, auth, política de fans, --diagnose
 wwwroot/    painel (index.html/app.js), pareamento (pair.html/pair.js), qrcode-generator (MIT)
 tools/      probes usados na engenharia reversa
 assets/     identidade visual: SVGs-fonte, ícone do .exe, banners (regenerar: python assets/brand/build.py)
-scripts/    firewall e auto-início
-docs/       relatório da engenharia reversa
+scripts/    firewall, auto-início e empacotamento da release
+lib/        cache das DLLs do NuGet baixadas pelo build.ps1 (não versionado)
+docs/       relatório da engenharia reversa e guia para testar outras placas
 ```
 
 ## Licença

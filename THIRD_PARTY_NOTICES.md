@@ -28,6 +28,31 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## LibreHardwareMonitor e dependências (distribuídos junto com o `FanPilot.exe`)
+
+Baixados do nuget.org pelo `build.ps1` em versões fixas (hash SHA-256 conferido) e copiados sem modificação para
+a pasta do programa. O código-fonte de cada um está no endereço indicado.
+
+| Componente | Versão | Licença | Código-fonte |
+|---|---|---|---|
+| LibreHardwareMonitorLib | 0.9.6 | [MPL-2.0](https://www.mozilla.org/MPL/2.0/) | https://github.com/LibreHardwareMonitor/LibreHardwareMonitor |
+| DiskInfoToolkit | 1.1.2 | [MPL-2.0](https://www.mozilla.org/MPL/2.0/) | https://github.com/Blacktempel/DiskInfoToolkit |
+| RAMSPDToolkit-NDD | 1.4.2 | [MPL-2.0](https://www.mozilla.org/MPL/2.0/) | https://github.com/Blacktempel/RAMSPDToolkit |
+| BlackSharp.Core | 1.0.7 | [MPL-2.0](https://www.mozilla.org/MPL/2.0/) | https://github.com/Blacktempel/BlackSharp |
+| HidSharp | 2.6.4 | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) — Copyright 2010-2025 James F. Bellinger | https://software.seekye.com/hidsharp |
+| System.Memory | 4.6.3 | MIT — © Microsoft | https://github.com/dotnet/maintenance-packages |
+| System.Buffers | 4.6.1 | MIT — © Microsoft | https://github.com/dotnet/maintenance-packages |
+| System.Numerics.Vectors | 4.6.1 | MIT — © Microsoft | https://github.com/dotnet/maintenance-packages |
+| System.Runtime.CompilerServices.Unsafe | 6.1.2 | MIT — © Microsoft | https://github.com/dotnet/maintenance-packages |
+| System.Threading.AccessControl | 10.0.3 | MIT — © Microsoft | https://github.com/dotnet/runtime |
+| System.Security.AccessControl | 6.0.0 | MIT — © Microsoft | https://github.com/dotnet/runtime |
+| System.Security.Principal.Windows | 5.0.0 | MIT — © Microsoft | https://github.com/dotnet/runtime |
+
+## PawnIO
+
+Driver usado pelo LibreHardwareMonitor para acessar o chip da placa-mãe. **Não é distribuído** com o FanPilot:
+o usuário o instala a partir do site oficial, https://pawnio.eu.
+
 ## Gigabyte Control Center
 
 O FanPilot **não inclui** nenhum arquivo da Gigabyte. As DLLs cliente do GCC são carregadas em tempo de execução
