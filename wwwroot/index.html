@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d0d0d">
+  <title>PC Monitor</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>PC Monitor</h1>
+    <div class="row">
+      <span class="status"><span id="statusDot" class="dot"></span><span id="statusText">conectando…</span></span>
+      <button id="logout" class="btn ghost" title="Desparear este aparelho">Sair</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="tiles" id="tiles" aria-live="polite"></section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Temperaturas · últimos 10 min</h2>
+        <div class="legend">
+          <span><i style="background:var(--series-cpu)"></i>CPU</span>
+          <span><i style="background:var(--series-gpu)"></i>GPU</span>
+        </div>
+      </div>
+      <div class="chart-wrap" id="chartWrap">
+        <svg id="chart" viewBox="0 0 640 220" role="img" aria-label="Temperatura da CPU e GPU nos últimos 10 minutos"></svg>
+        <div class="tip" id="tip"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Fans · RPM · últimos 10 min</h2>
+        <div class="legend" id="rpmLegend"></div>
+      </div>
+      <div class="chart-wrap" id="rpmWrap">
+        <svg id="rpmChart" viewBox="0 0 640 220" role="img" aria-label="RPM dos fans da placa-mãe nos últimos 10 minutos"></svg>
+        <div class="tip" id="rpmTip"></div>
+      </div>
+      <p class="hint" id="rpmNote"></p>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h2>Fans da placa-mãe</h2>
+          <span class="sub" id="fanSub">toque em um fan para ajustar</span>
+        </div>
+        <button class="btn turbo" id="turboBtn" aria-pressed="false">⚡ Turbo 100%</button>
+      </div>
+      <p class="turbo-banner" id="turboBanner" hidden>Turbo ativo: todos os fans da placa-mãe em 100% (a GPU não é afetada). Toque de novo para voltar às configurações anteriores.</p>
+      <div class="fan-list" id="fans"></div>
+    </section>
+
+    <section class="card" id="gpuCard">
+      <div class="card-head">
+        <h2 id="gpuName">GPU</h2>
+        <span class="sub" id="gpuSub"></span>
+      </div>
+      <div class="gpu-grid" id="gpuGrid"></div>
+      <div class="row" style="justify-content:space-between">
+        <div class="seg" role="group" aria-label="Modo do fan da GPU">
+          <button id="gpuAuto" aria-pressed="true">Automático</button>
+          <button id="gpuFixed" aria-pressed="false">Fixo</button>
+        </div>
+        <span class="big-value" id="gpuFanValue"></span>
+      </div>
+      <div id="gpuFixedBox" hidden style="margin-top:10px">
+        <input type="range" id="gpuSlider" min="30" max="100" step="1" value="50" aria-label="Velocidade do fan da GPU">
+        <div class="row" style="justify-content:space-between;margin-top:6px">
+          <span class="hint" id="gpuSafety"></span>
+          <button class="btn primary" id="gpuApply">Aplicar</button>
+        </div>
+      </div>
+      <p class="hint" id="gpuNote" hidden></p>
+    </section>
+
+    <section class="card">
+      <details>
+        <summary>Todos os sensores</summary>
+        <table class="sensors" id="sensorTable"></table>
+      </details>
+    </section>
+  </main>
+
+  <div class="sheet-backdrop" id="backdrop" hidden></div>
+  <section class="sheet editor" id="sheet" hidden aria-modal="true" role="dialog" aria-labelledby="edTitle">
+    <div class="row" style="justify-content:space-between">
+      <h2 id="edTitle">Fan</h2>
+      <button class="btn ghost" id="edClose">Fechar</button>
+    </div>
+    <div class="row" style="justify-content:space-between">
+      <div class="seg" role="group" aria-label="Modo">
+        <button id="edModeCurve" aria-pressed="true">Curva</button>
+        <button id="edModeFixed" aria-pressed="false">Fixo</button>
+      </div>
+      <label class="field">Sensor de referência
+        <select id="edTempInput"></select>
+      </label>
+    </div>
+
+    <div id="edCurveBox">
+      <div class="chips" id="edPresets" style="margin-bottom:8px"></div>
+      <svg id="edSvg" viewBox="0 0 340 230" aria-label="Editor da curva: arraste os pontos"></svg>
+      <div class="row" style="justify-content:space-between;margin-top:6px">
+        <label class="field">Transição
+          <select id="edStyle">
+            <option value="SmartFanMode">Linear</option>
+            <option value="StairStepMode">Degraus</option>
+          </select>
+        </label>
+        <span class="hint" id="edNow"></span>
+      </div>
+      <p class="points-list" id="edPoints"></p>
+    </div>
+
+    <div id="edFixedBox" hidden>
+      <div class="row" style="justify-content:space-between">
+        <span>Velocidade</span><span class="big-value" id="edFixedValue">50%</span>
+      </div>
+      <input type="range" id="edFixedSlider" min="20" max="100" step="1" value="50" aria-label="Velocidade fixa">
+      <p class="hint" id="edFixedHint"></p>
+    </div>
+
+    <p class="hint" id="edLimits"></p>
+    <div class="row" style="justify-content:space-between">
+      <button class="btn" id="edRestore">Restaurar original</button>
+      <button class="btn primary" id="edApply">Aplicar</button>
+    </div>
+  </section>
+
+  <div class="toast" id="toast" hidden></div>
+  <script src="/app.js"></script>
+</body>
+</html>
