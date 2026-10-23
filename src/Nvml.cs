@@ -1,5 +1,5 @@
 // NVIDIA GPU monitoring/fan control through NVML (nvml.dll ships with the driver in System32).
-// GCC does not cover the GPU, so this is independent of the Gigabyte service.
+// GCC does not cover the GPU, so this is independent of the Gigabyte service. Other GPUs: see LhmGpu.cs.
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -31,22 +31,67 @@ static class NvmlNative
     [DllImport(Dll)] public static extern int nvmlDeviceGetMemoryInfo(IntPtr device, out Memory mem);
 }
 
-sealed class GpuMonitor
+// What the panel and the sampler use, whichever library reaches the GPU. The safety rule lives here: a manual fan
+// setting never outlives an overheating GPU, and every way out puts the fan back on the driver's automatic curve.
+abstract class GpuMonitor
 {
-    readonly object _sync = new object();
-    readonly int _safetyTemp;
+    protected readonly object Sync = new object();
+    protected readonly int SafetyTemp;
+    protected int? ManualPercent;
+    protected string SafetyNote;
+
+    protected GpuMonitor(int safetyTemp) { SafetyTemp = safetyTemp; }
+
+    // NVML when the NVIDIA driver provides it (most complete), otherwise LibreHardwareMonitor (AMD, Intel Arc, NVIDIA).
+    public static GpuMonitor Create(int safetyTemp)
+    {
+        var nvml = new NvmlGpu(safetyTemp);
+        if (nvml.Ok) return nvml;
+        var lhm = new LhmGpu(safetyTemp, nvml.Error);
+        Log.Info(lhm.Ok ? "GPU via LibreHardwareMonitor: " + lhm.Name : "GPU indisponível: " + lhm.Error);
+        return lhm;
+    }
+
+    public abstract Dictionary<string, object> Read();
+    public abstract void SetFixed(int percent);
+    public abstract void SetAuto();
+    public abstract void Shutdown();
+
+    // Called once per sample.
+    public void EnforceSafety(object tempObj)
+    {
+        if (!ManualPercent.HasValue || tempObj == null) return;
+        if (Convert.ToInt32(tempObj) >= SafetyTemp)
+        {
+            SetAuto();
+            lock (Sync) SafetyNote = "Fan voltou para automático: GPU atingiu " + tempObj + " °C (" + DateTime.Now.ToString("HH:mm:ss") + ")";
+            Log.Info("GPU safety: reverted fan to auto at " + tempObj + " C");
+        }
+    }
+
+    protected void AddFanState(Dictionary<string, object> r)
+    {
+        r["fanMode"] = ManualPercent.HasValue ? "fixed" : "auto";
+        r["fanTarget"] = ManualPercent;
+        r["safetyTemp"] = SafetyTemp;
+        r["safetyNote"] = SafetyNote;
+    }
+}
+
+sealed class NvmlGpu : GpuMonitor
+{
     IntPtr _device;
     uint _fanCount;
     bool _ok;
     string _name = "";
     string _error;
-    int? _manualPercent;
-    string _safetyNote;
     uint _minFan = 0, _maxFan = 100;
 
-    public GpuMonitor(int safetyTemp)
+    public bool Ok { get { return _ok; } }
+    public string Error { get { return _error; } }
+
+    public NvmlGpu(int safetyTemp) : base(safetyTemp)
     {
-        _safetyTemp = safetyTemp;
         try
         {
             Check(NvmlNative.nvmlInit_v2(), "nvmlInit");
@@ -69,9 +114,9 @@ sealed class GpuMonitor
         if (rc != NvmlNative.Success) throw new InvalidOperationException(what + " falhou (NVML " + rc + ")");
     }
 
-    public Dictionary<string, object> Read()
+    public override Dictionary<string, object> Read()
     {
-        lock (_sync)
+        lock (Sync)
         {
             var r = new Dictionary<string, object>();
             r["ok"] = _ok;
@@ -91,31 +136,16 @@ sealed class GpuMonitor
             if (NvmlNative.nvmlDeviceGetClockInfo(_device, 2, out v) == 0) r["memClock"] = (int)v;
             NvmlNative.Memory m;
             if (NvmlNative.nvmlDeviceGetMemoryInfo(_device, out m) == 0) { r["memUsed"] = (long)(m.Used >> 20); r["memTotal"] = (long)(m.Total >> 20); }
-            r["fanMode"] = _manualPercent.HasValue ? "fixed" : "auto";
-            r["fanTarget"] = _manualPercent;
             r["fanMin"] = (int)_minFan;
             r["fanMax"] = (int)_maxFan;
-            r["safetyTemp"] = _safetyTemp;
-            r["safetyNote"] = _safetyNote;
+            AddFanState(r);
             return r;
         }
     }
 
-    // Called once per sample: a manual fan setting must never outlive an overheating GPU.
-    public void EnforceSafety(object tempObj)
+    public override void SetFixed(int percent)
     {
-        if (!_manualPercent.HasValue || tempObj == null) return;
-        if (Convert.ToInt32(tempObj) >= _safetyTemp)
-        {
-            SetAuto();
-            lock (_sync) _safetyNote = "Fan voltou para automático: GPU atingiu " + tempObj + " °C (" + DateTime.Now.ToString("HH:mm:ss") + ")";
-            Log.Info("GPU safety: reverted fan to auto at " + tempObj + " C");
-        }
-    }
-
-    public void SetFixed(int percent)
-    {
-        lock (_sync)
+        lock (Sync)
         {
             if (!_ok) throw new InvalidOperationException("GPU indisponível: " + _error);
             if (_fanCount == 0) throw new InvalidOperationException("A GPU não expõe fans controláveis.");
@@ -129,24 +159,24 @@ sealed class GpuMonitor
                     throw new InvalidOperationException("O driver recusou o controle manual do fan (NVML " + rc + ").");
                 }
             }
-            _manualPercent = percent;
-            _safetyNote = null;
+            ManualPercent = percent;
+            SafetyNote = null;
         }
     }
 
-    public void SetAuto()
+    public override void SetAuto()
     {
-        lock (_sync)
+        lock (Sync)
         {
             if (!_ok) return;
             for (uint i = 0; i < _fanCount; i++) NvmlNative.nvmlDeviceSetDefaultFanSpeed_v2(_device, i);
-            _manualPercent = null;
+            ManualPercent = null;
         }
     }
 
-    public void Shutdown()
+    public override void Shutdown()
     {
         SetAuto();
-        lock (_sync) { if (_ok) NvmlNative.nvmlShutdown(); _ok = false; }
+        lock (Sync) { if (_ok) NvmlNative.nvmlShutdown(); _ok = false; }
     }
 }

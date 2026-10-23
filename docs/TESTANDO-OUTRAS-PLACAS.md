@@ -8,7 +8,8 @@ primeira etapa que der algo estranho** e mande o que tiver.
 ## 0. Antes de começar
 
 - Use o zip da release (`FanPilot-….zip`) e extraia numa pasta sua, por exemplo `C:\FanPilot`.
-- Instale o driver **PawnIO** pelo site oficial: https://pawnio.eu. Reinicie o PC se o instalador pedir.
+- Driver **PawnIO**: na primeira vez que abrir o `FanPilot.exe`, se ele faltar, a janela pergunta se pode instalar
+  pelo `winget`; responda `S`. Sem winget, instale pelo site oficial: https://pawnio.eu. Reinicie o PC se pedir.
 - **Desative o controle de fans do fabricante** enquanto testa: na ASUS, no Armoury Crate / AI Suite, deixe o
   Fan Xpert sem perfil ativo (ou feche-o); na MSI, o MSI Center. Se os dois controlarem ao mesmo tempo, o teste
   não vale.
@@ -22,7 +23,8 @@ Abra um terminal na pasta e rode:
 .\FanPilot.exe --diagnose
 ```
 
-Ele pede Administrador, salva `data\diagnostico-<data>.txt` e abre o arquivo no Bloco de Notas. Mande esse
+O diagnóstico não instala nada: se o PawnIO faltar, abra o `FanPilot.exe` uma vez antes (etapa 0). Ele pede
+Administrador, salva `data\diagnostico-<data>.txt` e abre o arquivo no Bloco de Notas. Mande esse
 arquivo. Confira nele:
 
 - `PawnIO: instalado` — se aparecer "NÃO instalado", volte à etapa 0.
