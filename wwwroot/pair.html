@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PC Monitor · parear</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="pair">
+    <div class="card-head"><h1>Parear celular</h1><a class="btn" href="/">Abrir painel aqui</a></div>
+    <section class="card" style="display:grid;gap:12px">
+      <p style="margin:0">Escaneie com a câmera do celular (na mesma rede Wi-Fi). O código é de uso único e troca a cada poucos minutos.</p>
+      <div class="qr" id="qr" aria-label="QR code de pareamento"></div>
+      <div class="url" id="url"></div>
+      <div class="row" style="justify-content:space-between">
+        <label class="field">Endereço do PC na rede
+          <select id="host"></select>
+        </label>
+        <span class="hint" id="countdown"></span>
+      </div>
+    </section>
+    <section class="card" style="display:grid;gap:10px">
+      <div class="card-head" style="margin:0"><h2>Aparelhos pareados</h2><button class="btn" id="revokeAll">Desparear todos</button></div>
+      <div class="sessions" id="sessions"></div>
+    </section>
+    <p class="hint">Se o celular não conectar: libere a porta no firewall (scripts\firewall.ps1) e confira se a rede do Windows está como "Privada".</p>
+  </main>
+  <script src="/vendor/qrcode.min.js"></script>
+  <script src="/pair.js"></script>
+</body>
+</html>
