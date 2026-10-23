@@ -138,6 +138,7 @@ Programas de teste usados para validar a análise; precisam rodar como Administr
 | `Probe2.cs` | Experimento que mostrou a falha da primeira chamada IPC (resolvida com retry) e os módulos "não suportados". |
 | `Probe3.cs` | Leitura (somente) das curvas pelo caminho de 3ª geração (`SmartGuardianFanControlCoordinateSystemModule`). |
 | `Probe4.cs` | Teste de escrita: aplica 40% no System 1 por 8 s, mede o RPM e **restaura a curva original** automaticamente. |
+| `ui-mock/` | Servidor de dados falsos para mexer no painel **sem placa Gigabyte nem Administrador**: `python tools/ui-mock/mock.py` e abra `http://127.0.0.1:8799/__mock`. Alterna entre Demo, Pior caso (placa com 8 fans, nomes longos, sensores desconectados), Sem controle, Serviço fora e Turbo, em 320/390/1024 px e tema claro/escuro. |
 
 ## API
 

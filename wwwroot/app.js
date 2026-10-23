@@ -56,6 +56,11 @@
     return e;
   }
 
+  // Names and messages come from the hardware service and the driver: always escape before innerHTML.
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // 8 colors in style.css (--fan-0..7); boards with more headers reuse them.
+  const fanColor = (i) => `var(--fan-${i % 8})`;
+
   const fmt = (v, d = 0) => (v === null || v === undefined || Number.isNaN(v)) ? '–' : Number(v).toFixed(d).replace('.', ',');
   const pct = (pwm) => Math.round(pwm / 2.55);
 
@@ -120,7 +125,10 @@
     state.history = { t: hist.t.slice(), series };
   }
 
-  const shortFanName = (title) => title.replace(/^System\s*/i, 'Sys ');
+  // Direct chart labels only (legend and tooltip keep the full name): "System 1" / "SYS_FAN1" -> "Sys 1",
+  // "SYS_FAN5_PUMP" -> "Sys 5 pump", "CPU_FAN" -> "CPU".
+  const shortFanName = (title) => title.replace(/^(System|SYS_FAN)\s*/i, 'Sys ').replace(/^CPU_FAN$/i, 'CPU')
+    .replace(/_PUMP$/i, ' pump').replace(/_/g, ' ');
   const fmtRpm = (v) => v >= 1000 ? fmt(v / 1000, 1) + 'k' : String(Math.round(v));
 
   // Fans whose tachometer reads 0 for the whole window have nothing to plot.
@@ -132,7 +140,7 @@
 
   const CHARTS = {
     temp: {
-      svg: 'chart', wrap: 'chartWrap', tip: 'tip', r: 56, unit: '°C',
+      svg: 'chart', wrap: 'chartWrap', tip: 'tip', unit: '°C',
       tick: (v) => v + '°', endText: (s, v) => `${s.label} ${Math.round(v)}°`,
       domain: (vals) => {
         let lo = Math.min(...vals, 30), hi = Math.max(...vals, 60);
@@ -144,10 +152,10 @@
       ],
     },
     rpm: {
-      svg: 'rpmChart', wrap: 'rpmWrap', tip: 'rpmTip', r: 82, unit: 'RPM',
+      svg: 'rpmChart', wrap: 'rpmWrap', tip: 'rpmTip', unit: 'RPM',
       tick: fmtRpm, endText: (s, v) => `${s.label} ${Math.round(v)}`,
       domain: (vals) => [0, niceCeil(Math.max(...vals, 1000) * 1.1)],
-      series: () => spinningFans().map(({ f, i }) => ({ key: 'fan-' + i, label: shortFanName(f.title), name: f.title, color: `var(--fan-${i})` })),
+      series: () => spinningFans().map(({ f, i }) => ({ key: 'fan-' + i, label: shortFanName(f.title), name: f.title, color: fanColor(i) })),
     },
   };
 
@@ -165,9 +173,16 @@
     svg.innerHTML = '';
     def.geo = null;
     const series = def.series().filter((s) => h.series[s.key]);
-    if (!h.t.length || !series.length) return series;
+    const empty = !h.t.length || !series.length;
+    svg.toggleAttribute('hidden', empty); // SVG elements have no .hidden property
+    if (empty) return series;
+    const lastOf = (key) => { const a = h.series[key]; for (let i = a.length - 1; i >= 0; i--) if (a[i] !== null) return a[i]; return null; };
+    const labels = series.map((s) => { const v = lastOf(s.key); return v === null ? '' : def.endText(s, v); });
     // Draw in CSS pixels so axis text keeps its real size on narrow phones.
-    const g = { w: Math.max(300, Math.round($(def.wrap).clientWidth)), l: 38, r: def.r, t: 10, b: 24 };
+    const w = Math.max(300, Math.round($(def.wrap).clientWidth));
+    // Right margin fits the longest direct label (11px text, ~6.2px per character), up to a third of the chart.
+    const r = Math.min(Math.round(w * 0.38), Math.max(40, Math.ceil(Math.max(...labels.map((t) => t.length)) * 6.2) + 14));
+    const g = { w, l: 38, r, t: 10, b: 24 };
     g.h = g.w < 480 ? 190 : 220;
     svg.setAttribute('viewBox', `0 0 ${g.w} ${g.h}`);
     const now = h.t[h.t.length - 1];
@@ -185,7 +200,10 @@
       el('line', { x1: g.l, x2: g.w - g.r, y1: g.Y(v), y2: g.Y(v) }, grid);
       el('text', { x: g.l - 6, y: g.Y(v) + 4, 'text-anchor': 'end' }, axis).textContent = def.tick(v);
     }
-    for (let m = 10; m >= 0; m -= 2) {
+    // A label every 2 minutes, or every 5 when that would crowd the axis.
+    const stepMin = g.X(now) - g.X(now - 2 * 60000) < 44 ? 5 : 2;
+    for (let m = 10; m >= 0; m -= stepMin) {
+      if (m > 0 && g.X(now) - g.X(now - m * 60000) < 46) continue; // would collide with "agora"
       const tx = el('text', { x: g.X(now - m * 60000), y: g.h - 6, 'text-anchor': m === 0 ? 'end' : 'middle' }, axis);
       tx.textContent = m === 0 ? 'agora' : '-' + m + ' min';
     }
@@ -220,8 +238,12 @@
   function renderCharts() {
     renderLineChart(CHARTS.temp);
     const fans = renderLineChart(CHARTS.rpm);
-    $('rpmLegend').innerHTML = fans.map((s) => `<span><i style="background:${s.color}"></i>${s.name}</span>`).join('');
-    if (state.fans) {
+    $('rpmLegend').innerHTML = fans.map((s) => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join('');
+    if (!fans.length) {
+      $('rpmNote').textContent = state.fans && state.fans.supported === false
+        ? 'Esta placa-mãe não informa fans para o FanPilot.'
+        : 'Nenhum fan com leitura de RPM no momento.';
+    } else if (state.fans) {
       const silent = state.fans.fans.filter((f, i) => !fans.some((s) => s.key === 'fan-' + i)).map((f) => f.title);
       $('rpmNote').textContent = silent.length ? `Sem leitura de RPM (0): ${silent.join(', ')} — não aparecem no gráfico.` : '';
     }
@@ -242,7 +264,7 @@
     const tip = $(def.tip);
     tip.innerHTML = `<div>${new Date(h.t[best]).toLocaleTimeString('pt-BR')}</div>` + g.series.map((s) => {
       const v = h.series[s.key][best];
-      return `<div class="row"><i style="background:${s.color}"></i>${s.name || s.label} <b>${v === null ? '–' : (def.unit === 'RPM' ? Math.round(v) : fmt(v))} ${def.unit}</b></div>`;
+      return `<div class="row"><i style="background:${s.color}"></i>${esc(s.name || s.label)} <b>${v === null ? '–' : (def.unit === 'RPM' ? Math.round(v) : fmt(v))} ${def.unit}</b></div>`;
     }).join('');
     tip.style.display = 'block';
     const px = x / g.w * box.width;
@@ -285,6 +307,7 @@
     const box = $('fans');
     if (!state.fans) return;
     $('turboBtn').hidden = !state.fans.fans.length;
+    $('fanSub').hidden = !state.fans.fans.length;
     if (!state.fans.supported) {
       box.innerHTML = '<p class="hint"></p>';
       box.firstChild.textContent = `Esta placa-mãe (${state.fans.board || 'desconhecida'}) não oferece controle de fans pelo ` +
@@ -293,13 +316,13 @@
     }
     if (!state.fans.fans.length) { box.innerHTML = '<p class="hint">Controle de fans indisponível.</p>'; return; }
     const snap = state.snap || {};
-    if (box.children.length !== state.fans.fans.length) {
+    if (box.querySelectorAll('.fan').length !== state.fans.fans.length) {
       box.innerHTML = '';
       state.fans.fans.forEach((f, i) => {
         const b = document.createElement('button');
         b.className = 'fan';
         b.innerHTML = '<div class="name"></div><div class="rpm"></div>' +
-          `<div class="duty" role="meter" aria-valuemin="0" aria-valuemax="100"><i style="background:var(--fan-${i})"></i></div>` +
+          `<div class="duty" role="meter" aria-valuemin="0" aria-valuemax="100"><i style="background:${fanColor(i)}"></i></div>` +
           '<div class="desc"></div>';
         b.onclick = () => openEditor(i);
         box.appendChild(b);
@@ -313,8 +336,8 @@
       const b = box.children[i];
       const rpm = snap.fanRpm ? snap.fanRpm[i] : null;
       const duty = commandedPercent(f, snap);
-      b.querySelector('.name').innerHTML = f.title + (turbo ? '<span class="pill">Turbo</span>' : f.managed ? '<span class="pill">FanPilot</span>' : '');
-      b.querySelector('.rpm').innerHTML = rpm ? `${rpm}<small> RPM</small>` : '<small>0 RPM · sem leitura</small>';
+      b.querySelector('.name').innerHTML = esc(f.title) + (turbo ? '<span class="pill">Turbo</span>' : f.managed ? '<span class="pill">FanPilot</span>' : '');
+      b.querySelector('.rpm').innerHTML = rpm ? `${rpm}<small> RPM</small>` : '<small>sem leitura</small>';
       const meter = b.querySelector('.duty');
       meter.firstChild.style.transform = `scaleX(${(duty === null ? 0 : duty) / 100})`;
       meter.setAttribute('aria-valuenow', duty === null ? 0 : duty);
@@ -333,7 +356,11 @@
 
   async function loadFans() {
     try { state.fans = await api('/api/fans'); renderFans(); renderCharts(); }
-    catch (e) { $('fans').innerHTML = `<p class="hint">Fans indisponíveis: ${e.message}</p>`; }
+    catch (e) {
+      $('fans').innerHTML = `<p class="hint">Fans indisponíveis: ${esc(e.message)}</p>`;
+      $('turboBtn').hidden = true;
+      $('fanSub').hidden = true;
+    }
   }
 
   async function toggleTurbo() {
@@ -479,8 +506,51 @@
     $('edPoints').textContent = pts.map(([t, p]) => `${t}° ${p}%`).join(' · ');
   }
 
+  // Picking a preset morphs the curve into place instead of jumping, so the change is visible.
+  // Same strong ease-in-out as --ease-in-out would be in CSS; skipped under reduced motion.
+  const MORPH_MS = 240;
+  const easeInOut = cubicBezier(0.77, 0, 0.175, 1);
+  let morphFrame = 0;
+  function morphPoints(target) {
+    const e = state.editor;
+    cancelAnimationFrame(morphFrame);
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || e.points.length !== target.length) {
+      e.points = target;
+      renderEditor();
+      return;
+    }
+    const from = e.points.map((p) => p.slice());
+    const start = performance.now();
+    const step = (now) => {
+      if (state.editor !== e) return; // sheet closed or reopened mid-morph
+      const k = easeInOut(Math.min(1, (now - start) / MORPH_MS));
+      e.points = from.map(([t, p], i) => [Math.round(t + (target[i][0] - t) * k), Math.round(p + (target[i][1] - p) * k)]);
+      if (k < 1) morphFrame = requestAnimationFrame(step); else e.points = target;
+      renderEditor();
+    };
+    morphFrame = requestAnimationFrame(step);
+  }
+
+  // CSS-style cubic-bezier(x1, y1, x2, y2) easing: solve x(u) = t by Newton's method, return y(u).
+  function cubicBezier(x1, y1, x2, y2) {
+    const a = (p1, p2) => 1 - 3 * p2 + 3 * p1, b = (p1, p2) => 3 * p2 - 6 * p1, c = (p1) => 3 * p1;
+    const at = (u, p1, p2) => ((a(p1, p2) * u + b(p1, p2)) * u + c(p1)) * u;
+    const slope = (u, p1, p2) => 3 * a(p1, p2) * u * u + 2 * b(p1, p2) * u + c(p1);
+    return (t) => {
+      if (t <= 0 || t >= 1) return t <= 0 ? 0 : 1;
+      let u = t;
+      for (let i = 0; i < 8; i++) {
+        const d = slope(u, x1, x2);
+        if (Math.abs(d) < 1e-6) break;
+        u -= (at(u, x1, x2) - t) / d;
+      }
+      return at(Math.min(1, Math.max(0, u)), y1, y2);
+    };
+  }
+
   function startDrag(ev) {
     ev.preventDefault();
+    cancelAnimationFrame(morphFrame); // grabbing a point stops a running preset morph
     const svg = $('edSvg');
     const i = Number(ev.target.getAttribute('data-i'));
     const e = state.editor;
@@ -556,8 +626,7 @@
       b.onclick = () => {
         const limits = state.fans.limits;
         const preset = PRESETS[name].map(([t, p]) => [Math.min(t, limits.maxFullSpeedTemp), p]);
-        state.editor.points = normalize(resample(preset, state.editor.pointCount), limits);
-        renderEditor();
+        morphPoints(normalize(resample(preset, state.editor.pointCount), limits));
       };
       chips.appendChild(b);
     });
@@ -567,9 +636,12 @@
   function renderGpu(gpu) {
     if (!gpu || !gpu.ok) {
       $('gpuName').textContent = 'GPU';
-      $('gpuGrid').innerHTML = `<p class="hint">GPU NVIDIA indisponível${gpu && gpu.error ? ': ' + gpu.error : ''}</p>`;
+      $('gpuGrid').innerHTML = `<p class="hint">GPU NVIDIA indisponível${gpu && gpu.error ? ': ' + esc(gpu.error) : ''}</p>`;
+      $('gpuControls').hidden = true;
+      $('gpuFixedBox').hidden = true;
       return;
     }
+    $('gpuControls').hidden = false;
     $('gpuName').textContent = gpu.name;
     $('gpuSub').textContent = gpu.fanMode === 'fixed' ? 'fan manual' : 'fan automático';
     const kv = [
@@ -625,8 +697,8 @@
       if (!rows.length) return;
       html += `<tr class="group"><td colspan="2">${GROUPS[type]}</td></tr>`;
       rows.forEach((s) => {
-        const digits = s.unit === 'V' ? 3 : (s.unit === 'W' || s.unit === 'MHz') ? 1 : 0;
-        html += `<tr><td>${s.title}</td><td>${fmt(s.value, digits)} ${s.unit}</td></tr>`;
+        const digits = s.unit === 'V' ? 3 : (s.unit === 'W' || (s.unit === 'MHz' && s.value < 1000)) ? 1 : 0;
+        html += `<tr><td>${esc(s.title)}</td><td>${fmt(s.value, digits)} ${esc(s.unit)}</td></tr>`;
       });
     });
     $('sensorTable').innerHTML = html;

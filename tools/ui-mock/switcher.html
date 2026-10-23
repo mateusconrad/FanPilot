@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FanPilot · dados de teste</title>
+<style>
+  /* Harness chrome only: plain on purpose, not part of the design under test. */
+  html, body { margin: 0; height: 100%; background: #d9d9d9; font: 13px system-ui, sans-serif; }
+  .stage { display: flex; justify-content: center; padding: 16px 0 72px; }
+  iframe { border: 0; background: #fff; box-shadow: 0 0 0 1px #0002; }
+  .bar { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; z-index: 9; }
+  .seg { display: inline-flex; background: #bdbdbd; border-radius: 9px; padding: 3px; gap: 2px; }
+  .seg button { border: 0; background: transparent; padding: 5px 10px; border-radius: 7px; font: inherit; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: #fff; }
+  /* ?bare=1: frame only, at 0,0, for screenshot tools */
+  .bare .stage { display: block; padding: 0; }
+  .bare iframe { display: block; box-shadow: none; }
+  .bare .bar { display: none; }
+</style>
+</head>
+<body>
+<div class="stage"><iframe id="f" title="Painel"></iframe></div>
+<div class="bar">
+  <div class="seg" id="data"></div>
+  <div class="seg" id="width"></div>
+  <div class="seg" id="theme"></div>
+</div>
+<script>
+  // State lives in the URL (?data=&w=&theme=&zoom=) so a reload or a screenshot tool reproduces it.
+  const q = new URLSearchParams(location.search);
+  const opts = {
+    data: [['demo', 'Demo'], ['worst', 'Pior caso'], ['unsupported', 'Sem controle'], ['down', 'Serviço fora'], ['turbo', 'Turbo']],
+    width: [['320', '320'], ['390', '390'], ['1024', '1024']],
+    theme: [['auto', 'Sistema'], ['light', 'Claro'], ['dark', 'Escuro']],
+  };
+  const cur = { data: q.get('data') || 'demo', width: q.get('w') || '390', theme: q.get('theme') || 'auto' };
+  const zoom = Number(q.get('zoom') || 1); // simulates browser zoom: same device width, fewer CSS pixels
+  const height = Number(q.get('h') || 0);  // a tall frame shows the whole page in one screenshot
+  const f = document.getElementById('f');
+  if (q.get('bare')) document.documentElement.classList.add('bare');
+  // ?settle=ms: holds the page's load event (a deliberately slow image) so headless screenshot tools, which
+  // capture on load, wait for the panel to render, open things and run the probe.
+  if (q.get('settle')) document.body.appendChild(Object.assign(new Image(), { src: '/__delay?ms=' + Number(q.get('settle')), hidden: true }));
+
+  function apply() {
+    document.cookie = 'mock=' + cur.data + '; path=/';
+    const w = Number(cur.width);
+    const h = height || (w > 600 ? 900 : 844);
+    f.style.zoom = zoom;
+    f.style.width = (w / zoom) + 'px';
+    f.style.height = (h / zoom) + 'px';
+    f.src = '/?t=' + Date.now();
+    for (const k in opts) for (const b of document.getElementById(k).children) b.setAttribute('aria-pressed', b.value === cur[k]);
+    const u = new URLSearchParams({ data: cur.data, w: cur.width, theme: cur.theme });
+    if (zoom !== 1) u.set('zoom', zoom);
+    if (height) u.set('h', height);
+    for (const k of ['open', 'bare', 'probe', 'settle']) if (q.get(k)) u.set(k, q.get(k));
+    history.replaceState(null, '', '?' + u);
+  }
+  f.onload = () => {
+    if (cur.theme !== 'auto') f.contentDocument.documentElement.dataset.theme = cur.theme;
+    const act = q.get('open');
+    if (act) setTimeout(() => {
+      const d = f.contentDocument;
+      if (act === 'editor') d.querySelector('.fan') && d.querySelector('.fan').click();
+      if (act === 'sensors') d.querySelector('details').open = true;
+      if (act === 'preset') { // open the editor, pick a preset, sample the points mid-morph and after it
+        d.querySelector('.fan').click();
+        setTimeout(() => {
+          const chip = [...d.querySelectorAll('#edPresets button')].find((b) => b.textContent === 'Performance');
+          chip.click();
+          const pts = () => d.getElementById('edPoints').textContent;
+          window.probeExtra = { before: pts() };
+          setTimeout(() => { window.probeExtra.mid = pts(); }, 110);
+          setTimeout(() => { window.probeExtra.end = pts(); }, 600);
+        }, 300);
+      }
+    }, 1200);
+    // ?probe=1: after the panel settles, list elements that stick out past the viewport or clip their own text,
+    // and POST them to the mock server (read back with GET /__probe).
+    if (q.get('probe')) setTimeout(() => {
+      const d = f.contentDocument, vw = d.documentElement.clientWidth;
+      const name = (e) => e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + (e.className && typeof e.className === 'string' ? '.' + e.className.trim().replace(/\s+/g, '.') : '');
+      const out = { viewport: vw, scrollWidth: d.documentElement.scrollWidth, overflow: [], clipped: [], extra: window.probeExtra || null };
+      for (const e of d.body.querySelectorAll('*')) {
+        const r = e.getBoundingClientRect();
+        if (!r.width || e.closest('[hidden]')) continue;
+        if (r.right > vw + 0.5 && !(e.parentElement && e.parentElement.getBoundingClientRect().right > vw + 0.5))
+          out.overflow.push({ el: name(e), right: Math.round(r.right), text: (e.textContent || '').trim().slice(0, 60) });
+        if (e.children.length === 0 && e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflow !== 'visible')
+          out.clipped.push({ el: name(e), text: e.textContent.trim().slice(0, 80) });
+      }
+      fetch('/__probe', { method: 'POST', body: JSON.stringify(out) });
+    }, 2600);
+  };
+  for (const k in opts) {
+    const box = document.getElementById(k);
+    for (const [v, label] of opts[k]) {
+      const b = document.createElement('button');
+      b.value = v; b.textContent = label;
+      b.onclick = () => { cur[k] = v; apply(); };
+      box.appendChild(b);
+    }
+  }
+  apply();
+</script>
+</body>
+</html>

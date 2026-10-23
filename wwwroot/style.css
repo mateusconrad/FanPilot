@@ -20,6 +20,10 @@
   --fan-1: #eb6834;
   --fan-2: #1baf7a;
   --fan-3: #eda100;
+  --fan-4: #7c5fd0;
+  --fan-5: #d6457a;
+  --fan-6: #0e9fb5;
+  --fan-7: #8a8a2a;
   --radius: 14px;
   /* Motion: strong ease-out for responses, iOS-like curve for the bottom sheet. */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
@@ -44,6 +48,10 @@
     --fan-1: #d95926;
     --fan-2: #199e70;
     --fan-3: #c98500;
+    --fan-4: #9b7fe6;
+    --fan-5: #e0628f;
+    --fan-6: #22b5cb;
+    --fan-7: #a3a33a;
   }
 }
 :root[data-theme="dark"] {
@@ -63,6 +71,10 @@
   --fan-1: #d95926;
   --fan-2: #199e70;
   --fan-3: #c98500;
+  --fan-4: #9b7fe6;
+  --fan-5: #e0628f;
+  --fan-6: #22b5cb;
+  --fan-7: #a3a33a;
 }
 
 * { box-sizing: border-box; }
@@ -93,14 +105,15 @@ h2 { font-size: 15px; }
 .dot.ok { background: var(--good); }
 .dot.bad { background: var(--critical); }
 
-main { max-width: 760px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+/* minmax(0, 1fr): a wide child (a long legend, a long GPU name) must not widen the whole page past the phone. */
+main { max-width: 760px; margin: 0 auto; padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
 
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
-.card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.card-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 8px; margin-bottom: 10px; }
 .card-head .sub { font-size: 12px; color: var(--muted); }
 
-.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-@media (min-width: 640px) { .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* Two per row on phones, four on wide screens, one when zoomed in so labels and units stay readable. */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 12px; }
 .tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; min-width: 0; }
 .tile .label { font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tile .value { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; margin-top: 2px; }
@@ -114,7 +127,7 @@ main { max-width: 760px; margin: 0 auto; padding: 16px; display: grid; gap: 16px
 .badge.serious::before { background: var(--serious); }
 .badge.critical::before { background: var(--critical); }
 
-.legend { display: flex; gap: 14px; font-size: 12px; color: var(--ink-2); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink-2); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 12px; height: 2px; border-radius: 1px; display: inline-block; }
 .chart-wrap { position: relative; }
@@ -135,14 +148,14 @@ main { max-width: 760px; margin: 0 auto; padding: 16px; display: grid; gap: 16px
 
 .fan-list { display: grid; gap: 10px; }
 .fan {
-  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 12px;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px;
   width: 100%; text-align: left; background: var(--surface-2); border: 1px solid var(--border);
   border-radius: 12px; padding: 12px 14px; cursor: pointer;
   transition: transform 160ms var(--ease-out);
 }
 .fan:active { transform: scale(0.98); }
-.fan .name { font-weight: 600; }
-.fan .rpm { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.fan .name { font-weight: 600; overflow-wrap: anywhere; }
+.fan .rpm { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 .fan .rpm small { font-size: 12px; color: var(--ink-2); font-weight: 500; }
 .fan .desc { font-size: 12px; color: var(--ink-2); grid-column: 1 / -1; }
 .fan .duty { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--grid); overflow: hidden; }
@@ -150,17 +163,22 @@ main { max-width: 760px; margin: 0 auto; padding: 16px; display: grid; gap: 16px
 .fan .duty i { display: block; height: 100%; transform: scaleX(0); transform-origin: left; transition: transform 600ms var(--ease-out); }
 .btn.turbo { font-weight: 600; white-space: nowrap; }
 .btn.turbo[aria-pressed="true"] { background: var(--accent); border-color: transparent; color: #fff; }
-.turbo-banner { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; font-size: 13px; background: var(--surface-2); border-left: 3px solid var(--accent); color: var(--ink-2); }
+.turbo-banner {
+  margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; font-size: 13px; background: var(--surface-2); border-left: 3px solid var(--accent); color: var(--ink-2);
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+  @starting-style { opacity: 0; transform: translateY(-4px); }
+}
 #rpmNote:empty { display: none; }
 #rpmNote { margin: 8px 0 0; }
 .pill { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--ink-2); margin-left: 6px; vertical-align: 1px; }
 
-.gpu-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+/* Never truncate numbers: drop to two columns before "10501 MHz" stops fitting. */
+.gpu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; margin-bottom: 12px; }
 .kv { background: var(--surface-2); border-radius: 10px; padding: 8px 10px; min-width: 0; }
 .kv .k { font-size: 11px; color: var(--muted); }
 .kv .v { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.seg { display: inline-flex; background: var(--surface-2); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg { display: inline-flex; flex-wrap: wrap; max-width: 100%; background: var(--surface-2); border-radius: 10px; padding: 3px; gap: 3px; }
 .seg button { border: 0; background: transparent; padding: 7px 14px; border-radius: 8px; cursor: pointer; color: var(--ink-2); transition: transform 160ms var(--ease-out); }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
 
@@ -185,6 +203,12 @@ table.sensors td { padding: 6px 0; border-bottom: 1px solid var(--border); }
 table.sensors td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
 table.sensors tr.group td { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding-top: 12px; }
 details summary { cursor: pointer; font-weight: 600; font-size: 15px; }
+/* Opens as an accordion where supported (Chrome 131+); elsewhere it simply snaps open as before. */
+@supports (interpolate-size: allow-keywords) {
+  details { interpolate-size: allow-keywords; }
+  details::details-content { height: 0; overflow: clip; transition: height 250ms var(--ease-out), content-visibility 250ms allow-discrete; }
+  details[open]::details-content { height: auto; }
+}
 
 /* Bottom sheet fan editor */
 .sheet-backdrop {
@@ -231,6 +255,8 @@ details summary { cursor: pointer; font-weight: 600; font-size: 15px; }
   .sheet.leaving { transform: none; opacity: 0; }
   .toast, .toast.leaving { transform: translateX(-50%); @starting-style { transform: translateX(-50%); } }
   .fan, .btn, .seg button, .fan .duty i { transition: none; }
+  .turbo-banner { @starting-style { transform: none; } }
+  details::details-content { transition: none; }
 }
 .toast.error { background: var(--critical); color: #fff; }
 
