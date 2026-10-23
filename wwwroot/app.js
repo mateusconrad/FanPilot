@@ -650,7 +650,7 @@
   function renderGpu(gpu) {
     if (!gpu || !gpu.ok) {
       $('gpuName').textContent = 'GPU';
-      $('gpuGrid').innerHTML = `<p class="hint">GPU NVIDIA indisponível${gpu && gpu.error ? ': ' + esc(gpu.error) : ''}</p>`;
+      $('gpuGrid').innerHTML = `<p class="hint">GPU indisponível${gpu && gpu.error ? ': ' + esc(gpu.error) : ''}</p>`;
       $('gpuControls').hidden = true;
       $('gpuFixedBox').hidden = true;
       return;

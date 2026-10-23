@@ -106,7 +106,7 @@ ASUS = dict(DEMO,
 
 # nopawnio: LibreHardwareMonitor without its driver: no board sensors, no fan control, GPU still fine.
 NOPAWNIO = dict(ASUS, fans=[], rpm=[], supported=False, temps=[("CPU", 61.4)],
-    notice="Instale o driver PawnIO (https://pawnio.eu) e reinicie o FanPilot para ler os sensores e controlar os fans da placa-mãe.")
+    notice="Falta o driver PawnIO para ler os sensores e controlar os fans da placa-mãe. Feche e abra o FanPilot para instalá-lo (ou baixe em https://pawnio.eu).")
 
 LAST_PROBE = {"result": None}  # filled by switcher.html?probe=1
 

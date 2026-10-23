@@ -10,7 +10,7 @@
 Monitor de temperatura e controle de fans pelo celular.
 
 Painel web servido pelo próprio PC: temperaturas de CPU/placa-mãe/GPU, potência, clocks, gráfico dos últimos
-10 minutos, curvas de fan da placa-mãe (editor com arrastar pontos) e fan da GPU NVIDIA. Acesso pela LAN só
+10 minutos, curvas de fan da placa-mãe (editor com arrastar pontos) e fan da GPU. Acesso pela LAN só
 depois de parear o celular escaneando um QR code exibido no PC.
 
 Como funciona por baixo: veja [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEERING.md).
@@ -31,9 +31,11 @@ Como funciona por baixo: veja [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEE
     As curvas ficam gravadas no chip da placa. O FanPilot usa as DLLs do GCC já instalado, não as redistribui.
   - **Qualquer outra placa (ASUS, MSI, ASRock… ou Gigabyte sem GCC)** via
     [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor), que precisa do driver
-    **[PawnIO](https://pawnio.eu)** instalado. Nessas placas o FanPilot executa as curvas (veja
+    **[PawnIO](https://pawnio.eu)**. Se ele faltar, o FanPilot oferece instalar na hora pelo `winget` (é só
+    responder `S` na janela). Nessas placas o FanPilot executa as curvas (veja
     [Placas sem GCC](#placas-sem-gcc-curvas-executadas-pelo-fanpilot)). **Em teste.**
-- GPU NVIDIA com driver (usa `nvml.dll`). Sem GPU NVIDIA, o resto funciona.
+- GPU: NVIDIA pelo `nvml.dll` do driver; AMD, Intel Arc (e NVIDIA sem NVML) pelo LibreHardwareMonitor. Sem GPU
+  dedicada, o resto funciona.
 
 ## Compilar e rodar
 
@@ -69,7 +71,7 @@ despareia aparelhos.
 | Monitoramento (temperaturas, RPM, tensões, clocks, potência) | Placas suportadas pelo GCC | Placas cujo chip de sensores o LibreHardwareMonitor reconhece (Nuvoton, ITE, Fintek…) |
 | Controle de fans | Placas em que o GCC usa o caminho de "3ª geração" | Headers que o LibreHardwareMonitor consegue controlar |
 | Onde a curva roda | No chip (continua sem o FanPilot) | No FanPilot (ao fechar, os fans voltam à BIOS) |
-| Fan e sensores da GPU | GPUs NVIDIA | GPUs NVIDIA |
+| Fan e sensores da GPU | NVIDIA (NVML); AMD e Intel Arc via LibreHardwareMonitor | Igual |
 
 Testado em: **B760M GAMING X AX** (GCC 26.03.26.01). ASUS e outras placas: **em teste**, ainda sem placa
 confirmada. Se testar, siga [docs/TESTANDO-OUTRAS-PLACAS.md](docs/TESTANDO-OUTRAS-PLACAS.md) e abra uma issue
@@ -142,7 +144,7 @@ Limites ajustáveis em `bin\data\config.json` (`minDutyPercent`, `fixedModeSafet
 | "Código inválido ou expirado" | O código é de uso único e dura ~3 min; escaneie o QR atual de novo. Muitas tentativas erradas bloqueiam o IP por 1 min. |
 | Celular volta para a tela de bloqueio | Sessão revogada em `/pair`, cookies apagados ou 30 dias sem uso: pareie de novo. |
 | Status "sensores da placa indisponíveis" | Gigabyte: `EasyTuneEngineService` parado (`services.msc`) ou GCC atualizado/removido. A GPU continua funcionando. |
-| "Instale o driver PawnIO" | Placa sem GCC: instale o [PawnIO](https://pawnio.eu) e reinicie o FanPilot. |
+| "Falta o driver PawnIO" | Placa sem GCC: feche e abra o FanPilot pela janela e responda `S` para instalar (ou instale pelo [site](https://pawnio.eu)). Com o autostart (`--no-browser`) ele não pergunta. |
 | Placa sem GCC não mostra fans | O LibreHardwareMonitor não reconheceu ou não controla o chip dessa placa. Rode `FanPilot.exe --diagnose` e abra uma issue com o arquivo gerado. |
 | FanPilot fecha logo ao abrir | Não está como Administrador, ou o GCC não está instalado. Veja o log. |
 | "Esta placa-mãe não oferece controle de fans" | A placa não usa o caminho de controle que o FanPilot implementa; só o monitoramento funciona. |

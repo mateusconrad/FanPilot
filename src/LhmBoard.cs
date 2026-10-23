@@ -66,8 +66,7 @@ sealed class LhmBoard : IBoard
 
     void Open()
     {
-        bool pawnIo = false;
-        try { pawnIo = LibreHardwareMonitor.PawnIo.PawnIo.IsInstalled; } catch { }
+        bool pawnIo = PawnIoSetup.IsInstalled;
         _pc = new Computer { IsMotherboardEnabled = true, IsCpuEnabled = true };
         _pc.Open();
         var all = new List<IHardware>();
@@ -106,9 +105,10 @@ sealed class LhmBoard : IBoard
             _headers = headers;
             TempInputTitles = titles.ToArray();
             if (!pawnIo)
-                Notice = "Instale o driver PawnIO (https://pawnio.eu) e reinicie o FanPilot para ler os sensores e controlar os fans da placa-mãe.";
+                Notice = "Falta o driver PawnIO para ler os sensores e controlar os fans da placa-mãe. Feche e abra o FanPilot para instalá-lo (ou baixe em https://pawnio.eu).";
             else if (superIo.Count == 0)
-                Notice = "O LibreHardwareMonitor não reconheceu o chip de sensores desta placa-mãe" + (BoardName.Length > 0 ? " (" + BoardName + ")" : "") + ".";
+                Notice = "O LibreHardwareMonitor não reconheceu o chip de sensores desta placa-mãe" + (BoardName.Length > 0 ? " (" + BoardName + ")" : "") +
+                         ". Em notebooks isso é comum: o fabricante controla os fans pelo próprio firmware.";
             else if (headers.Count == 0)
                 Notice = "O chip " + string.Join(", ", superIo.Select(h => h.Name)) + " foi reconhecido, mas sem controle de fans pelo LibreHardwareMonitor.";
             else
