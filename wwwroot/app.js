@@ -25,14 +25,28 @@
     return data;
   }
 
+  // Enter animations come from CSS @starting-style; exits play the .leaving transition, then hide.
+  // Showing again mid-exit cancels the pending hide.
+  const exits = new WeakMap();
+  function show(node) {
+    clearTimeout(exits.get(node));
+    node.classList.remove('leaving');
+    node.hidden = false;
+  }
+  function hide(node, ms) {
+    if (node.hidden || node.classList.contains('leaving')) return;
+    node.classList.add('leaving');
+    exits.set(node, setTimeout(() => { node.hidden = true; node.classList.remove('leaving'); }, ms));
+  }
+
   let toastTimer = 0;
   function toast(msg, isError) {
     const t = $('toast');
     t.textContent = msg;
-    t.className = 'toast' + (isError ? ' error' : '');
-    t.hidden = false;
+    t.classList.toggle('error', !!isError);
+    show(t);
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { t.hidden = true; }, isError ? 5000 : 2200);
+    toastTimer = setTimeout(() => hide(t, 150), isError ? 5000 : 2200);
   }
 
   function el(tag, attrs, parent) {
@@ -302,7 +316,7 @@
       b.querySelector('.name').innerHTML = f.title + (turbo ? '<span class="pill">Turbo</span>' : f.managed ? '<span class="pill">FanPilot</span>' : '');
       b.querySelector('.rpm').innerHTML = rpm ? `${rpm}<small> RPM</small>` : '<small>0 RPM · sem leitura</small>';
       const meter = b.querySelector('.duty');
-      meter.firstChild.style.width = (duty === null ? 0 : duty) + '%';
+      meter.firstChild.style.transform = `scaleX(${(duty === null ? 0 : duty) / 100})`;
       meter.setAttribute('aria-valuenow', duty === null ? 0 : duty);
       meter.title = 'Velocidade comandada: ' + (duty === null ? '–' : duty + '%');
       b.querySelector('.desc').textContent = fanDescription(f, snap);
@@ -404,15 +418,17 @@
     $('edFixedHint').textContent = `Proteção: o chip ainda vai a 100% se o sensor passar de ${limits.fixedModeSafetyTemp} °C.`;
     $('edLimits').textContent = `Mínimo ${limits.minDutyPercent}% em qualquer ponto; 100% no máximo a ${limits.maxFullSpeedTemp} °C. A curva roda no chip da placa-mãe (continua valendo mesmo se o PC/FanPilot fechar).`;
     $('edRestore').disabled = !f.hasBackup;
-    $('sheet').hidden = false;
-    $('backdrop').hidden = false;
+    show($('sheet'));
+    show($('backdrop'));
+    document.body.classList.add('sheet-open');
     renderEditor();
   }
 
   function closeEditor() {
     state.editor = null;
-    $('sheet').hidden = true;
-    $('backdrop').hidden = true;
+    hide($('sheet'), 200);
+    hide($('backdrop'), 200);
+    document.body.classList.remove('sheet-open');
   }
 
   function renderEditor() {
