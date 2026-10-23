@@ -77,7 +77,8 @@ h2 { font-size: 15px; }
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
 }
-.top h1 { font-size: 17px; }
+.top h1 { font-size: 17px; display: flex; align-items: center; gap: 8px; }
+.top h1 .logo { width: 26px; height: 26px; }
 .status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .dot.ok { background: var(--good); }

@@ -1,4 +1,13 @@
-# FanPilot — monitor de temperatura e controle de fans pelo celular
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/banner-dark.png">
+    <img alt="FanPilot — temperaturas e fans da sua placa-mãe Gigabyte, no celular" src="assets/brand/banner-light.png" width="560">
+  </picture>
+</p>
+
+# FanPilot
+
+Monitor de temperatura e controle de fans pelo celular.
 
 Painel web servido pelo próprio PC: temperaturas de CPU/placa-mãe/GPU, potência, clocks, gráfico dos últimos
 10 minutos, curvas de fan da placa-mãe (editor com arrastar pontos) e fan da GPU NVIDIA. Acesso pela LAN só
@@ -149,6 +158,7 @@ Programas de teste usados para validar a análise; precisam rodar como Administr
 src/        C# 5 (.NET Framework 4.x): ponte Gigabyte, NVML, servidor HTTP/SSE, auth, política de fans
 wwwroot/    painel (index.html/app.js), pareamento (pair.html/pair.js), qrcode-generator (MIT)
 tools/      probes usados na engenharia reversa
+assets/     identidade visual: SVGs-fonte, ícone do .exe, banners (regenerar: python assets/brand/build.py)
 scripts/    firewall e auto-início
 docs/       relatório da engenharia reversa
 ```
