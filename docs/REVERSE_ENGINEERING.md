@@ -41,7 +41,7 @@ EasyTuneEngineService.exe  (serviço Windows, SYSTEM, C:\Program Files (x86)\GIG
 | Frequency | 256–259 | CPU, BCLK, multiplicador, DDR |
 | Power | 1280–1283 | CPU Package, CPU Cores, CPU Graphics |
 
-A GPU **não** passa por aqui (o GCC usa outro serviço para placas Gigabyte). O GccWeb usa **NVML** (`nvml.dll`).
+A GPU **não** passa por aqui (o GCC usa outro serviço para placas Gigabyte). O FanPilot usa **NVML** (`nvml.dll`).
 
 ## Controle de fans (caminho de "3ª geração", usado nesta placa)
 

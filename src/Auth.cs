@@ -21,7 +21,7 @@ sealed class Session
 
 sealed class AuthManager
 {
-    public const string CookieName = "gccw_session";
+    public const string CookieName = "fanpilot_session";
     const int MaxFailuresPerMinute = 10;
 
     readonly object _sync = new object();

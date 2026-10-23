@@ -1,4 +1,4 @@
-// PC Monitor dashboard: live data over SSE (/api/stream), fan curve editor, GPU fan control.
+// FanPilot dashboard: live data over SSE (/api/stream), fan curve editor, GPU fan control.
 (function () {
   'use strict';
   const $ = (id) => document.getElementById(id);
@@ -16,7 +16,7 @@
   // ---------- helpers ----------
   async function api(path, body) {
     const opts = body === undefined ? {} : {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-GCCW': '1' }, body: JSON.stringify(body)
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-FanPilot': '1' }, body: JSON.stringify(body)
     };
     const r = await fetch(path, opts);
     if (r.status === 401) { location.reload(); throw new Error('Não pareado'); }
@@ -274,7 +274,7 @@
     if (!state.fans.supported) {
       box.innerHTML = '<p class="hint"></p>';
       box.firstChild.textContent = `Esta placa-mãe (${state.fans.board || 'desconhecida'}) não oferece controle de fans pelo ` +
-        'caminho que o GccWeb usa. O monitoramento continua funcionando.';
+        'caminho que o FanPilot usa. O monitoramento continua funcionando.';
       return;
     }
     if (!state.fans.fans.length) { box.innerHTML = '<p class="hint">Controle de fans indisponível.</p>'; return; }
@@ -299,7 +299,7 @@
       const b = box.children[i];
       const rpm = snap.fanRpm ? snap.fanRpm[i] : null;
       const duty = commandedPercent(f, snap);
-      b.querySelector('.name').innerHTML = f.title + (turbo ? '<span class="pill">Turbo</span>' : f.managed ? '<span class="pill">GccWeb</span>' : '');
+      b.querySelector('.name').innerHTML = f.title + (turbo ? '<span class="pill">Turbo</span>' : f.managed ? '<span class="pill">FanPilot</span>' : '');
       b.querySelector('.rpm').innerHTML = rpm ? `${rpm}<small> RPM</small>` : '<small>0 RPM · sem leitura</small>';
       const meter = b.querySelector('.duty');
       meter.firstChild.style.width = (duty === null ? 0 : duty) + '%';
@@ -402,7 +402,7 @@
     $('edFixedSlider').min = limits.minDutyPercent;
     $('edFixedSlider').value = state.editor.percent;
     $('edFixedHint').textContent = `Proteção: o chip ainda vai a 100% se o sensor passar de ${limits.fixedModeSafetyTemp} °C.`;
-    $('edLimits').textContent = `Mínimo ${limits.minDutyPercent}% em qualquer ponto; 100% no máximo a ${limits.maxFullSpeedTemp} °C. A curva roda no chip da placa-mãe (continua valendo mesmo se o PC/GccWeb fechar).`;
+    $('edLimits').textContent = `Mínimo ${limits.minDutyPercent}% em qualquer ponto; 100% no máximo a ${limits.maxFullSpeedTemp} °C. A curva roda no chip da placa-mãe (continua valendo mesmo se o PC/FanPilot fechar).`;
     $('edRestore').disabled = !f.hasBackup;
     $('sheet').hidden = false;
     $('backdrop').hidden = false;
