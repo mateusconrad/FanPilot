@@ -148,16 +148,16 @@ sealed class LhmBoard : IBoard
                     Refresh();
                     ApplyCurves();
                 }
+                if (_failures >= FailuresBeforeRelease) Log.Info("LibreHardwareMonitor voltou a responder: curvas do FanPilot reaplicadas.");
                 _failures = 0;
             }
             catch (Exception ex)
             {
-                Log.Warn("LibreHardwareMonitor: " + ex.Message);
-                if (++_failures >= FailuresBeforeRelease)
-                {
-                    Log.Warn("LibreHardwareMonitor falhou " + _failures + " vezes seguidas: fans devolvidos à BIOS.");
-                    lock (_sync) foreach (var h in _headers) TryDefault(h);
-                }
+                // The log records the transitions (first failure, hand-back, recovery), not every failed second.
+                if (++_failures == 1) Log.Warn("LibreHardwareMonitor: " + ex.Message);
+                if (_failures == FailuresBeforeRelease)
+                    Log.Error("LibreHardwareMonitor falhou " + _failures + " vezes seguidas: fans devolvidos à BIOS até ele voltar a responder. Último erro: " + ex.Message);
+                if (_failures >= FailuresBeforeRelease) lock (_sync) foreach (var h in _headers) TryDefault(h);
             }
             _stop.WaitOne(1000);
         }

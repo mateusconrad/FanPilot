@@ -13,21 +13,100 @@ using System.Threading;
 
 static class Log
 {
-    static readonly object Sync = new object();
-    public static string FilePath;
+    static readonly LogWriter Writer = new LogWriter();
 
-    static void Write(string level, string msg)
+    // data\fanpilot.log; null (the tests) = console only.
+    public static string FilePath { get { return Writer.FilePath; } set { Writer.FilePath = value; } }
+
+    public static void Info(string msg) { Writer.Write("INFO", msg); }
+    public static void Warn(string msg) { Writer.Write("WARN", msg); }
+    // Something took the fans out of FanPilot's control (handed back to the BIOS, the board stopped answering).
+    public static void Error(string msg) { Writer.Write("ERROR", msg); }
+}
+
+// The console and data\fanpilot.log, rotated by size (fanpilot.1.log … fanpilot.3.log). The same line repeated in a
+// row is written once and then summarized every minute ("repetida N vezes"), so a failure that recurs every second
+// costs a few lines instead of 170 thousand a day.
+sealed class LogWriter
+{
+    const int Generations = 3;
+    static readonly TimeSpan SummaryEvery = TimeSpan.FromSeconds(60);
+    readonly object _sync = new object();
+    readonly Func<DateTime> _now;
+    readonly long _maxBytes;
+    string _lastLevel, _lastText;
+    int _repeats;
+    DateTime _repeatSince;
+
+    public string FilePath;
+    public bool ToConsole = true;
+
+    public LogWriter() : this(() => DateTime.Now, 5 * 1024 * 1024) { }
+
+    // now and maxBytes: the tests move the clock and use small files.
+    internal LogWriter(Func<DateTime> now, long maxBytes)
     {
-        string line = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " [" + level + "] " + msg;
-        lock (Sync)
+        _now = now;
+        _maxBytes = maxBytes;
+    }
+
+    public void Write(string level, string text)
+    {
+        lock (_sync)
         {
-            Console.WriteLine(line);
-            if (FilePath != null) try { File.AppendAllText(FilePath, line + Environment.NewLine); } catch { }
+            var now = _now();
+            if (level == _lastLevel && text == _lastText)
+            {
+                _repeats++;
+                if (now - _repeatSince < SummaryEvery) return;
+                Summarize(now);
+                return;
+            }
+            if (_repeats > 0) Summarize(now);
+            _lastLevel = level;
+            _lastText = text;
+            _repeatSince = now;
+            Emit(now, level, text);
         }
     }
 
-    public static void Info(string msg) { Write("INFO", msg); }
-    public static void Warn(string msg) { Write("WARN", msg); }
+    void Summarize(DateTime now)
+    {
+        Emit(now, _lastLevel, "(a mensagem anterior se repetiu " + _repeats + (_repeats == 1 ? " vez" : " vezes") + " em " +
+                              Math.Max(1, (int)(now - _repeatSince).TotalSeconds) + " s)");
+        _repeats = 0;
+        _repeatSince = now;
+    }
+
+    void Emit(DateTime now, string level, string text)
+    {
+        string line = now.ToString("yyyy-MM-dd HH:mm:ss") + " [" + level + "] " + text;
+        if (ToConsole) Console.WriteLine(line);
+        if (FilePath == null) return;
+        try
+        {
+            string entry = line + Environment.NewLine;
+            var file = new FileInfo(FilePath);
+            if (file.Exists && file.Length + System.Text.Encoding.UTF8.GetByteCount(entry) > _maxBytes) Rotate();
+            File.AppendAllText(FilePath, entry);
+        }
+        catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { }
+    }
+
+    // fanpilot.log -> fanpilot.1.log -> … -> fanpilot.3.log, the oldest dropped.
+    void Rotate()
+    {
+        string oldest = Generation(Generations);
+        if (File.Exists(oldest)) File.Delete(oldest);
+        for (int i = Generations - 1; i >= 1; i--)
+            if (File.Exists(Generation(i))) File.Move(Generation(i), Generation(i + 1));
+        File.Move(FilePath, Generation(1));
+    }
+
+    string Generation(int n)
+    {
+        return Path.Combine(Path.GetDirectoryName(FilePath), Path.GetFileNameWithoutExtension(FilePath) + "." + n + Path.GetExtension(FilePath));
+    }
 }
 
 // Problems the user has to see in the panel, not only in the log: an invalid config.json, a damaged state file.
@@ -233,7 +312,7 @@ static class Exit
         AppDomain.CurrentDomain.ProcessExit += (s, e) => Cleanup();
         AppDomain.CurrentDomain.UnhandledException += (s, e) =>
         {
-            Log.Warn("Erro fatal: " + e.ExceptionObject);
+            Log.Error("Erro fatal: " + e.ExceptionObject);
             Cleanup();
         };
     }
@@ -274,6 +353,8 @@ sealed class Sampler
     const int HistorySize = 600;
     static readonly TimeSpan SlowSample = TimeSpan.FromSeconds(3);
     DateTime _lastSlowLog = DateTime.MinValue;
+    // The log records the board going away and coming back, not every second it stays away.
+    bool _boardDown;
     readonly IBoard _bridge;
     readonly GpuMonitor _gpu;
     readonly object _sync = new object();
@@ -339,8 +420,22 @@ sealed class Sampler
                 snap["fanRpm"] = rpms.Select(v => (int)Math.Round(v)).ToList();
                 snap["tempInputs"] = temps.Select(v => Math.Round(v, 1)).ToList();
             }
+            if (_boardDown)
+            {
+                _boardDown = false;
+                Log.Info("Sensores da placa voltaram a responder.");
+            }
         }
-        catch (Exception ex) { service["ok"] = false; service["error"] = ex.Message; }
+        catch (Exception ex)
+        {
+            service["ok"] = false;
+            service["error"] = ex.Message;
+            if (!_boardDown)
+            {
+                _boardDown = true;
+                Log.Error("Sensores da placa indisponíveis: " + ex.Message);
+            }
+        }
         service["sampleMs"] = watch.ElapsedMilliseconds;
         snap["service"] = service;
         snap["gpu"] = _gpu.Latest;

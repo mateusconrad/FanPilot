@@ -138,7 +138,9 @@ Limites ajustáveis em `bin\data\config.json` (`minDutyPercent`, `fixedModeSafet
   Na Gigabyte com GCC as curvas ficam gravadas no chip; nas outras placas os fans voltam ao controle da BIOS.
 - **Uma instância por vez:** abrir o FanPilot com ele já rodando só abre o painel. Se outro programa estiver na
   porta, o FanPilot avisa e fecha antes de mexer em qualquer fan.
-- **Log:** `bin\data\fanpilot.log` (pareamentos, mudanças de fan, reaplicações do watchdog, erros).
+- **Log:** `bin\data\fanpilot.log` (pareamentos, mudanças de fan, reaplicações do watchdog, erros). Ao passar de
+  5 MB ele vira `fanpilot.1.log` (até 3 arquivos antigos). Uma mensagem repetida em sequência aparece uma vez, com um
+  resumo a cada minuto, e as falhas viram registros de mudança de estado (falhou, voltou).
 - **Dados:** `bin\data\` guarda `config.json`, `sessions.json`, `backup-curves.json` (curvas originais, gravado
   só na primeira execução), `desired-curves.json` (curvas que o FanPilot mantém) e `machine.json` (identifica o PC
   e a placa-mãe). Cada arquivo é gravado de uma vez só (nunca fica pela metade) e guarda a versão anterior em
