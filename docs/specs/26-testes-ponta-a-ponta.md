@@ -12,7 +12,7 @@ Os testes do item 08 cobrem as regras e a API, mas não o que o usuário vê. O 
 
 ## Objetivo
 
-Cada PR verifica automaticamente, num navegador de verdade, os fluxos principais do painel, e confirma que o executável da release sobe e responde.
+Cada push verifica automaticamente, num navegador de verdade, os fluxos principais do painel, e confirma que o executável da release sobe e responde.
 
 ## Solução
 
@@ -27,16 +27,16 @@ Cada PR verifica automaticamente, num navegador de verdade, os fluxos principais
    - acessibilidade: axe-core sem violações sérias nas telas principais.
 3. Larguras de 320, 390 e 1024 px, nos temas claro e escuro. Os screenshots ficam como artefato da CI. A comparação visual com tolerância fica como segunda etapa, opcional.
 4. **Smoke do executável:** a CI extrai o zip da release e roda o `FanPilot.exe` no runner (sem GCC e sem PawnIO, então com os avisos de placa não suportada). Confere `/`, `/pair`, `/api/state`, `--version`, e que o `--diagnose` termina sem alterar nada.
-5. Roda na CI (item 11) em cada PR, com tempo alvo abaixo de 5 min.
+5. Roda na CI (item 11) a cada push, com tempo alvo abaixo de 5 min.
 
 ## Fora de escopo
 
-- Testes em celulares reais: continuam manuais, no checklist do PR para mudanças de interface.
+- Testes em celulares reais: continuam manuais, registrados na issue do item que muda a interface.
 
 ## Critérios de aceite
 
 - [ ] Quebrar de propósito uma restrição do arraste no editor faz um teste de ponta a ponta falhar.
-- [ ] O PR mostra o relatório do Playwright e os screenshots como artefatos.
+- [ ] A execução da CI mostra o relatório do Playwright e os screenshots como artefatos.
 - [ ] O smoke do zip passa na CI e falha se o exe não subir.
 
 ## Testes

@@ -30,4 +30,4 @@ Só um FanPilot controla os fans por vez, e os erros de inicialização acontece
 ## Testes
 
 - Automatizados: `SingleInstance` (a segunda aquisição falha; mutex abandonado conta como adquirido) e porta ocupada detectada antes de qualquer acesso aos fans (com a `FakeBoard` do item 08, nenhum `SetCurve` é chamado).
-- Manuais, documentados no PR: os três critérios acima.
+- Manuais, registrados na issue: os três critérios acima.

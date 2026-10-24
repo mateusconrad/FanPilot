@@ -28,7 +28,7 @@ Cobrir com testes rápidos tudo que é regra de segurança, de persistência ou 
    - `AuthManager`: código de uso único, expiração, bloqueio por IP, validade da sessão, revogação.
    - Regressão do item 01 (`HostGuard`), que vem antes desta infraestrutura. Do item 03 em diante, cada item traz os próprios testes.
 5. **Smoke de integração:** sobe o `WebServer` com a `FakeBoard` numa porta livre e confere as rotas, `401` sem sessão, `421` com `Host` estranho e o SSE.
-6. **Convenção para os próximos itens:** todo item entrega testes automatizados do que muda, e o PR não fecha sem eles (ver "Como cada item é entregue" no `docs/ROADMAP.md`).
+6. **Convenção para os próximos itens:** todo item entrega testes automatizados do que muda, e só é concluído com eles passando (ver "Como cada item é entregue" no `docs/ROADMAP.md`).
 
 ## Fora de escopo
 
@@ -44,4 +44,4 @@ Cobrir com testes rápidos tudo que é regra de segurança, de persistência ou 
 
 ## Testes
 
-- É o próprio item. A CI (item 11) passa a rodar tudo em cada PR.
+- É o próprio item. A CI (item 11) passa a rodar tudo a cada push.

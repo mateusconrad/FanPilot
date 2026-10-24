@@ -8,11 +8,11 @@
 
 ## Problema
 
-Todo item que mexe em fans, GPU, ponte da placa ou build exige o roteiro de verificação em hardware (`docs/ROADMAP.md`), que hoje é manual: 9 passos repetidos a cada PR, fáceis de esquecer e sem um registro comparável entre versões. O `tools/Probe4.cs` já mostrou que dá para automatizar um teste de escrita com restauração.
+Todo item que mexe em fans, GPU, ponte da placa ou build exige o roteiro de verificação em hardware (`docs/ROADMAP.md`), que hoje é manual: 9 passos repetidos a cada item, fáceis de esquecer e sem um registro comparável entre versões. O `tools/Probe4.cs` já mostrou que dá para automatizar um teste de escrita com restauração.
 
 ## Objetivo
 
-Um comando que executa o roteiro na placa real, com segurança, e gera um relatório pronto para anexar ao PR.
+Um comando que executa o roteiro na placa real, com segurança, e gera um relatório pronto para registrar na issue.
 
 ## Solução
 
@@ -28,7 +28,7 @@ Um comando que executa o roteiro na placa real, com segurança, e gera um relat�
    - recusa por padrão o header da CPU e os marcados como bomba (item 17, quando existir);
    - temperatura de CPU ou GPU acima de 80 °C aborta e restaura;
    - tudo é restaurado num `finally`, inclusive com Ctrl+C.
-3. **Relatório:** `data\hwtest-<data>.md` com versão, placa e cada passo (ok ou falhou, valores medidos e tempos), pronto para colar no PR.
+3. **Relatório:** `data\hwtest-<data>.md` com versão, placa e cada passo (ok ou falhou, valores medidos e tempos), pronto para colar na issue.
 4. Código de saída diferente de 0 quando algum passo falha, para uso em script.
 5. Substitui o roteiro manual em "Como cada item é entregue". O roteiro manual continua só para o que não dá para medir, como comparar com o HWiNFO e conferir no celular.
 

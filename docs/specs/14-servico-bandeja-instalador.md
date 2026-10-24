@@ -3,7 +3,7 @@
 - **Item:** 14
 - **Onda:** 3 · Produto
 - **Tipo:** produto
-- **Esforço:** G (três PRs: 14a, 14b e 14c)
+- **Esforço:** G (três etapas: 14a, 14b e 14c)
 - **Depende de:** 03, 05, 06
 - **Integra com:** 12, 16, 18
 
