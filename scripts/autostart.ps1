@@ -1,4 +1,4 @@
-# Starts FanPilot elevated at logon (scheduled task with highest privileges, so no UAC prompt each time).
+﻿# Starts FanPilot elevated at logon (scheduled task with highest privileges, so no UAC prompt each time).
 # Run in an elevated PowerShell. Use -Remove to delete the task.
 param([switch]$Remove)
 $task = 'FanPilot'
