@@ -59,7 +59,11 @@ despareia aparelhos.
 
 - Pareamento por QR: código aleatório de 144 bits, uso único, expira; tentativas erradas limitadas por IP.
 - Sessão: cookie `HttpOnly; SameSite=Strict` com token de 256 bits; no disco só o SHA-256 (`bin\data\sessions.json`).
-- `/pair` e `/api/pair/*` só respondem para `localhost`; requisições do próprio PC são consideradas confiáveis.
+- `/pair` e `/api/pair/*` só respondem para `localhost`; requisições do próprio PC endereçadas a `localhost` ou
+  `127.0.0.1` são consideradas confiáveis.
+- Só são atendidas requisições endereçadas a este PC: o header `Host` precisa ser `localhost`, um IP das interfaces
+  de rede, o nome do PC ou o `publicHost`, na porta configurada (o resto recebe `421`). Isso impede que uma página
+  web alcance a API local por DNS rebinding. Para acessar por outro nome (ex.: o DNS do roteador), use `publicHost`.
 - POSTs exigem o header `X-FanPilot` e `Origin` igual ao host (bloqueia CSRF). CSP restringe scripts a `'self'`.
 - **Limitação:** é HTTP puro na LAN. Quem estiver na mesma rede e capturar o tráfego pode copiar o cookie.
   Use só em rede doméstica confiável (o script de firewall abre a porta apenas no perfil Privado).
