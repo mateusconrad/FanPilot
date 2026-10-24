@@ -1,0 +1,33 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FanPilot", "src\FanPilot.csproj", "{9591A4C1-6A8D-48CF-A537-8CEDD254F21B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{82F0EA6D-C831-4C26-A17D-1C5679CA44A0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FanPilot.Tests", "tests\FanPilot.Tests\FanPilot.Tests.csproj", "{4604A999-9169-4462-A4BC-6326D8A9939B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9591A4C1-6A8D-48CF-A537-8CEDD254F21B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9591A4C1-6A8D-48CF-A537-8CEDD254F21B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9591A4C1-6A8D-48CF-A537-8CEDD254F21B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9591A4C1-6A8D-48CF-A537-8CEDD254F21B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4604A999-9169-4462-A4BC-6326D8A9939B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4604A999-9169-4462-A4BC-6326D8A9939B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4604A999-9169-4462-A4BC-6326D8A9939B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4604A999-9169-4462-A4BC-6326D8A9939B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{4604A999-9169-4462-A4BC-6326D8A9939B} = {82F0EA6D-C831-4C26-A17D-1C5679CA44A0}
+	EndGlobalSection
+EndGlobal

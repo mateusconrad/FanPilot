@@ -1,0 +1,12 @@
+<Project>
+  <!-- Shared by src\FanPilot.csproj and the test projects. -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <!-- FanPilot only runs on 64-bit Windows; the LibreHardwareMonitor package ships its assembly per runtime. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- packages.lock.json pins every NuGet package and its hash; CI (CI=true) refuses anything that differs. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
+  </PropertyGroup>
+</Project>

@@ -40,13 +40,17 @@ Como funciona por baixo: veja [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEE
 ## Compilar e rodar
 
 ```powershell
-.\build.ps1                     # csc.exe do Windows; baixa o LibreHardwareMonitor do NuGet (versões fixas, SHA-256 conferido)
+.\build.ps1                     # .NET SDK 8+; pacotes do NuGet fixados (com hash) pelo src\packages.lock.json
+dotnet test                     # testes automatizados (sem hardware nem Administrador)
 .\bin\FanPilot.exe              # pede UAC, abre http://localhost:8787/pair
 .\scripts\firewall.ps1          # (admin, uma vez) libera a porta 8787 no perfil de rede Privado
 .\scripts\autostart.ps1         # (admin, opcional) inicia elevado no logon, sem UAC
 .\scripts\package.ps1           # gera dist\FanPilot-<data>-<commit>.zip para distribuir (sem data\)
 .\bin\FanPilot.exe --diagnose   # relatório só de leitura da placa (para placas ainda não testadas)
 ```
+
+Compilar exige o [.NET SDK](https://dotnet.microsoft.com/download) 8 ou mais novo. Para **rodar**, basta o Windows: o
+FanPilot usa o .NET Framework 4.7.2 que já vem nele.
 
 Compilar sem o GCC instalado também funciona: o build avisa e gera um FanPilot só com o LibreHardwareMonitor.
 Para distribuir, gere o zip num PC com GCC, assim ele atende os dois tipos de placa.
@@ -171,8 +175,8 @@ Limites ajustáveis em `bin\data\config.json` (`minDutyPercent`, `fixedModeSafet
 
 ## Ferramentas de engenharia reversa (`tools/`)
 
-Programas de teste usados para validar a análise; precisam rodar como Administrador e referenciam as DLLs do GCC
-(compilar como no `build.ps1`).
+Programas de teste usados para validar a análise; precisam rodar como Administrador e referenciam as DLLs do GCC.
+Não fazem parte do projeto: compile cada um com o `csc.exe` do .NET Framework, passando as DLLs do GCC em `/r:`.
 
 | Arquivo | O que faz |
 |---|---|
@@ -198,14 +202,14 @@ Programas de teste usados para validar a análise; precisam rodar como Administr
 ## Estrutura
 
 ```
-src/        C# 5 (.NET Framework 4.x): IBoard + pontes Gigabyte (GCC) e LibreHardwareMonitor, NVML,
-            servidor HTTP/SSE, auth, política de fans, --diagnose
+src/        C# (.NET Framework 4.7.2, FanPilot.csproj): IBoard + pontes Gigabyte (GCC) e LibreHardwareMonitor,
+            NVML, servidor HTTP/SSE, auth, política de fans, --diagnose
+tests/      testes automatizados (xUnit; rodar com dotnet test)
 wwwroot/    painel (index.html/app.js), pareamento (pair.html/pair.js), qrcode-generator (MIT)
 tools/      probes usados na engenharia reversa
 assets/     identidade visual: SVGs-fonte, ícone do .exe, banners (regenerar: python assets/brand/build.py)
 scripts/    firewall, auto-início e empacotamento da release
-lib/        cache das DLLs do NuGet baixadas pelo build.ps1 (não versionado)
-docs/       relatório da engenharia reversa e guia para testar outras placas
+docs/       relatório da engenharia reversa, guia para testar outras placas, roadmap e specs
 ```
 
 ## Licença

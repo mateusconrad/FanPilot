@@ -1,0 +1,64 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Runs on the .NET Framework 4.7.2 that ships with Windows: the Gigabyte service's IPC (.NET Remoting) only
+       exists there. The .NET SDK is only needed to build. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>FanPilot</AssemblyName>
+    <RootNamespace />
+    <ApplicationManifest>..\app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\assets\brand\fanpilot.ico</ApplicationIcon>
+    <!-- LibreHardwareMonitor's dependencies were built against slightly different versions of each other. -->
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+
+  <!-- Release goes to bin\ next to data\, as the README describes; build.ps1 -OutDir builds elsewhere. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <OutputPath>..\bin\</OutputPath>
+  </PropertyGroup>
+
+  <!-- Gigabyte Control Center's client DLLs are referenced only when GCC is installed, never copied: Program.cs
+       resolves them at runtime from the GCC folder. Without GCC this is a LibreHardwareMonitor-only FanPilot. -->
+  <PropertyGroup>
+    <GccLibDir Condition="'$(GccLibDir)' == ''">$(ProgramW6432)\GIGABYTE\Control Center\Lib\MBEasyTune</GccLibDir>
+    <HasGcc Condition="Exists('$(GccLibDir)\Gigabyte.Engine.EnvironmentControl.dll')">true</HasGcc>
+    <DefineConstants Condition="'$(HasGcc)' != 'true'">$(DefineConstants);NO_GIGABYTE</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(HasGcc)' == 'true'">
+    <Reference Include="Gigabyte.Engine" HintPath="$(GccLibDir)\Gigabyte.Engine.dll" Private="false" />
+    <Reference Include="Gigabyte.Engine.EnvironmentControl" HintPath="$(GccLibDir)\Gigabyte.Engine.EnvironmentControl.dll" Private="false" />
+    <Reference Include="Gigabyte.EnvironmentControl.Common" HintPath="$(GccLibDir)\Gigabyte.EnvironmentControl.Common.dll" Private="false" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(HasGcc)' != 'true'">
+    <Compile Remove="GigabyteBridge.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
+    <Reference Include="System.Web.Extensions" />
+    <InternalsVisibleTo Include="FanPilot.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\wwwroot\**" LinkBase="wwwroot" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- MSBuild only redirects the version conflicts it sees at build time. Gigabyte's assemblies are loaded at runtime
+       from the GCC folder and could reference older versions of the libraries FanPilot ships, so every strong-named
+       library next to the exe gets a redirect to its own copy (what NuGet did in packages.config projects). -->
+  <Target Name="RedirectEveryShippedLibrary" AfterTargets="ResolveAssemblyReferences" BeforeTargets="GenerateBindingRedirects">
+    <ItemGroup>
+      <_StrongNamedShipped Include="@(ReferencePath)" Condition="'%(ReferencePath.FusionName)' != '' and !$([System.String]::Copy('%(ReferencePath.FusionName)').Contains('PublicKeyToken=null'))" />
+      <!-- Only what is copied next to the exe (System.Management, for instance, comes from Windows itself). -->
+      <_NotShipped Include="@(_StrongNamedShipped)" />
+      <_NotShipped Remove="@(ReferenceCopyLocalPaths)" MatchOnMetadata="Filename" />
+      <_StrongNamedShipped Remove="@(_NotShipped)" />
+      <SuggestedBindingRedirects Include="$([System.Text.RegularExpressions.Regex]::Replace('%(_StrongNamedShipped.FusionName)', 'Version=[^,]*, ', ''))" MaxVersion="$([System.Text.RegularExpressions.Regex]::Replace('%(_StrongNamedShipped.FusionName)', '^.*Version=([^,]*),.*$', '$1'))" />
+    </ItemGroup>
+  </Target>
+
+</Project>
