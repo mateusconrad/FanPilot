@@ -1,4 +1,4 @@
-# Allows phones on the local network to reach FanPilot. Run in an elevated PowerShell.
+﻿# Allows phones on the local network to reach FanPilot. Run in an elevated PowerShell.
 # Only the "Private" profile is opened: on public networks (café, hotel) the port stays closed.
 param([int]$Port = 8787)
 $name = "FanPilot (TCP $Port)"

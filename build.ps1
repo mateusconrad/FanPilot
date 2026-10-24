@@ -1,4 +1,4 @@
-# Builds bin\FanPilot.exe with the .NET SDK (8 or newer). FanPilot still runs on the .NET Framework 4.7.2 that ships
+﻿# Builds bin\FanPilot.exe with the .NET SDK (8 or newer). FanPilot still runs on the .NET Framework 4.7.2 that ships
 # with Windows: the SDK is only needed to compile. NuGet packages are pinned by src\packages.lock.json.
 # Gigabyte's DLLs are only referenced if GCC is installed (they are resolved at runtime from the GCC folder).
 # -OutDir builds somewhere else (e.g. while bin\FanPilot.exe is running); data\ is never touched.
