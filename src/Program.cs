@@ -1,5 +1,5 @@
 // FanPilot - web monitor/fan controller built on top of Gigabyte Control Center's EasyTuneEngineService.
-// Written in C# 5 so it builds with the csc.exe that ships with Windows (.NET Framework 4.x);
+// Targets the .NET Framework 4.7.2 that ships with Windows (the .NET SDK is only needed to build):
 // .NET Remoting (the service's IPC protocol) only exists on .NET Framework.
 using System;
 using System.IO;

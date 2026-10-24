@@ -30,8 +30,8 @@ SOFTWARE.
 
 ## LibreHardwareMonitor e dependências (distribuídos junto com o `FanPilot.exe`)
 
-Baixados do nuget.org pelo `build.ps1` em versões fixas (hash SHA-256 conferido) e copiados sem modificação para
-a pasta do programa. O código-fonte de cada um está no endereço indicado.
+Baixados do nuget.org no build, em versões fixas (com hash conferido pelo `src/packages.lock.json`), e copiados sem
+modificação para a pasta do programa. O código-fonte de cada um está no endereço indicado.
 
 | Componente | Versão | Licença | Código-fonte |
 |---|---|---|---|
@@ -47,6 +47,7 @@ a pasta do programa. O código-fonte de cada um está no endereço indicado.
 | System.Threading.AccessControl | 10.0.3 | MIT — © Microsoft | https://github.com/dotnet/runtime |
 | System.Security.AccessControl | 6.0.0 | MIT — © Microsoft | https://github.com/dotnet/runtime |
 | System.Security.Principal.Windows | 5.0.0 | MIT — © Microsoft | https://github.com/dotnet/runtime |
+| System.CodeDom | 10.0.2 | MIT — © Microsoft | https://github.com/dotnet/runtime |
 
 ## PawnIO
 
