@@ -21,6 +21,10 @@ sealed class FanManager
     readonly AppConfig _cfg;
     readonly string _backupPath, _desiredPath, _turboPath;
     readonly object _sync = new object();
+    // Everything that changes fans runs under this lock, one operation at a time: Turbo, editing a fan, Restore, the
+    // watchdog and the re-apply never interleave (two quick taps on Turbo used to be able to save a wrong "previous"
+    // state). _sync only guards the dictionaries; the order is always _opLock, then _sync.
+    readonly object _opLock = new object();
     // The state files as read, until the board's headers are known: a version 1 file needs them to be migrated.
     readonly Dictionary<string, object> _rawBackup, _rawDesired, _rawTurbo;
     // The board's headers by position, i.e. what the API's indexes mean this session. Null until the board answered.
@@ -162,6 +166,11 @@ sealed class FanManager
 
     public void SetTurbo(bool on)
     {
+        lock (_opLock) SetTurboCore(on);
+    }
+
+    void SetTurboCore(bool on)
+    {
         if (on == TurboActive) return;
         EnsureLoaded();
         int n = _keys.Length;
@@ -264,8 +273,11 @@ sealed class FanManager
     // request: { mode: "fixed", percent, tempInput? } | { mode: "curve", style: "SmartFanMode"|"StairStepMode", points: [[t,%]...], tempInput }
     public FanCurve Apply(int index, Dictionary<string, object> request)
     {
-        EnsureNotTurbo(TurboActive);
-        return ApplyCore(index, request);
+        lock (_opLock)
+        {
+            EnsureNotTurbo(TurboActive);
+            return ApplyCore(index, request);
+        }
     }
 
     FanCurve ApplyCore(int index, Dictionary<string, object> request)
@@ -345,8 +357,11 @@ sealed class FanManager
 
     public FanCurve Restore(int index)
     {
-        EnsureNotTurbo(TurboActive);
-        return RestoreCore(index);
+        lock (_opLock)
+        {
+            EnsureNotTurbo(TurboActive);
+            return RestoreCore(index);
+        }
     }
 
     FanCurve RestoreCore(int index)
@@ -366,14 +381,17 @@ sealed class FanManager
     // A saved configuration whose header is gone is forgotten on request (it was never applied).
     public void DiscardOrphan(string key)
     {
-        EnsureLoaded();
-        lock (_sync)
+        lock (_opLock)
         {
-            if (Array.IndexOf(_keys, key) >= 0) throw new ArgumentException("Esse fan existe nesta placa: use \"Restaurar original\" nele.");
-            if (!_desired.Remove(key)) throw new ArgumentException("Configuração não encontrada.");
-            _turboPrev.Remove(key);
-            SaveDesired();
-            SaveTurbo();
+            EnsureLoaded();
+            lock (_sync)
+            {
+                if (Array.IndexOf(_keys, key) >= 0) throw new ArgumentException("Esse fan existe nesta placa: use \"Restaurar original\" nele.");
+                if (!_desired.Remove(key)) throw new ArgumentException("Configuração não encontrada.");
+                _turboPrev.Remove(key);
+                SaveDesired();
+                SaveTurbo();
+            }
         }
         Log.Info("Configuração órfã descartada: " + key);
     }
@@ -409,6 +427,11 @@ sealed class FanManager
     // internal (like Watchdog): the tests call them directly instead of waiting for Start()'s timer.
     internal void ReapplyDesired()
     {
+        lock (_opLock) ReapplyDesiredCore();
+    }
+
+    void ReapplyDesiredCore()
+    {
         try { EnsureLoaded(); }
         catch (Exception ex) { Log.Warn("Fans: não foi possível reaplicar as curvas salvas: " + ex.Message); return; }
         List<KeyValuePair<string, Dictionary<string, object>>> items;
@@ -430,6 +453,11 @@ sealed class FanManager
     }
 
     internal void Watchdog()
+    {
+        lock (_opLock) WatchdogCore();
+    }
+
+    void WatchdogCore()
     {
         try { EnsureLoaded(); }
         catch (Exception ex) { Log.Warn("Watchdog: " + ex.Message); return; }

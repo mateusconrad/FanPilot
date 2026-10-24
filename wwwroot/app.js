@@ -597,7 +597,7 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     $('edApply').disabled = true;
     try {
       await api('/api/fans/' + e.index, body);
-      toast('Aplicado no chip da placa-mãe');
+      toast(hardwareCurves() ? 'Aplicado no chip da placa-mãe' : 'Aplicado: o FanPilot está controlando este fan');
       await loadFans();
       closeEditor();
     } catch (err) { toast(err.message, true); }

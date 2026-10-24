@@ -45,7 +45,7 @@
       const btn = document.createElement('button');
       btn.className = 'btn';
       btn.textContent = 'Desparear';
-      btn.onclick = async () => { await api('/api/pair/revoke', { id: s.id }); refresh(); };
+      btn.onclick = () => revoke(s.id);
       row.append(left, btn);
       list.appendChild(row);
     });
@@ -61,11 +61,21 @@
     }
   }
 
-  $('host').onchange = (e) => { selectedHost = e.target.value; render(); };
-  $('revokeAll').onclick = async () => {
-    if (!info || !info.sessions.length) return;
-    await api('/api/pair/revoke', { id: '*' });
+  // A failure must say so: otherwise the phone looks unpaired while it still has access.
+  async function revoke(id) {
+    $('pairError').hidden = true;
+    try { await api('/api/pair/revoke', { id }); }
+    catch (e) {
+      $('pairError').textContent = 'Não foi possível desparear: ' + e.message;
+      $('pairError').hidden = false;
+    }
     refresh();
+  }
+
+  $('host').onchange = (e) => { selectedHost = e.target.value; render(); };
+  $('revokeAll').onclick = () => {
+    if (!info || !info.sessions.length) return;
+    revoke('*');
   };
 
   setInterval(() => {

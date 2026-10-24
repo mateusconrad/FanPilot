@@ -55,6 +55,19 @@ public sealed class AuthManagerTests : IDisposable
         Assert.False(a.IsBlocked(Phone));
     }
 
+    // Item 07: addresses that mistyped a code long ago are not kept forever.
+    [Fact]
+    public void OldWrongAttemptsAreForgotten()
+    {
+        var a = Auth();
+        a.Redeem("errado", Phone, Agent);
+        a.Redeem("errado", "192.168.0.51", Agent);
+        Assert.Equal(2, a.TrackedFailureIps);
+        _now = _now.AddSeconds(61);
+        a.Redeem("errado", "192.168.0.52", Agent);
+        Assert.Equal(1, a.TrackedFailureIps);
+    }
+
     [Fact]
     public void SessionLastsWhileItIsUsed()
     {
