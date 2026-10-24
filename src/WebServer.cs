@@ -192,6 +192,12 @@ sealed class WebServer
             WriteJson(r.Ctx, 200, new Dictionary<string, object> { { "turbo", _fans.TurboActive } });
             return true;
         }
+        if (r.Method == "POST" && p == "/api/fans/orphans")
+        {
+            _fans.DiscardOrphan(Json.GetString(ReadBody(r), "key", ""));
+            WriteJson(r.Ctx, 200, new Dictionary<string, object> { { "ok", true } });
+            return true;
+        }
         if (r.Method == "POST" && p.StartsWith("/api/fans/"))
         {
             var parts = p.Substring("/api/fans/".Length).Split('/');

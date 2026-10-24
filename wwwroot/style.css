@@ -170,6 +170,9 @@ main { max-width: 760px; margin: 0 auto; padding: 16px; display: grid; grid-temp
 }
 /* Problems from config.json or the state files: one per line, long file names wrap instead of widening the page. */
 .notice-banner { border-left-color: var(--warning); white-space: pre-line; overflow-wrap: anywhere; }
+/* A saved configuration for a header the board no longer has, with its "Descartar" button. */
+.orphan { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.orphan .btn { flex: none; }
 #rpmNote:empty { display: none; }
 .fan-mode { margin: 0 0 10px; }
 #rpmNote { margin: 8px 0 0; }

@@ -10,6 +10,7 @@ sealed class FakeBoard : IBoard
 {
     public sealed class Header
     {
+        public string Key;          // stable identity; moving Headers around simulates a reordered board
         public string Title;
         public FanCurve Curve;      // what the "chip" holds right now
         public bool HasTach = true; // like CPU and System 3 on the B760M: nothing with a tachometer plugged in
@@ -40,6 +41,7 @@ sealed class FakeBoard : IBoard
         for (int i = 0; i < fans; i++)
             Headers.Add(new Header
             {
+                Key = "fake/" + i,
                 Title = i < titles.Length ? titles[i] : "Fan " + (i + 1),
                 Curve = hardwareCurves ? DefaultCurve(i, i % 2 == 0 ? 2 : 0) : BiosCurve(i)
             });
@@ -192,6 +194,7 @@ sealed class FakeBoard : IBoard
     {
         var copy = FanCurve.FromDictionary(c.ToDictionary());
         copy.Index = index;
+        copy.Key = Headers[index].Key;
         copy.Title = Headers[index].Title;
         return copy;
     }

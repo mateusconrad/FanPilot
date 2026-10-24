@@ -98,6 +98,13 @@ public sealed class WebServerTests : IDisposable
     }
 
     [Fact]
+    public void DiscardingAnUnknownOrphanIsABadRequest()
+    {
+        var r = RawHttp.Send(_port, "POST", "/api/fans/orphans", json: "{\"key\":\"fake/1\"}", headers: new[] { "X-FanPilot: 1" });
+        Assert.Equal(400, r.Status);
+    }
+
+    [Fact]
     public void StreamSendsSnapshots()
     {
         string snapshot = RawHttp.FirstEvent(_port, "/api/stream", json => json.Contains("\"t\":"), TimeSpan.FromSeconds(10));
