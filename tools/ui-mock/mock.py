@@ -71,6 +71,10 @@ WORST = {
               ("CPU VDD Misc", 1.1), ("DDR VDD", 1.4), ("DDR VDDQ", 1.4), ("VDDCR_SOC", 1.25), ("PM_CLDO12", 1.2)],
     "power": [("CPU Package", 253.6), ("CPU Cores", 231.04), ("CPU SoC", 22.5)],
     "clocks": [("CPU", 5875), ("BCLK", 100.02), ("CPU Ratio", 58.75), ("DDR", 8000)],
+    # What AppNotices reports after a damaged state file and a hand-edited config.json (long names, must wrap).
+    "notices": ["desired-curves.json estava ilegível (Invalid object passed in, member name expected. (13): {\"1\": {\"request\") "
+                "e foi guardado como desired-curves.json.corrompido-20261024-201500; usando a versão anterior.",
+                "config.json inválido, usando os valores padrão até ele ser corrigido: Invalid JSON primitive: nove."],
     "gpu": {"ok": True, "name": "NVIDIA GeForce RTX 5090 D v2 Laptop GPU", "temp": 87, "util": 100, "power": 574.9,
             "powerLimit": 600, "clock": 2850, "memClock": 14001, "memUsed": 31920, "memTotal": 32607,
             "fans": [100, 98, 100], "fanMode": "fixed", "fanTarget": 100, "safetyTemp": 83, "fanMin": 30, "fanMax": 100,
@@ -126,6 +130,8 @@ def snapshot(fx, t_ms=None, wobble=0.0):
     snap["service"] = {"ok": True, "backend": fx.get("backend", "Gigabyte Control Center")}
     if fx.get("notice"):
         snap["service"]["notice"] = fx["notice"]
+    if fx.get("notices"):
+        snap["service"]["notices"] = fx["notices"]
     if "temp" in snap["gpu"]:
         snap["gpu"]["temp"] = round(snap["gpu"]["temp"] + wobble / 2)
     return snap

@@ -34,17 +34,26 @@ sealed class FanManager
         _backupPath = Path.Combine(dataDir, "backup-curves.json");
         _desiredPath = Path.Combine(dataDir, "desired-curves.json");
         _turboPath = Path.Combine(dataDir, "turbo.json");
-        if (File.Exists(_desiredPath))
+        // Entries that do not have the expected shape are skipped: one bad fan must not cost the others.
+        var desired = DataFile.Read(_desiredPath);
+        if (desired != null)
+            foreach (var kv in desired)
+            {
+                int index;
+                var entry = kv.Value as Dictionary<string, object>;
+                if (int.TryParse(kv.Key, out index) && entry != null) _desired[index] = entry;
+            }
+        var turbo = DataFile.Read(_turboPath);
+        if (turbo != null)
         {
-            foreach (var kv in Json.ParseObject(File.ReadAllText(_desiredPath)))
-                _desired[int.Parse(kv.Key)] = (Dictionary<string, object>)kv.Value;
-        }
-        if (File.Exists(_turboPath))
-        {
-            var t = Json.ParseObject(File.ReadAllText(_turboPath));
-            _turbo = Convert.ToBoolean(Json.Get(t, "active"));
-            var prev = Json.Get(t, "prev") as Dictionary<string, object>;
-            if (prev != null) foreach (var kv in prev) _turboPrev[int.Parse(kv.Key)] = kv.Value;
+            _turbo = Json.Get(turbo, "active") is bool active && active;
+            var prev = Json.Get(turbo, "prev") as Dictionary<string, object>;
+            if (prev != null)
+                foreach (var kv in prev)
+                {
+                    int index;
+                    if (int.TryParse(kv.Key, out index)) _turboPrev[index] = kv.Value;
+                }
         }
     }
 
@@ -97,7 +106,7 @@ sealed class FanManager
     {
         var prev = new Dictionary<string, object>();
         foreach (var kv in _turboPrev) prev[kv.Key.ToString()] = kv.Value;
-        File.WriteAllText(_turboPath, Json.Serialize(new Dictionary<string, object> { { "active", _turbo }, { "prev", prev } }), Encoding.UTF8);
+        DataFile.WriteAtomic(_turboPath, new Dictionary<string, object> { { "active", _turbo }, { "prev", prev } });
     }
 
     static void EnsureNotTurbo(bool turbo)
@@ -122,18 +131,38 @@ sealed class FanManager
             if (_backup.Count > 0) return;
             try
             {
-                if (File.Exists(_backupPath))
-                {
-                    foreach (var kv in Json.ParseObject(File.ReadAllText(_backupPath)))
-                        _backup[int.Parse(kv.Key)] = FanCurve.FromDictionary((Dictionary<string, object>)kv.Value);
-                    return;
-                }
+                var saved = DataFile.Read(_backupPath);
+                if (saved != null)
+                    foreach (var kv in saved)
+                    {
+                        int index;
+                        var entry = kv.Value as Dictionary<string, object>;
+                        if (!int.TryParse(kv.Key, out index) || entry == null) continue;
+                        try { _backup[index] = FanCurve.FromDictionary(entry); }
+                        catch (FormatException) { } // a damaged entry: that fan just has no backup
+                    }
+                if (_backup.Count > 0) return;
+
                 var curves = _bridge.GetCurves();
                 if (curves.Count == 0) return;
+                var missing = new List<string>();
+                foreach (var c in curves)
+                {
+                    if (!_desired.ContainsKey(c.Index)) _backup[c.Index] = c;
+                    // Without the backup file (lost or damaged) a fan FanPilot already manages is no longer at its
+                    // original. On software-curve boards that original is simply the BIOS; in a chip it is gone, and
+                    // saving FanPilot's own curve as "original" would make Restore a silent no-op forever.
+                    else if (!_bridge.HardwareCurves) _backup[c.Index] = new FanCurve { Index = c.Index, Title = c.Title, Mode = FanCurve.BiosMode, TempInput = 0, DeltaT = 1 };
+                    else missing.Add(c.Title);
+                }
+                if (_backup.Count == 0) return;
                 var d = new Dictionary<string, object>();
-                foreach (var c in curves) { _backup[c.Index] = c; d[c.Index.ToString()] = c.ToDictionary(); }
-                File.WriteAllText(_backupPath, Json.Serialize(d), Encoding.UTF8);
+                foreach (var kv in _backup) d[kv.Key.ToString()] = kv.Value.ToDictionary();
+                DataFile.WriteAtomic(_backupPath, d);
                 Log.Info("Saved original fan curves to " + _backupPath);
+                if (missing.Count > 0)
+                    AppNotices.Add("Sem a curva original de " + string.Join(", ", missing) + ": o backup se perdeu enquanto o FanPilot controlava " +
+                                   (missing.Count > 1 ? "esses fans" : "esse fan") + ". \"Restaurar original\" fica indisponível para " + (missing.Count > 1 ? "eles." : "ele."));
             }
             catch (Exception ex) { Log.Warn("Could not back up fan curves yet: " + ex.Message); }
         }
@@ -279,7 +308,7 @@ sealed class FanManager
     {
         var d = new Dictionary<string, object>();
         foreach (var kv in _desired) d[kv.Key.ToString()] = kv.Value;
-        File.WriteAllText(_desiredPath, Json.Serialize(d), Encoding.UTF8);
+        DataFile.WriteAtomic(_desiredPath, d);
     }
 
     // internal (like Watchdog): the tests call them directly instead of waiting for Start()'s timer.

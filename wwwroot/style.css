@@ -163,11 +163,13 @@ main { max-width: 760px; margin: 0 auto; padding: 16px; display: grid; grid-temp
 .fan .duty i { display: block; height: 100%; transform: scaleX(0); transform-origin: left; transition: transform 600ms var(--ease-out); }
 .btn.turbo { font-weight: 600; white-space: nowrap; }
 .btn.turbo[aria-pressed="true"] { background: var(--accent); border-color: transparent; color: #fff; }
-.turbo-banner {
+.turbo-banner, .notice-banner {
   margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; font-size: 13px; background: var(--surface-2); border-left: 3px solid var(--accent); color: var(--ink-2);
   transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
   @starting-style { opacity: 0; transform: translateY(-4px); }
 }
+/* Problems from config.json or the state files: one per line, long file names wrap instead of widening the page. */
+.notice-banner { border-left-color: var(--warning); white-space: pre-line; overflow-wrap: anywhere; }
 #rpmNote:empty { display: none; }
 .fan-mode { margin: 0 0 10px; }
 #rpmNote { margin: 8px 0 0; }
@@ -256,7 +258,7 @@ details summary { cursor: pointer; font-weight: 600; font-size: 15px; }
   .sheet.leaving { transform: none; opacity: 0; }
   .toast, .toast.leaving { transform: translateX(-50%); @starting-style { transform: translateX(-50%); } }
   .fan, .btn, .seg button, .fan .duty i { transition: none; }
-  .turbo-banner { @starting-style { transform: none; } }
+  .turbo-banner, .notice-banner { @starting-style { transform: none; } }
   details::details-content { transition: none; }
 }
 .toast.error { background: var(--critical); color: #fff; }

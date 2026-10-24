@@ -256,6 +256,55 @@ public sealed class FanManagerTests : IDisposable
         Assert.Equal(desired, board.GetCurve(1).Signature());
     }
 
+    // Item 03: a damaged state file must not keep FanPilot from starting.
+    [Fact]
+    public void DamagedDesiredCurvesStartWithThePreviousVersion()
+    {
+        var m = Manager();
+        m.Apply(1, Fixed(40));
+        m.Apply(2, Fixed(50));                                   // desired-curves.json.bak now has only fan 1
+        System.IO.File.WriteAllText(_dir.File("desired-curves.json"), "{\"1\": {\"request\"");
+        var fans = (List<object>)Manager().Describe()["fans"];
+        Assert.True((bool)((Dictionary<string, object>)fans[1])["managed"]);
+        Assert.False((bool)((Dictionary<string, object>)fans[2])["managed"]);
+    }
+
+    [Fact]
+    public void DamagedTurboFileMeansTurboOff()
+    {
+        System.IO.File.WriteAllText(_dir.File("turbo.json"), "not json");
+        Assert.False(Manager().TurboActive);
+    }
+
+    // Item 03: with the backup lost while FanPilot manages a fan, its curve in the chip is FanPilot's own; saving that
+    // as "original" would make Restore a silent no-op forever.
+    [Fact]
+    public void LostBackupIsNotRecapturedFromAFanFanPilotManages()
+    {
+        Manager().Apply(1, Fixed(40));
+        System.IO.File.Delete(_dir.File("backup-curves.json"));
+        System.IO.File.Delete(_dir.File("backup-curves.json.bak"));
+        var m = Manager();
+        var fans = (List<object>)m.Describe()["fans"];
+        Assert.False((bool)((Dictionary<string, object>)fans[1])["hasBackup"]);
+        Assert.True((bool)((Dictionary<string, object>)fans[2])["hasBackup"]);
+        Assert.Throws<ArgumentException>(() => m.Restore(1));
+    }
+
+    [Fact]
+    public void LostBackupOnASoftwareCurveBoardMeansTheBios()
+    {
+        var board = new FakeBoard(4, hardwareCurves: false);
+        var m = new FanManager(board, _cfg, _dir.Path);
+        m.Describe();
+        m.Apply(1, Fixed(40));
+        System.IO.File.Delete(_dir.File("backup-curves.json"));
+        var restarted = new FanManager(board, _cfg, _dir.Path);
+        restarted.Describe();
+        restarted.Restore(1);
+        Assert.True(board.GetCurve(1).IsBios);
+    }
+
     [Fact]
     public void RestoreOnASoftwareCurveBoardHandsTheFanBackToTheBios()
     {

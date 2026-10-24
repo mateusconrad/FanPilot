@@ -139,7 +139,10 @@ Limites ajustáveis em `bin\data\config.json` (`minDutyPercent`, `fixedModeSafet
 - **Log:** `bin\data\fanpilot.log` (pareamentos, mudanças de fan, reaplicações do watchdog, erros).
 - **Dados:** `bin\data\` guarda `config.json`, `sessions.json`, `backup-curves.json` (curvas originais, gravado
   só na primeira execução), `desired-curves.json` (curvas que o FanPilot mantém) e `machine.json` (identifica o PC
-  e a placa-mãe).
+  e a placa-mãe). Cada arquivo é gravado de uma vez só (nunca fica pela metade) e guarda a versão anterior em
+  `.bak`. Um arquivo ilegível é guardado como `<nome>.corrompido-<data>`, e o FanPilot segue com a versão anterior
+  ou sem ele, avisando no painel. Um `config.json` inválido nunca é alterado: o FanPilot usa os valores padrão até
+  ele ser corrigido.
 - **Outro PC / troca de placa-mãe:** se `bin\data\` vier de outro PC ou de outra placa, o FanPilot não aplica as
   curvas, o backup nem os pareamentos antigos: eles são movidos para `bin\data\outra-maquina-<data>\` e tudo
   recomeça do zero (o `config.json` é mantido). Para levar o programa a outro PC, use o zip gerado por
