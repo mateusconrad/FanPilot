@@ -37,7 +37,7 @@ Build e testes com as ferramentas padrão do .NET, sem mudar o runtime: o FanPil
 
 ## Riscos
 
-- Diferenças nos redirecionamentos gerados → comparar o `FanPilot.exe.config` antigo com o novo no PR.
+- Diferenças nos redirecionamentos gerados → comparar o `FanPilot.exe.config` antigo com o novo.
 - `bin\` também guarda o `data\` do usuário → a limpeza do build não pode apagar nada além do que ela mesma gerou (conferir o `dotnet clean`).
 
 ## Critérios de aceite
