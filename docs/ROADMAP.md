@@ -22,9 +22,9 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 | 06 | [Rotação e deduplicação do log](specs/06-log.md) | 1 | P | — | a fazer | a fazer | [#6](https://github.com/mateusconrad/FanPilot/issues/6) | |
 | 07 | [Correções pequenas](specs/07-correcoes-pequenas.md) | 1 | P | — | a fazer | a fazer | [#7](https://github.com/mateusconrad/FanPilot/issues/7) | |
 | 08 | [Testes automatizados (unitários e integração)](specs/08-testes.md) | 1 | M | 09 | a fazer | a fazer | [#8](https://github.com/mateusconrad/FanPilot/issues/8) | |
-| 09 | [Projeto SDK-style (net472)](specs/09-projeto-sdk.md) | 1 | M | — | em andamento | a fazer | [#9](https://github.com/mateusconrad/FanPilot/issues/9) | |
+| 09 | [Projeto SDK-style (net472)](specs/09-projeto-sdk.md) | 1 | M | — | em revisão | ok | [#9](https://github.com/mateusconrad/FanPilot/issues/9) | [PR #29](https://github.com/mateusconrad/FanPilot/pull/29); falta o roteiro de hardware como Administrador |
 | 10 | [Ponte Gigabyte sem dependência de compilação](specs/10-gigabyte-sem-compilacao.md) | 2 | M | 09 | a fazer | a fazer | [#10](https://github.com/mateusconrad/FanPilot/issues/10) | |
-| 11 | [CI, versão e releases](specs/11-ci-versao-release.md) | 2 | P–M | 08, 09, 10 | a fazer | a fazer | [#11](https://github.com/mateusconrad/FanPilot/issues/11) | |
+| 11 | [CI, versão e releases](specs/11-ci-versao-release.md) | 2 | P–M | 08, 09, 10 | a fazer | a fazer | [#11](https://github.com/mateusconrad/FanPilot/issues/11) | Incluir na CI a checagem de BOM nos `.ps1` com acento (achado no PR #29) |
 | 12 | [Assinatura de código](specs/12-assinatura.md) | 2 | P + aprovação | 11 | a fazer | a fazer | [#12](https://github.com/mateusconrad/FanPilot/issues/12) | |
 | 13 | [Relatos de compatibilidade](specs/13-compatibilidade.md) | 2 | P | — | a fazer | a fazer | [#13](https://github.com/mateusconrad/FanPilot/issues/13) | |
 | 14 | [Serviço, bandeja e instalador](specs/14-servico-bandeja-instalador.md) | 3 | G | 03, 05, 06 | a fazer | a fazer | [#14](https://github.com/mateusconrad/FanPilot/issues/14) | |
