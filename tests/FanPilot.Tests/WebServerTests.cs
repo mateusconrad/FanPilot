@@ -105,6 +105,38 @@ public sealed class WebServerTests : IDisposable
         Assert.Contains("\"fanRpm\"", snapshot);
     }
 
+    // Item 05: the port is taken before the board is opened; until everything is attached, requests wait.
+    [Fact]
+    public void ServerThatIsStillStartingAnswers503()
+    {
+        int port = TestEnv.FreePort();
+        var starting = new WebServer(new AppConfig { Port = port }, System.IO.Path.Combine(TestEnv.OutputDir, "wwwroot")) { ListenHost = "localhost" };
+        starting.Start();
+        try
+        {
+            var api = RawHttp.Send(port, "GET", "/api/fans");
+            Assert.Equal(503, api.Status);
+            Assert.Contains("iniciando", api.Body);
+            Assert.Contains("Retry-After: 2", api.Head);
+            Assert.Equal(503, RawHttp.Send(port, "GET", "/").Status);
+        }
+        finally { starting.Stop(); }
+    }
+
+    // Item 05: a taken port fails at Start, before FanPilot opens the board (App.Run starts the server first).
+    [Fact]
+    public void TakenPortFailsToStartWithAClearMessage()
+    {
+        var second = new WebServer(new AppConfig { Port = _port }, System.IO.Path.Combine(TestEnv.OutputDir, "wwwroot"))
+        {
+            ListenHost = TestEnv.IsAdministrator ? "+" : "localhost"
+        };
+        var ex = Assert.Throws<HttpListenerException>(() => second.Start());
+        string message = WebServer.PortProblem(_port, ex);
+        Assert.Contains(_port.ToString(), message);
+        Assert.Contains("config.json", message);
+    }
+
     // Item 01: a page that resolved its own domain to 127.0.0.1 (DNS rebinding) gets nothing, not even files.
     [SkippableFact]
     public void OtherHostsGet421()

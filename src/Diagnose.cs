@@ -10,11 +10,13 @@ using LibreHardwareMonitor.Hardware;
 
 static class Diagnose
 {
-    public static int Run(string dataDir, AppConfig cfg)
+    // otherInstance: a FanPilot is running and may be driving the fans while this reads them.
+    public static int Run(string dataDir, AppConfig cfg, bool otherInstance)
     {
         string path = Path.Combine(dataDir, "diagnostico-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".txt");
         var sb = new StringBuilder();
         sb.AppendLine("FanPilot --diagnose  " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+        if (otherInstance) sb.AppendLine("Atenção: outro FanPilot está rodando agora; as leituras abaixo podem refletir o controle dele.");
         sb.AppendLine("Windows: " + Environment.OSVersion.VersionString + (Environment.Is64BitOperatingSystem ? " x64" : ""));
         sb.AppendLine("Placa-mãe (registro): " + MachineData.Board);
         sb.AppendLine("Gigabyte Control Center: " + (Directory.Exists(Program.GccLibDir) ? Program.GccLibDir : "não encontrado"));
