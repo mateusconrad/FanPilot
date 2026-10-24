@@ -56,7 +56,7 @@ sealed class FanCurve
     public bool IsBios { get { return Mode == BiosMode; } }
 
     // PWM (0..255) for temperature t: linear between points, or held until the next point in StairStepMode.
-    // Same rule as curveAt() in wwwroot/app.js.
+    // Same rule as curveAt() in wwwroot/js/curve.mjs; tests/fixtures/curves.json is checked against both.
     public double PwmAt(double t)
     {
         if (Points.Count == 0) return 255;

@@ -16,9 +16,11 @@ sealed class WebServer
     readonly GpuMonitor _gpu;
     readonly HostGuard _hosts;
     readonly HttpListener _listener = new HttpListener();
+    // "+" = every address, so phones on the LAN reach it (needs Administrator). Tests use "localhost", which does not.
+    internal string ListenHost = "+";
 
     static readonly Dictionary<string, string> ContentTypes = new Dictionary<string, string> {
-        { ".html", "text/html; charset=utf-8" }, { ".js", "text/javascript; charset=utf-8" },
+        { ".html", "text/html; charset=utf-8" }, { ".js", "text/javascript; charset=utf-8" }, { ".mjs", "text/javascript; charset=utf-8" },
         { ".css", "text/css; charset=utf-8" }, { ".svg", "image/svg+xml" }, { ".png", "image/png" },
         { ".json", "application/json; charset=utf-8" }, { ".webmanifest", "application/manifest+json" }
     };
@@ -31,7 +33,7 @@ sealed class WebServer
 
     public void Start()
     {
-        _listener.Prefixes.Add("http://+:" + _cfg.Port + "/");
+        _listener.Prefixes.Add("http://" + ListenHost + ":" + _cfg.Port + "/");
         _listener.Start();
         new Thread(AcceptLoop) { IsBackground = true, Name = "http" }.Start();
     }

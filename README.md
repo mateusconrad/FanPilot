@@ -42,6 +42,7 @@ Como funciona por baixo: veja [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEE
 ```powershell
 .\build.ps1                     # .NET SDK 8+; pacotes do NuGet fixados (com hash) pelo src\packages.lock.json
 dotnet test                     # testes automatizados (sem hardware nem Administrador)
+node --test "tests/js/*.test.mjs"  # testes do painel (Node 22+)
 .\bin\FanPilot.exe              # pede UAC, abre http://localhost:8787/pair
 .\scripts\firewall.ps1          # (admin, uma vez) libera a porta 8787 no perfil de rede Privado
 .\scripts\autostart.ps1         # (admin, opcional) inicia elevado no logon, sem UAC
@@ -53,6 +54,10 @@ Compilar exige o [.NET SDK](https://dotnet.microsoft.com/download) 8 ou mais nov
 FanPilot usa o .NET Framework 4.7.2 que já vem nele.
 
 Compilar sem o GCC instalado também funciona: o build avisa e gera um FanPilot só com o LibreHardwareMonitor.
+
+Builds Debug aceitam `--fake-board`: o FanPilot inteiro roda com uma placa e uma GPU falsas, guardando os dados em
+`data-fake\` (nunca no `data\` da placa real). É o que os testes de ponta a ponta usam. Para mexer só no visual, sem
+Administrador, use o `tools/ui-mock`.
 Para distribuir, gere o zip num PC com GCC, assim ele atende os dois tipos de placa.
 
 No celular (mesma rede Wi-Fi): escaneie o QR da página `/pair`. O código vale ~3 min e é de uso único;

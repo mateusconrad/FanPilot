@@ -282,7 +282,8 @@ sealed class FanManager
         File.WriteAllText(_desiredPath, Json.Serialize(d), Encoding.UTF8);
     }
 
-    void ReapplyDesired()
+    // internal (like Watchdog): the tests call them directly instead of waiting for Start()'s timer.
+    internal void ReapplyDesired()
     {
         List<KeyValuePair<int, Dictionary<string, object>>> items;
         lock (_sync) items = _desired.ToList();
@@ -298,7 +299,7 @@ sealed class FanManager
         if (items.Count > 0) Log.Info(items.Count + " curva(s) salvas reaplicadas pelo FanPilot.");
     }
 
-    void Watchdog()
+    internal void Watchdog()
     {
         List<KeyValuePair<int, Dictionary<string, object>>> items;
         lock (_sync) items = _desired.ToList();

@@ -158,6 +158,10 @@ def history(fx):
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
+    # Module scripts load only with a JavaScript MIME type, and the Windows registry may map .js to text/plain.
+    extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map,
+                      ".js": "text/javascript", ".mjs": "text/javascript"}
+
     def __init__(self, *a, **k):
         super().__init__(*a, directory=str(WWW), **k)
 
