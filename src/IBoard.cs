@@ -45,6 +45,8 @@ sealed class FanCurve
     public const string BiosMode = "BiosDefault";
 
     public int Index;
+    // Stable identity of the header, unlike Index (its position this session): what saved state is keyed by.
+    public string Key;
     public string Title;
     public int TempInput;
     // "SmartFanMode" (linear between points) or "StairStepMode" (steps); other values come from hardware only.
@@ -77,7 +79,7 @@ sealed class FanCurve
     public Dictionary<string, object> ToDictionary()
     {
         return new Dictionary<string, object> {
-            { "index", Index }, { "title", Title }, { "tempInput", TempInput }, { "mode", Mode },
+            { "index", Index }, { "key", Key }, { "title", Title }, { "tempInput", TempInput }, { "mode", Mode },
             { "deltaT", DeltaT }, { "points", Points.Select(p => new[] { p[0], p[1] }).ToList() }
         };
     }
@@ -86,6 +88,7 @@ sealed class FanCurve
     {
         var c = new FanCurve();
         c.Index = Json.GetInt(d, "index", 0);
+        c.Key = Json.GetString(d, "key", null);
         c.Title = Json.GetString(d, "title", "");
         c.TempInput = Json.GetInt(d, "tempInput", 0);
         c.Mode = Json.GetString(d, "mode", "SmartFanMode");

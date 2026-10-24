@@ -145,10 +145,14 @@ sealed class GigabyteBridge : IBoard
             _fan.Get(index, ref set);
             int tempInput;
             _fan.GetTemperatureInputSelection(index, out tempInput);
+            string title = index < ControlTitles.Length ? ControlTitles[index] : "Fan " + index;
             var c = new FanCurve
             {
                 Index = index,
-                Title = index < ControlTitles.Length ? ControlTitles[index] : "Fan " + index,
+                // GCC exposes nothing steadier than position and name: a GCC update that renames or reorders the
+                // headers makes the saved configuration an orphan instead of landing on another fan.
+                Key = "gcc:" + index + ":" + title,
+                Title = title,
                 TempInput = tempInput,
                 Mode = set.Mode.ToString(),
                 DeltaT = set.DeltaTemperature

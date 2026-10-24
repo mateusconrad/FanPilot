@@ -26,6 +26,7 @@ sealed class LhmBoard : IBoard
         public ISensor Control;
         public ISensor Tach;    // may be null: not every control has a tachometer
         public string Title;
+        public string Key;      // the control sensor's identifier, e.g. /lpc/nct6798d/0/control/1: stable across runs
         public FanCurve Curve;  // null = BIOS
         public bool OnBiosFallback;
     }
@@ -96,7 +97,7 @@ sealed class LhmBoard : IBoard
         {
             var tachs = hw.Sensors.Where(s => s.SensorType == SensorType.Fan).ToList();
             foreach (var c in hw.Sensors.Where(s => s.SensorType == SensorType.Control && s.Control != null).OrderBy(s => s.Index))
-                headers.Add(new Header { Control = c, Tach = tachs.FirstOrDefault(f => f.Index == c.Index), Title = c.Name });
+                headers.Add(new Header { Control = c, Tach = tachs.FirstOrDefault(f => f.Index == c.Index), Title = c.Name, Key = c.Identifier.ToString() });
         }
 
         lock (_sync)
@@ -243,9 +244,10 @@ sealed class LhmBoard : IBoard
             if (index < 0 || index >= _headers.Count) throw new ArgumentException("Fan inexistente.");
             var h = _headers[index];
             if (h.Curve == null)
-                return new FanCurve { Index = index, Title = h.Title, Mode = FanCurve.BiosMode, TempInput = 0, DeltaT = 1 };
+                return new FanCurve { Index = index, Key = h.Key, Title = h.Title, Mode = FanCurve.BiosMode, TempInput = 0, DeltaT = 1 };
             var c = FanCurve.FromDictionary(h.Curve.ToDictionary());
             c.Title = h.Title;
+            c.Key = h.Key;
             return c;
         }
     }

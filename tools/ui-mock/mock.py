@@ -71,6 +71,8 @@ WORST = {
               ("CPU VDD Misc", 1.1), ("DDR VDD", 1.4), ("DDR VDDQ", 1.4), ("VDDCR_SOC", 1.25), ("PM_CLDO12", 1.2)],
     "power": [("CPU Package", 253.6), ("CPU Cores", 231.04), ("CPU SoC", 22.5)],
     "clocks": [("CPU", 5875), ("BCLK", 100.02), ("CPU Ratio", 58.75), ("DDR", 8000)],
+    # A curve saved for a header the board no longer reports (FanManager orphans).
+    "orphans": [{"key": "v1:9:SYS_FAN9_PUMP", "title": "SYS_FAN9_PUMP (bomba do watercooler antigo, removida da placa)"}],
     # What AppNotices reports after a damaged state file and a hand-edited config.json (long names, must wrap).
     "notices": ["desired-curves.json estava ilegível (Invalid object passed in, member name expected. (13): {\"1\": {\"request\") "
                 "e foi guardado como desired-curves.json.corrompido-20261024-201500; usando a versão anterior.",
@@ -140,7 +142,7 @@ def snapshot(fx, t_ms=None, wobble=0.0):
 def fans_payload(fx):
     return {"supported": fx.get("supported", True), "board": fx["board"], "turbo": fx.get("turbo", False),
             "backend": fx.get("backend", "Gigabyte Control Center"), "hardwareCurves": fx.get("hardwareCurves", True),
-            "notice": fx.get("notice"),
+            "notice": fx.get("notice"), "orphans": fx.get("orphans", []),
             "tempInputs": [n for n, _ in fx["temps"]],
             "limits": {"minDutyPercent": 20, "fixedModeSafetyTemp": 85, "maxFullSpeedTemp": 90}, "fans": fx["fans"]}
 

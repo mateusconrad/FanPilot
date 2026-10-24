@@ -353,8 +353,30 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     return pwm === null ? null : pct(pwm);
   }
 
+  // Configurations saved for a header this board no longer has (e.g. after a BIOS update): never applied, discardable.
+  // Rebuilt only when /api/fans is loaded, not every second, so the buttons keep their state.
+  function renderOrphans() {
+    const list = (state.fans && state.fans.orphans) || [];
+    $('orphans').replaceChildren(...list.map((o) => {
+      const row = document.createElement('div');
+      row.className = 'notice-banner orphan';
+      const text = document.createElement('span');
+      text.textContent = `A configuração salva para "${o.title || o.key}" não corresponde a nenhum fan desta placa e não foi aplicada.`;
+      const discard = document.createElement('button');
+      discard.className = 'btn';
+      discard.textContent = 'Descartar';
+      discard.onclick = async () => {
+        discard.disabled = true;
+        try { await api('/api/fans/orphans', { key: o.key }); toast('Configuração descartada'); await loadFans(); }
+        catch (e) { toast(e.message, true); discard.disabled = false; }
+      };
+      row.append(text, discard);
+      return row;
+    }));
+  }
+
   async function loadFans() {
-    try { state.fans = await api('/api/fans'); renderFans(); renderCharts(); }
+    try { state.fans = await api('/api/fans'); renderFans(); renderOrphans(); renderCharts(); }
     catch (e) {
       $('fans').innerHTML = `<p class="hint">Fans indisponíveis: ${esc(e.message)}</p>`;
       $('turboBtn').hidden = true;
