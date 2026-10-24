@@ -14,7 +14,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 
 | # | Item | Onda | Esforço | Depende de | Status | Testes | Issue | Notas |
 |---|---|---|---|---|---|---|---|---|
-| 01 | [Validar o header Host](specs/01-validar-host.md) | 1 | P | — | a fazer | no 08 | [#1](https://github.com/mateusconrad/FanPilot/issues/1) | |
+| 01 | [Validar o header Host](specs/01-validar-host.md) | 1 | P | — | em revisão | no 08 | [#1](https://github.com/mateusconrad/FanPilot/issues/1) | [PR #28](https://github.com/mateusconrad/FanPilot/pull/28); falta o roteiro manual como Administrador |
 | 02 | [SSE e proteção da GPU fora do laço de amostragem](specs/02-sse-e-protecao-gpu.md) | 1 | P–M | — | a fazer | a fazer | [#2](https://github.com/mateusconrad/FanPilot/issues/2) | |
 | 03 | [Leitura tolerante e gravação atômica](specs/03-arquivos-atomicos.md) | 1 | P | — | a fazer | a fazer | [#3](https://github.com/mateusconrad/FanPilot/issues/3) | |
 | 04 | [Chave estável para cada header](specs/04-identidade-dos-headers.md) | 1 | P–M | 03 | a fazer | a fazer | [#4](https://github.com/mateusconrad/FanPilot/issues/4) | |
@@ -22,7 +22,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 | 06 | [Rotação e deduplicação do log](specs/06-log.md) | 1 | P | — | a fazer | a fazer | [#6](https://github.com/mateusconrad/FanPilot/issues/6) | |
 | 07 | [Correções pequenas](specs/07-correcoes-pequenas.md) | 1 | P | — | a fazer | a fazer | [#7](https://github.com/mateusconrad/FanPilot/issues/7) | |
 | 08 | [Testes automatizados (unitários e integração)](specs/08-testes.md) | 1 | M | 09 | a fazer | a fazer | [#8](https://github.com/mateusconrad/FanPilot/issues/8) | |
-| 09 | [Projeto SDK-style (net472)](specs/09-projeto-sdk.md) | 1 | M | — | a fazer | a fazer | [#9](https://github.com/mateusconrad/FanPilot/issues/9) | |
+| 09 | [Projeto SDK-style (net472)](specs/09-projeto-sdk.md) | 1 | M | — | em andamento | a fazer | [#9](https://github.com/mateusconrad/FanPilot/issues/9) | |
 | 10 | [Ponte Gigabyte sem dependência de compilação](specs/10-gigabyte-sem-compilacao.md) | 2 | M | 09 | a fazer | a fazer | [#10](https://github.com/mateusconrad/FanPilot/issues/10) | |
 | 11 | [CI, versão e releases](specs/11-ci-versao-release.md) | 2 | P–M | 08, 09, 10 | a fazer | a fazer | [#11](https://github.com/mateusconrad/FanPilot/issues/11) | |
 | 12 | [Assinatura de código](specs/12-assinatura.md) | 2 | P + aprovação | 11 | a fazer | a fazer | [#12](https://github.com/mateusconrad/FanPilot/issues/12) | |
