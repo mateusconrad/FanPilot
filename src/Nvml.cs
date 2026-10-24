@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 
 static class NvmlNative
 {
@@ -39,8 +40,38 @@ abstract class GpuMonitor
     protected readonly int SafetyTemp;
     protected int? ManualPercent;
     protected string SafetyNote;
+    volatile Dictionary<string, object> _latest;
+    volatile bool _stopped;
 
     protected GpuMonitor(int safetyTemp) { SafetyTemp = safetyTemp; }
+
+    // The GPU's own loop, once a second: its safety rule must not wait for the motherboard's IPC (the sampler) or for a
+    // slow web client.
+    public void Start()
+    {
+        Tick();
+        new Thread(() =>
+        {
+            while (!_stopped)
+            {
+                Thread.Sleep(1000);
+                try { Tick(); } catch (Exception ex) { Log.Warn("GPU: " + ex.Message); }
+            }
+        }) { IsBackground = true, Name = "gpu" }.Start();
+    }
+
+    public void Stop() { _stopped = true; }
+
+    // What the loop read last (the sampler's snapshot uses it); a direct read before Start().
+    public Dictionary<string, object> Latest { get { return _latest ?? Read(); } }
+
+    internal void Tick()
+    {
+        var r = Read();
+        object temp;
+        if (r.TryGetValue("temp", out temp) && EnforceSafety(temp)) r = Read(); // the snapshot must show the fan back on auto
+        _latest = r;
+    }
 
     // NVML when the NVIDIA driver provides it (most complete), otherwise LibreHardwareMonitor (AMD, Intel Arc, NVIDIA).
     public static GpuMonitor Create(int safetyTemp)
@@ -57,16 +88,15 @@ abstract class GpuMonitor
     public abstract void SetAuto();
     public abstract void Shutdown();
 
-    // Called once per sample.
-    public void EnforceSafety(object tempObj)
+    // Called by Tick, once a second. Returns whether it put the fan back on automatic.
+    public bool EnforceSafety(object tempObj)
     {
-        if (!ManualPercent.HasValue || tempObj == null) return;
-        if (Convert.ToInt32(tempObj) >= SafetyTemp)
-        {
-            SetAuto();
-            lock (Sync) SafetyNote = "Fan voltou para automático: GPU atingiu " + tempObj + " °C (" + DateTime.Now.ToString("HH:mm:ss") + ")";
-            Log.Info("GPU safety: reverted fan to auto at " + tempObj + " C");
-        }
+        if (!ManualPercent.HasValue || tempObj == null) return false;
+        if (Convert.ToInt32(tempObj) < SafetyTemp) return false;
+        SetAuto();
+        lock (Sync) SafetyNote = "Fan voltou para automático: GPU atingiu " + tempObj + " °C (" + DateTime.Now.ToString("HH:mm:ss") + ")";
+        Log.Info("GPU safety: reverted fan to auto at " + tempObj + " C");
+        return true;
     }
 
     protected void AddFanState(Dictionary<string, object> r)

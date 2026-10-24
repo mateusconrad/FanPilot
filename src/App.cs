@@ -99,9 +99,10 @@ static class App
 
         var stop = new ManualResetEvent(false);
         // Software-curve boards must get their fans back on every way out: hook all the ones Windows tells us about.
-        Exit.Register(stop, () => { server.Stop(); bridge.Shutdown(); gpu.Shutdown(); });
+        Exit.Register(stop, () => { server.Stop(); bridge.Shutdown(); gpu.Stop(); gpu.Shutdown(); });
 
         try { fans.Start(); } catch (Exception ex) { Log.Warn("Fan manager: " + ex.Message); }
+        gpu.Start();
         sampler.Start();
         // Only now: until Start() has saved the original curves, no request may change a fan.
         server.Attach(auth, sampler, fans, gpu);
@@ -266,10 +267,13 @@ static class NetworkInfo
     }
 }
 
-// Polls hardware once per second and fans the snapshot out to Server-Sent-Events clients; keeps 10 min of history.
+// Polls hardware once per second and hands the snapshot to the subscribers (the SSE hub, which never blocks);
+// keeps 10 min of history. The GPU comes from its own loop (GpuMonitor.Latest), safety rule included.
 sealed class Sampler
 {
     const int HistorySize = 600;
+    static readonly TimeSpan SlowSample = TimeSpan.FromSeconds(3);
+    DateTime _lastSlowLog = DateTime.MinValue;
     readonly IBoard _bridge;
     readonly GpuMonitor _gpu;
     readonly object _sync = new object();
@@ -303,13 +307,21 @@ sealed class Sampler
             var started = DateTime.UtcNow;
             try { Publish(Sample()); }
             catch (Exception ex) { Log.Warn("Sampler: " + ex.Message); }
-            int wait = 1000 - (int)(DateTime.UtcNow - started).TotalMilliseconds;
+            var took = DateTime.UtcNow - started;
+            // Usually the Gigabyte service answering slowly: worth knowing, not worth a line per second.
+            if (took > SlowSample && DateTime.UtcNow - _lastSlowLog > TimeSpan.FromMinutes(1))
+            {
+                _lastSlowLog = DateTime.UtcNow;
+                Log.Warn("Leitura dos sensores lenta: " + (int)took.TotalMilliseconds + " ms.");
+            }
+            int wait = 1000 - (int)took.TotalMilliseconds;
             if (wait > 0) Thread.Sleep(wait);
         }
     }
 
     Dictionary<string, object> Sample()
     {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
         long t = (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
         var snap = new Dictionary<string, object> { { "t", t } };
         var service = new Dictionary<string, object> { { "ok", true }, { "backend", _bridge.BackendName } };
@@ -329,12 +341,9 @@ sealed class Sampler
             }
         }
         catch (Exception ex) { service["ok"] = false; service["error"] = ex.Message; }
+        service["sampleMs"] = watch.ElapsedMilliseconds;
         snap["service"] = service;
-
-        var gpu = _gpu.Read();
-        object gpuTemp;
-        if (gpu.TryGetValue("temp", out gpuTemp)) _gpu.EnforceSafety(gpuTemp);
-        snap["gpu"] = gpu;
+        snap["gpu"] = _gpu.Latest;
         return snap;
     }
 

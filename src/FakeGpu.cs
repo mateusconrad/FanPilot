@@ -37,5 +37,8 @@ sealed class FakeGpu : GpuMonitor
 
     public override void SetAuto() { lock (Sync) ManualPercent = null; }
 
+    // For the tests: the manual setting the panel would read back.
+    public int? Manual { get { lock (Sync) return ManualPercent; } }
+
     public override void Shutdown() { SetAuto(); }
 }
