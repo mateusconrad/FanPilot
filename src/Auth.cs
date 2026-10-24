@@ -171,12 +171,16 @@ sealed class AuthManager
 
     void Load()
     {
-        if (!File.Exists(_path)) return;
-        try
+        var saved = DataFile.Read(_path);
+        if (saved == null) return;
+        var sessions = Json.Get(saved, "sessions") as System.Collections.IEnumerable;
+        if (sessions == null) return;
+        foreach (object o in sessions)
         {
-            foreach (object o in Json.ToList(Json.Get(Json.ParseObject(File.ReadAllText(_path)), "sessions")))
+            var d = o as Dictionary<string, object>;
+            if (d == null) continue;
+            try
             {
-                var d = (Dictionary<string, object>)o;
                 var s = new Session
                 {
                     Id = Json.GetString(d, "id", ""),
@@ -188,8 +192,8 @@ sealed class AuthManager
                 };
                 if (s.TokenHash.Length == 64) _sessions[s.TokenHash] = s;
             }
+            catch (FormatException) { } // one damaged session does not cost the others (that phone pairs again)
         }
-        catch (Exception ex) { Log.Warn("Ignoring unreadable sessions file: " + ex.Message); }
     }
 
     void Save()
@@ -199,6 +203,6 @@ sealed class AuthManager
             { "id", s.Id }, { "tokenHash", s.TokenHash }, { "created", s.CreatedUtc.ToString("o") },
             { "lastSeen", s.LastSeenUtc.ToString("o") }, { "ip", s.Ip }, { "userAgent", s.UserAgent }
         }).ToList();
-        File.WriteAllText(_path, Json.Serialize(new Dictionary<string, object> { { "sessions", list } }), Encoding.UTF8);
+        DataFile.WriteAtomic(_path, new Dictionary<string, object> { { "sessions", list } });
     }
 }

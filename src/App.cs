@@ -30,6 +30,21 @@ static class Log
     public static void Warn(string msg) { Write("WARN", msg); }
 }
 
+// Problems the user has to see in the panel, not only in the log: an invalid config.json, a damaged state file.
+static class AppNotices
+{
+    static readonly object Sync = new object();
+    static readonly List<string> Items = new List<string>();
+
+    public static void Add(string message)
+    {
+        Log.Warn(message);
+        lock (Sync) if (!Items.Contains(message)) Items.Add(message);
+    }
+
+    public static List<string> All() { lock (Sync) return Items.ToList(); }
+}
+
 static class App
 {
     public static int Run(string[] args)
@@ -237,6 +252,8 @@ sealed class Sampler
         var snap = new Dictionary<string, object> { { "t", t } };
         var service = new Dictionary<string, object> { { "ok", true }, { "backend", _bridge.BackendName } };
         if (_bridge.Notice != null) service["notice"] = _bridge.Notice;
+        var notices = AppNotices.All();
+        if (notices.Count > 0) service["notices"] = notices;
         try
         {
             snap["sensors"] = _bridge.ReadSensors().Select(s => new Dictionary<string, object> {

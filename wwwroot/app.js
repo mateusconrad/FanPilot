@@ -696,12 +696,21 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     $('statusText').textContent = text;
   }
 
+  // Problems with config.json or the state files, reported by the server; textContent, so nothing is markup.
+  function renderNotices(list) {
+    const box = $('notices');
+    const text = (list || []).join('\n');
+    if (box.textContent !== text) box.textContent = text;
+    box.hidden = !text;
+  }
+
   function onSnapshot(snap) {
     if (!snap.t) return; // server has not sampled yet
     state.snap = snap;
     pushHistory(snap);
     const svc = snap.service || {};
     setStatus(svc.ok, svc.ok ? 'ao vivo' : 'sensores da placa indisponíveis');
+    renderNotices(svc.notices);
     renderTiles(snap);
     renderCharts();
     renderFans();

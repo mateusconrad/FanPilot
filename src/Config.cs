@@ -29,20 +29,34 @@ sealed class AppConfig
         var cfg = new AppConfig();
         if (File.Exists(path))
         {
-            var d = Json.ParseObject(File.ReadAllText(path));
-            cfg.Port = Json.GetInt(d, "port", cfg.Port);
-            cfg.PublicHost = Json.GetString(d, "publicHost", cfg.PublicHost);
-            cfg.MinDutyPercent = Json.GetInt(d, "minDutyPercent", cfg.MinDutyPercent);
-            cfg.FixedModeSafetyTemp = Json.GetInt(d, "fixedModeSafetyTemp", cfg.FixedModeSafetyTemp);
-            cfg.MaxFullSpeedTemp = Json.GetInt(d, "maxFullSpeedTemp", cfg.MaxFullSpeedTemp);
-            cfg.GpuSafetyTemp = Json.GetInt(d, "gpuSafetyTemp", cfg.GpuSafetyTemp);
-            cfg.PairCodeTtlSeconds = Json.GetInt(d, "pairCodeTtlSeconds", cfg.PairCodeTtlSeconds);
-            cfg.SessionDays = Json.GetInt(d, "sessionDays", cfg.SessionDays);
-            cfg.Backend = Json.GetString(d, "backend", cfg.Backend);
+            try
+            {
+                var d = Json.ParseObject(File.ReadAllText(path));
+                cfg.Port = Json.GetInt(d, "port", cfg.Port);
+                cfg.PublicHost = Json.GetString(d, "publicHost", cfg.PublicHost);
+                cfg.MinDutyPercent = Json.GetInt(d, "minDutyPercent", cfg.MinDutyPercent);
+                cfg.FixedModeSafetyTemp = Json.GetInt(d, "fixedModeSafetyTemp", cfg.FixedModeSafetyTemp);
+                cfg.MaxFullSpeedTemp = Json.GetInt(d, "maxFullSpeedTemp", cfg.MaxFullSpeedTemp);
+                cfg.GpuSafetyTemp = Json.GetInt(d, "gpuSafetyTemp", cfg.GpuSafetyTemp);
+                cfg.PairCodeTtlSeconds = Json.GetInt(d, "pairCodeTtlSeconds", cfg.PairCodeTtlSeconds);
+                cfg.SessionDays = Json.GetInt(d, "sessionDays", cfg.SessionDays);
+                cfg.Backend = Json.GetString(d, "backend", cfg.Backend);
+            }
+            catch (Exception ex) when (ex is ArgumentException || ex is FormatException || ex is InvalidOperationException || ex is OverflowException)
+            {
+                // Edited by hand: the user's file stays exactly as it is, and FanPilot starts with the defaults.
+                cfg = new AppConfig();
+                AppNotices.Add("config.json inválido, usando os valores padrão até ele ser corrigido: " + ex.Message);
+            }
         }
         else
         {
-            File.WriteAllText(path, Json.Serialize(cfg.ToDictionary()), Encoding.UTF8);
+            DataFile.WriteAtomic(path, cfg.ToDictionary());
+        }
+        if (cfg.Port < 1 || cfg.Port > 65535)
+        {
+            AppNotices.Add("config.json: porta " + cfg.Port + " inválida, usando 8787.");
+            cfg.Port = 8787;
         }
         cfg.MinDutyPercent = Clamp(cfg.MinDutyPercent, 0, 100);
         // Must stay above the last flat point (70 C) of the fixed-mode curve.

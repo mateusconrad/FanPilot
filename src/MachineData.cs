@@ -23,20 +23,23 @@ static class MachineData
 
         if (File.Exists(path))
         {
-            var saved = Json.ParseObject(File.ReadAllText(path));
-            if (Json.GetString(saved, "machineId", "") == machineId && Json.GetString(saved, "board", "") == Board) return;
+            // Unreadable (damaged) is treated like data from another PC: nothing is applied without knowing its origin.
+            var saved = DataFile.Read(path);
+            if (saved != null && Json.GetString(saved, "machineId", "") == machineId && Json.GetString(saved, "board", "") == Board) return;
             string archive = Path.Combine(dataDir, "outra-maquina-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
             Directory.CreateDirectory(archive);
+            // The .bak copies too, or the next read would bring the other machine's state back from them.
             foreach (string f in MachineFiles)
-            {
-                string src = Path.Combine(dataDir, f);
-                if (File.Exists(src)) File.Move(src, Path.Combine(archive, f));
-            }
-            Log.Warn("data\\ veio de outro PC ou de outra placa-mãe (" + Json.GetString(saved, "board", "?") + "); curvas e " +
-                     "pareamentos antigos movidos para " + archive + " e não serão aplicados.");
+                foreach (string name in new[] { f, f + ".bak" })
+                {
+                    string src = Path.Combine(dataDir, name);
+                    if (File.Exists(src)) File.Move(src, Path.Combine(archive, name));
+                }
+            Log.Warn((saved == null ? "machine.json ilegível" : "data\\ veio de outro PC ou de outra placa-mãe (" + Json.GetString(saved, "board", "?") + ")") +
+                     "; curvas e pareamentos antigos movidos para " + archive + " e não serão aplicados.");
         }
         // No machine.json yet: a fresh install, or data written by a version without this check on this same PC.
-        File.WriteAllText(path, Json.Serialize(current), Encoding.UTF8);
+        DataFile.WriteAtomic(path, current);
         Log.Info("Placa-mãe: " + (Board.Length > 0 ? Board : "desconhecida"));
     }
 

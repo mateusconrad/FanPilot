@@ -104,6 +104,25 @@ public sealed class AuthManagerTests : IDisposable
     }
 
     [Fact]
+    public void DamagedSessionsFileStartsWithoutSessions()
+    {
+        File.WriteAllText(_dir.File("sessions.json"), "{\"sessions\": [{\"id\": ");
+        var a = Auth();
+        Assert.Empty(a.List());
+        Assert.NotNull(a.Redeem(Code(a), Phone, Agent)); // pairing works again
+    }
+
+    [Fact]
+    public void OneDamagedSessionDoesNotCostTheOthers()
+    {
+        var a = Auth();
+        string token = a.Redeem(Code(a), Phone, Agent);
+        string file = _dir.File("sessions.json");
+        File.WriteAllText(file, File.ReadAllText(file).Replace("{\"id\"", "{\"lastSeen\":\"ontem\"},{\"id\""));
+        Assert.NotNull(Auth().Validate(token));
+    }
+
+    [Fact]
     public void SessionsSurviveARestart()
     {
         var a = Auth();
