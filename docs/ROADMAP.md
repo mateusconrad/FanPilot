@@ -8,20 +8,20 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 - **Testes:** testes automatizados do item: `a fazer` · `ok` (commitados com o item; rodam na CI quando ela existir)
 - **Esforço**, em dias de trabalho focado: P ≈ 1 · P–M ≈ 2 · M ≈ 3 · G ≈ 10
 
-**Concluídos: 2 de 27** · verificação em hardware pendente: 01, 09 (veja a seção própria)
+**Concluídos: 3 de 27** · verificação em hardware pendente: 01, 09 (veja a seção própria)
 
 ## Andamento
 
 | # | Item | Onda | Esforço | Depende de | Status | Testes | Issue | Notas |
 |---|---|---|---|---|---|---|---|---|
-| 01 | [Validar o header Host](specs/01-validar-host.md) | 1 | P | — | concluído | no 08 | [#1](https://github.com/mateusconrad/FanPilot/issues/1) | falta a verificação em hardware |
+| 01 | [Validar o header Host](specs/01-validar-host.md) | 1 | P | — | concluído | ok | [#1](https://github.com/mateusconrad/FanPilot/issues/1) | falta a verificação em hardware; testes de regressão no 08 |
 | 02 | [SSE e proteção da GPU fora do laço de amostragem](specs/02-sse-e-protecao-gpu.md) | 1 | P–M | — | a fazer | a fazer | [#2](https://github.com/mateusconrad/FanPilot/issues/2) | |
 | 03 | [Leitura tolerante e gravação atômica](specs/03-arquivos-atomicos.md) | 1 | P | — | a fazer | a fazer | [#3](https://github.com/mateusconrad/FanPilot/issues/3) | |
 | 04 | [Chave estável para cada header](specs/04-identidade-dos-headers.md) | 1 | P–M | 03 | a fazer | a fazer | [#4](https://github.com/mateusconrad/FanPilot/issues/4) | |
 | 05 | [Instância única e porta ocupada](specs/05-instancia-unica.md) | 1 | P | — | a fazer | a fazer | [#5](https://github.com/mateusconrad/FanPilot/issues/5) | |
 | 06 | [Rotação e deduplicação do log](specs/06-log.md) | 1 | P | — | a fazer | a fazer | [#6](https://github.com/mateusconrad/FanPilot/issues/6) | |
 | 07 | [Correções pequenas](specs/07-correcoes-pequenas.md) | 1 | P | — | a fazer | a fazer | [#7](https://github.com/mateusconrad/FanPilot/issues/7) | |
-| 08 | [Testes automatizados (unitários e integração)](specs/08-testes.md) | 1 | M | 09 | a fazer | a fazer | [#8](https://github.com/mateusconrad/FanPilot/issues/8) | |
+| 08 | [Testes automatizados (unitários e integração)](specs/08-testes.md) | 1 | M | 09 | concluído | ok | [#8](https://github.com/mateusconrad/FanPilot/issues/8) | 65 testes C# + 4 JS; 2 de integração só rodam como Administrador (CI); painel conferido num navegador headless |
 | 09 | [Projeto SDK-style (net472)](specs/09-projeto-sdk.md) | 1 | M | — | concluído | ok | [#9](https://github.com/mateusconrad/FanPilot/issues/9) | falta a verificação em hardware |
 | 10 | [Ponte Gigabyte sem dependência de compilação](specs/10-gigabyte-sem-compilacao.md) | 2 | M | 09 | a fazer | a fazer | [#10](https://github.com/mateusconrad/FanPilot/issues/10) | |
 | 11 | [CI, versão e releases](specs/11-ci-versao-release.md) | 2 | P–M | 08, 09, 10 | a fazer | a fazer | [#11](https://github.com/mateusconrad/FanPilot/issues/11) | Incluir na CI a checagem de BOM nos `.ps1` com acento (achado no item 09) |

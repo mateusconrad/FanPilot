@@ -17,8 +17,8 @@ Cobrir com testes rápidos tudo que é regra de segurança, de persistência ou 
 ## Solução
 
 1. **Projeto `tests/FanPilot.Tests`** (xUnit, `net472`; o esqueleto nasce no item 09), com `InternalsVisibleTo` no projeto principal.
-2. **`FakeBoard : IBoard`** configurável: headers, sensores, ordem, falhas injetadas e leitura "com perda" (para o watchdog). Em builds Debug, `--fake-board` liga o FanPilot inteiro com ela, para desenvolver sem hardware.
-3. **Relógio injetável** (`Func<DateTime>`) no `AuthManager`, no `Log` e em tudo que depende de tempo.
+2. **`FakeBoard : IBoard`** configurável (headers, sensores, ordem, falhas injetadas e leitura "com perda", para o watchdog) e **`FakeGpu`**, que nunca toca um driver de verdade. Em builds Debug, `--fake-board` liga o FanPilot inteiro com as duas, usando a pasta `data-fake\`: nada do que a placa falsa grava chega ao estado da placa real.
+3. **Relógio injetável** (`Func<DateTime>`) no `AuthManager`. O do `Log` vem com o item 06, que reescreve o log.
 4. **Cobertura mínima:**
    - `FanManager`: número de pontos, primeiro ponto em 0 °C, temperaturas crescentes, temperatura máxima, piso, curva que nunca desce, último ponto em 255, modo fixo com o ponto de segurança, sensor de referência inválido.
    - `FanCurve.PwmAt` e `Signature`.
@@ -27,7 +27,7 @@ Cobrir com testes rápidos tudo que é regra de segurança, de persistência ou 
    - Watchdog: reaplica quando a assinatura muda e não entra em loop com leitura com perda.
    - `AuthManager`: código de uso único, expiração, bloqueio por IP, validade da sessão, revogação.
    - Regressão do item 01 (`HostGuard`), que vem antes desta infraestrutura. Do item 03 em diante, cada item traz os próprios testes.
-5. **Smoke de integração:** sobe o `WebServer` com a `FakeBoard` numa porta livre e confere as rotas, `401` sem sessão, `421` com `Host` estranho e o SSE.
+5. **Smoke de integração:** sobe o `WebServer` com a `FakeBoard` numa porta livre e confere as rotas, a proteção dos POSTs, o SSE, `421` com `Host` estranho e `401` pelo IP da LAN. Sem Administrador o servidor só pode escutar em `localhost`, então esses dois últimos aparecem como "ignorados" localmente e rodam na CI, que é elevada.
 6. **Convenção para os próximos itens:** todo item entrega testes automatizados do que muda, e só é concluído com eles passando (ver "Como cada item é entregue" no `docs/ROADMAP.md`).
 
 ## Fora de escopo

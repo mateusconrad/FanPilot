@@ -27,14 +27,19 @@ sealed class AuthManager
     readonly object _sync = new object();
     readonly string _path;
     readonly TimeSpan _codeTtl, _sessionTtl;
+    readonly Func<DateTime> _utcNow;
     readonly Dictionary<string, Session> _sessions = new Dictionary<string, Session>();
     readonly Dictionary<string, List<DateTime>> _failures = new Dictionary<string, List<DateTime>>();
     string _code;
     DateTime _codeExpiresUtc;
     DateTime _lastSave = DateTime.MinValue;
 
-    public AuthManager(string dataDir, AppConfig cfg)
+    public AuthManager(string dataDir, AppConfig cfg) : this(dataDir, cfg, () => DateTime.UtcNow) { }
+
+    // utcNow: the tests move the clock to check expirations.
+    internal AuthManager(string dataDir, AppConfig cfg, Func<DateTime> utcNow)
     {
+        _utcNow = utcNow;
         _path = Path.Combine(dataDir, "sessions.json");
         _codeTtl = TimeSpan.FromSeconds(Math.Max(30, cfg.PairCodeTtlSeconds));
         _sessionTtl = TimeSpan.FromDays(Math.Max(1, cfg.SessionDays));
@@ -68,14 +73,14 @@ sealed class AuthManager
     void RotateCode()
     {
         _code = RandomToken(18);
-        _codeExpiresUtc = DateTime.UtcNow + _codeTtl;
+        _codeExpiresUtc = _utcNow() + _codeTtl;
     }
 
     public void GetPairCode(out string code, out DateTime expiresUtc)
     {
         lock (_sync)
         {
-            if (DateTime.UtcNow >= _codeExpiresUtc) RotateCode();
+            if (_utcNow() >= _codeExpiresUtc) RotateCode();
             code = _code;
             expiresUtc = _codeExpiresUtc;
         }
@@ -87,7 +92,7 @@ sealed class AuthManager
         {
             List<DateTime> list;
             if (!_failures.TryGetValue(ip, out list)) return false;
-            list.RemoveAll(t => t < DateTime.UtcNow.AddMinutes(-1));
+            list.RemoveAll(t => t < _utcNow().AddMinutes(-1));
             return list.Count >= MaxFailuresPerMinute;
         }
     }
@@ -97,11 +102,11 @@ sealed class AuthManager
     {
         lock (_sync)
         {
-            if (DateTime.UtcNow >= _codeExpiresUtc || !FixedTimeEquals(code, _code))
+            if (_utcNow() >= _codeExpiresUtc || !FixedTimeEquals(code, _code))
             {
                 List<DateTime> list;
                 if (!_failures.TryGetValue(ip, out list)) _failures[ip] = list = new List<DateTime>();
-                list.Add(DateTime.UtcNow);
+                list.Add(_utcNow());
                 return null;
             }
             RotateCode();
@@ -110,8 +115,8 @@ sealed class AuthManager
             {
                 Id = RandomToken(6),
                 TokenHash = Hash(token),
-                CreatedUtc = DateTime.UtcNow,
-                LastSeenUtc = DateTime.UtcNow,
+                CreatedUtc = _utcNow(),
+                LastSeenUtc = _utcNow(),
                 Ip = ip,
                 UserAgent = userAgent ?? ""
             };
@@ -130,9 +135,9 @@ sealed class AuthManager
         {
             Session s;
             if (!_sessions.TryGetValue(h, out s)) return null;
-            if (DateTime.UtcNow - s.LastSeenUtc > _sessionTtl) { _sessions.Remove(h); Save(); return null; }
-            s.LastSeenUtc = DateTime.UtcNow;
-            if (DateTime.UtcNow - _lastSave > TimeSpan.FromMinutes(5)) Save();
+            if (_utcNow() - s.LastSeenUtc > _sessionTtl) { _sessions.Remove(h); Save(); return null; }
+            s.LastSeenUtc = _utcNow();
+            if (_utcNow() - _lastSave > TimeSpan.FromMinutes(5)) Save();
             return s;
         }
     }
@@ -189,7 +194,7 @@ sealed class AuthManager
 
     void Save()
     {
-        _lastSave = DateTime.UtcNow;
+        _lastSave = _utcNow();
         var list = _sessions.Values.Select(s => new Dictionary<string, object> {
             { "id", s.Id }, { "tokenHash", s.TokenHash }, { "created", s.CreatedUtc.ToString("o") },
             { "lastSeen", s.LastSeenUtc.ToString("o") }, { "ip", s.Ip }, { "userAgent", s.UserAgent }

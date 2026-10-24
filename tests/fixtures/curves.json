@@ -1,0 +1,29 @@
+{
+  "_comment": "PWM (0..255) at temperature t. Checked against FanCurve.PwmAt (tests/FanPilot.Tests/FanCurveTests.cs) and curveAt (tests/js/curve.test.mjs): the panel and the backend must agree. Values worked out by hand from the curves below.",
+  "curves": {
+    "linear": { "mode": "SmartFanMode", "points": [[0, 51], [30, 51], [40, 77], [50, 102], [60, 128], [70, 166], [80, 204], [90, 255]] },
+    "degraus": { "mode": "StairStepMode", "points": [[0, 51], [30, 51], [40, 77], [50, 102], [60, 128], [70, 166], [80, 204], [90, 255]] },
+    "fixo40": { "mode": "SmartFanMode", "points": [[0, 102], [20, 102], [30, 102], [40, 102], [50, 102], [60, 102], [70, 102], [85, 255]] }
+  },
+  "cases": [
+    { "curve": "linear", "t": -5, "pwm": 51 },
+    { "curve": "linear", "t": 0, "pwm": 51 },
+    { "curve": "linear", "t": 15, "pwm": 51 },
+    { "curve": "linear", "t": 35, "pwm": 64 },
+    { "curve": "linear", "t": 45, "pwm": 89.5 },
+    { "curve": "linear", "t": 59.5, "pwm": 126.7 },
+    { "curve": "linear", "t": 89, "pwm": 249.9 },
+    { "curve": "linear", "t": 90, "pwm": 255 },
+    { "curve": "linear", "t": 120, "pwm": 255 },
+    { "curve": "degraus", "t": -5, "pwm": 51 },
+    { "curve": "degraus", "t": 35, "pwm": 51 },
+    { "curve": "degraus", "t": 45, "pwm": 77 },
+    { "curve": "degraus", "t": 89, "pwm": 204 },
+    { "curve": "degraus", "t": 90, "pwm": 255 },
+    { "curve": "fixo40", "t": 50, "pwm": 102 },
+    { "curve": "fixo40", "t": 70, "pwm": 102 },
+    { "curve": "fixo40", "t": 77.5, "pwm": 178.5 },
+    { "curve": "fixo40", "t": 85, "pwm": 255 },
+    { "curve": "fixo40", "t": 100, "pwm": 255 }
+  ]
+}

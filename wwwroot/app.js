@@ -1,4 +1,6 @@
 // FanPilot dashboard: live data over SSE (/api/stream), fan curve editor, GPU fan control.
+import { curveAt, resample, normalize } from './js/curve.mjs';
+
 (function () {
   'use strict';
   const $ = (id) => document.getElementById(id);
@@ -277,17 +279,6 @@
   }
 
   // ---------- fans ----------
-  // PWM (0..255) a header outputs at temperature t for a hardware curve.
-  function curveAt(points, style, t) {
-    if (!points.length) return null;
-    if (t <= points[0][0]) return points[0][1];
-    for (let i = 1; i < points.length; i++) {
-      const [x0, y0] = points[i - 1], [x1, y1] = points[i];
-      if (t < x1) return style === 'StairStepMode' ? y0 : y0 + (y1 - y0) * (t - x0) / (x1 - x0);
-    }
-    return points[points.length - 1][1];
-  }
-
   // Header left to the BIOS on boards where FanPilot runs the curves (LibreHardwareMonitor); it has no points.
   const BIOS = 'BiosDefault';
   // false on those boards: closing FanPilot hands every fan back to the BIOS, and the panel says so.
@@ -394,16 +385,6 @@
   const exX = (t) => ED.l + t / 100 * (ED.w - ED.l - ED.r);
   const exY = (p) => ED.t + (1 - p / 100) * (ED.h - ED.t - ED.b);
 
-  // n points spread evenly over the same temperature range, linearly interpolated (presets are 8 points; boards vary).
-  function resample(pts, n) {
-    if (pts.length === n) return pts.map((p) => p.slice());
-    const t0 = pts[0][0], t1 = pts[pts.length - 1][0];
-    return Array.from({ length: n }, (_, k) => {
-      const t = Math.round(t0 + (t1 - t0) * k / (n - 1));
-      return [t, Math.round(curveAt(pts, 'SmartFanMode', t))];
-    });
-  }
-
   // Editor works in [temp, percent] with the fan's own point count; hardware readbacks may differ, so resample.
   function toEditorPoints(points, limits, n) {
     // A fan on the BIOS has no curve to start from: open the editor on the "Padrão" preset.
@@ -416,15 +397,6 @@
     pts[0][0] = 0;
     pts[pts.length - 1][1] = 100;
     return normalize(pts, limits);
-  }
-
-  function normalize(pts, limits) {
-    for (let i = 0; i < pts.length; i++) {
-      pts[i][1] = Math.max(limits.minDutyPercent, Math.min(100, pts[i][1]));
-      if (i > 0) pts[i][1] = Math.max(pts[i][1], pts[i - 1][1]);
-    }
-    pts[pts.length - 1][1] = 100;
-    return pts;
   }
 
   function openEditor(i) {

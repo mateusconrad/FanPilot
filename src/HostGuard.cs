@@ -56,18 +56,19 @@ sealed class HostGuard
         return url != null && LoopbackNames.Contains(Normalize(url.Host), StringComparer.OrdinalIgnoreCase);
     }
 
-    // At most once per host per hour: a page retrying in a loop must not flood the log.
-    public void LogRejected(string authority)
+    // At most once per host per hour: a page retrying in a loop must not flood the log. Returns whether it logged.
+    public bool LogRejected(string authority)
     {
         string key = authority.Length > 100 ? authority.Substring(0, 100) : authority;
         lock (_sync)
         {
             DateTime last;
-            if (_lastRejectLog.TryGetValue(key, out last) && DateTime.UtcNow - last < TimeSpan.FromHours(1)) return;
+            if (_lastRejectLog.TryGetValue(key, out last) && DateTime.UtcNow - last < TimeSpan.FromHours(1)) return false;
             if (_lastRejectLog.Count >= 1000) _lastRejectLog.Clear();
             _lastRejectLog[key] = DateTime.UtcNow;
         }
         Log.Warn("Requisição recusada: '" + key + "' não é um endereço deste PC (possível DNS rebinding).");
+        return true;
     }
 
     // "[::1]" -> "::1", "fe80::1%12" -> "fe80::1", "LocalHost." -> "localhost".

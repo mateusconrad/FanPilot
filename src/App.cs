@@ -35,8 +35,10 @@ static class App
     public static int Run(string[] args)
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
+        bool fake = FakeBoardRequested(args);
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-        string dataDir = Path.Combine(baseDir, "data");
+        // The fake board writes its own curves, backup and pairings: never into the real board's data\.
+        string dataDir = Path.Combine(baseDir, fake ? "data-fake" : "data");
         Directory.CreateDirectory(dataDir);
         Log.FilePath = Path.Combine(dataDir, "fanpilot.log");
 
@@ -50,13 +52,13 @@ static class App
         if (args.Contains("--diagnose")) return Diagnose.Run(dataDir, cfg);
 
         IBoard bridge;
-        try { bridge = Boards.Create(cfg, !args.Contains("--no-browser")); }
+        try { bridge = fake ? FakeBoard.Demo() : Boards.Create(cfg, !args.Contains("--no-browser")); }
         catch (InvalidOperationException ex) { Console.WriteLine(ex.Message); return 3; }
         Log.Info("Placa-mãe via " + bridge.BackendName + (bridge.HardwareCurves ? " (curvas no chip)" : " (curvas executadas pelo FanPilot)"));
         if (bridge.Notice != null) Log.Warn(bridge.Notice);
 
         var fans = new FanManager(bridge, cfg, dataDir);
-        var gpu = GpuMonitor.Create(cfg.GpuSafetyTemp);
+        var gpu = fake ? new FakeGpu(cfg.GpuSafetyTemp) { Animated = true } : GpuMonitor.Create(cfg.GpuSafetyTemp);
         var auth = new AuthManager(dataDir, cfg);
         var sampler = new Sampler(bridge, gpu);
         var server = new WebServer(cfg, Path.Combine(baseDir, "wwwroot"), auth, sampler, fans, gpu);
@@ -80,6 +82,16 @@ static class App
             : "Encerrando: fans da placa-mãe e da GPU voltam ao controle automático (BIOS/driver).");
         Exit.Cleanup();
         return 0;
+    }
+
+    // Debug builds only: the whole app on FakeBoard/FakeGpu, for the end-to-end tests and UI work without hardware.
+    static bool FakeBoardRequested(string[] args)
+    {
+#if DEBUG
+        return args.Contains("--fake-board");
+#else
+        return false;
+#endif
     }
 }
 
@@ -187,6 +199,7 @@ sealed class Sampler
     readonly LinkedList<Dictionary<string, object>> _history = new LinkedList<Dictionary<string, object>>();
     readonly List<Action<string>> _subscribers = new List<Action<string>>();
     volatile string _latestJson = "{}";
+    volatile bool _stopped;
     Thread _thread;
 
     public Sampler(IBoard bridge, GpuMonitor gpu) { _bridge = bridge; _gpu = gpu; }
@@ -199,6 +212,8 @@ sealed class Sampler
         _thread.Start();
     }
 
+    public void Stop() { _stopped = true; }
+
     public void Subscribe(Action<string> s) { lock (_sync) _subscribers.Add(s); }
     public void Unsubscribe(Action<string> s) { lock (_sync) _subscribers.Remove(s); }
 
@@ -206,7 +221,7 @@ sealed class Sampler
 
     void Loop()
     {
-        while (true)
+        while (!_stopped)
         {
             var started = DateTime.UtcNow;
             try { Publish(Sample()); }
