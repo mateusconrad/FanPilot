@@ -10,10 +10,12 @@ sealed class WebServer
 {
     readonly AppConfig _cfg;
     readonly string _root;
-    readonly AuthManager _auth;
-    readonly Sampler _sampler;
-    readonly FanManager _fans;
-    readonly GpuMonitor _gpu;
+    // Set once by Attach: the listener starts before the board is opened, and until then every request gets 503.
+    AuthManager _auth;
+    Sampler _sampler;
+    FanManager _fans;
+    GpuMonitor _gpu;
+    volatile bool _ready;
     readonly HostGuard _hosts;
     readonly HttpListener _listener = new HttpListener();
     // "+" = every address, so phones on the LAN reach it (needs Administrator). Tests use "localhost", which does not.
@@ -25,10 +27,28 @@ sealed class WebServer
         { ".json", "application/json; charset=utf-8" }, { ".webmanifest", "application/manifest+json" }
     };
 
-    public WebServer(AppConfig cfg, string root, AuthManager auth, Sampler sampler, FanManager fans, GpuMonitor gpu)
+    public WebServer(AppConfig cfg, string root)
     {
-        _cfg = cfg; _root = root; _auth = auth; _sampler = sampler; _fans = fans; _gpu = gpu;
+        _cfg = cfg; _root = root;
         _hosts = new HostGuard(cfg.Port, cfg.PublicHost);
+    }
+
+    public WebServer(AppConfig cfg, string root, AuthManager auth, Sampler sampler, FanManager fans, GpuMonitor gpu) : this(cfg, root)
+    {
+        Attach(auth, sampler, fans, gpu);
+    }
+
+    public void Attach(AuthManager auth, Sampler sampler, FanManager fans, GpuMonitor gpu)
+    {
+        _auth = auth; _sampler = sampler; _fans = fans; _gpu = gpu;
+        _ready = true; // volatile: the fields above are visible to whoever sees this
+    }
+
+    // Start() fails like this when the port is taken; FanPilot shows it before touching any fan.
+    public static string PortProblem(int port, HttpListenerException ex)
+    {
+        return "Não foi possível abrir a porta " + port + " (" + ex.Message + "). Ela deve estar em uso por outro programa: " +
+               "feche-o ou mude \"port\" no config.json.";
     }
 
     public void Start()
@@ -78,6 +98,18 @@ sealed class WebServer
             {
                 ctx.Response.StatusDescription = "Misdirected Request"; // .NET Framework has no reason phrase for 421
                 Text(ctx, 421, "Misdirected Request");
+                ctx.Response.Close();
+            }
+            catch { }
+            return;
+        }
+        if (!_ready)
+        {
+            try
+            {
+                const string starting = "O FanPilot está iniciando. Tente de novo em alguns segundos.";
+                ctx.Response.Headers["Retry-After"] = "2";
+                if (url.AbsolutePath.StartsWith("/api/")) WriteJson(ctx, 503, Error(starting)); else Text(ctx, 503, starting);
                 ctx.Response.Close();
             }
             catch { }

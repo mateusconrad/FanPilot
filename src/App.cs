@@ -62,12 +62,32 @@ static class App
             Console.WriteLine("FanPilot precisa rodar como Administrador (o acesso aos sensores e fans da placa-mãe exige).");
             return 2;
         }
+        bool diagnose = args.Contains("--diagnose");
+        bool interactive = !args.Contains("--no-browser");
+        // One FanPilot at a time: a second one would fight the first over the fans. --diagnose only reads.
+        if (!diagnose && !SingleInstance.TryAcquire(fake))
+        {
+            string panel = "http://localhost:" + AppConfig.Load(Path.Combine(dataDir, "config.json")).Port + "/";
+            Console.WriteLine("O FanPilot já está rodando. Painel: " + panel);
+            if (interactive) try { Process.Start(panel); } catch { }
+            return 4;
+        }
         MachineData.Check(dataDir);
         var cfg = AppConfig.Load(Path.Combine(dataDir, "config.json"));
-        if (args.Contains("--diagnose")) return Diagnose.Run(dataDir, cfg);
+        if (diagnose) return Diagnose.Run(dataDir, cfg, SingleInstance.IsRunning(fake));
+
+        // The port before the hardware: a port taken by another program must fail before anything touches the fans.
+        var server = new WebServer(cfg, Path.Combine(baseDir, "wwwroot"));
+        try { server.Start(); }
+        catch (HttpListenerException ex)
+        {
+            Console.WriteLine(WebServer.PortProblem(cfg.Port, ex));
+            Log.Warn(WebServer.PortProblem(cfg.Port, ex));
+            return 5;
+        }
 
         IBoard bridge;
-        try { bridge = fake ? FakeBoard.Demo() : Boards.Create(cfg, !args.Contains("--no-browser")); }
+        try { bridge = fake ? FakeBoard.Demo() : Boards.Create(cfg, interactive); }
         catch (InvalidOperationException ex) { Console.WriteLine(ex.Message); return 3; }
         Log.Info("Placa-mãe via " + bridge.BackendName + (bridge.HardwareCurves ? " (curvas no chip)" : " (curvas executadas pelo FanPilot)"));
         if (bridge.Notice != null) Log.Warn(bridge.Notice);
@@ -76,7 +96,6 @@ static class App
         var gpu = fake ? new FakeGpu(cfg.GpuSafetyTemp) { Animated = true } : GpuMonitor.Create(cfg.GpuSafetyTemp);
         var auth = new AuthManager(dataDir, cfg);
         var sampler = new Sampler(bridge, gpu);
-        var server = new WebServer(cfg, Path.Combine(baseDir, "wwwroot"), auth, sampler, fans, gpu);
 
         var stop = new ManualResetEvent(false);
         // Software-curve boards must get their fans back on every way out: hook all the ones Windows tells us about.
@@ -84,12 +103,13 @@ static class App
 
         try { fans.Start(); } catch (Exception ex) { Log.Warn("Fan manager: " + ex.Message); }
         sampler.Start();
-        server.Start();
+        // Only now: until Start() has saved the original curves, no request may change a fan.
+        server.Attach(auth, sampler, fans, gpu);
 
         string pairUrl = "http://localhost:" + cfg.Port + "/pair";
         Log.Info("FanPilot rodando na porta " + cfg.Port + ". Endereços na rede: " + string.Join(", ", NetworkInfo.CandidateHosts(cfg).Select(h => "http://" + h + ":" + cfg.Port)));
         Log.Info("Para parear o celular, abra " + pairUrl + " neste PC e escaneie o QR code.");
-        if (!args.Contains("--no-browser")) try { Process.Start(pairUrl); } catch { }
+        if (interactive) try { Process.Start(pairUrl); } catch { }
 
         stop.WaitOne();
         Log.Info(bridge.HardwareCurves
@@ -142,6 +162,48 @@ static class Boards
     [MethodImpl(MethodImplOptions.NoInlining)]
     static IBoard CreateGigabyte(bool interactive) { return new GigabyteBridge(); }
 #endif
+}
+
+// One FanPilot per PC: a second one would fight the first over the fans (and fail on the port anyway).
+static class SingleInstance
+{
+    // Global\: visible from every session, so a FanPilot running as a service (session 0) counts too.
+    const string Name = @"Global\FanPilot-e717e36d-9b66-43c9-a08b-96d2af1a9b7c";
+    // Held for the whole run. A local variable could be collected, and finalizing the Mutex would let a second one in.
+    static Mutex _held;
+
+    public static bool TryAcquire(bool fake)
+    {
+        _held = TryAcquire(fake ? Name + "-fake" : Name);
+        return _held != null;
+    }
+
+    public static bool IsRunning(bool fake) { return IsRunning(fake ? Name + "-fake" : Name); }
+
+    internal static Mutex TryAcquire(string name)
+    {
+        var mutex = new Mutex(false, name);
+        try
+        {
+            if (mutex.WaitOne(0)) return mutex;
+            mutex.Dispose();
+            return null;
+        }
+        catch (AbandonedMutexException)
+        {
+            // The previous FanPilot ended without releasing it (killed, crashed): the mutex is ours now.
+            Log.Warn("O FanPilot anterior terminou sem encerrar normalmente.");
+            return mutex;
+        }
+    }
+
+    internal static bool IsRunning(string name)
+    {
+        Mutex mutex;
+        if (!Mutex.TryOpenExisting(name, out mutex)) return false;
+        mutex.Dispose();
+        return true;
+    }
 }
 
 // Runs the cleanup once on Ctrl+C, closing the console window, logoff, shutdown, or an unhandled exception.
