@@ -1,0 +1,142 @@
+# Roadmap do FanPilot
+
+Os 27 itens de melhoria aprovados em 24/10/2026: os 25 da análise inicial e mais dois de testes automatizados (26 e 27). Cada item tem uma spec em [`docs/specs/`](specs/) e uma issue no GitHub.
+
+Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estado por labels (veja "Como o andamento é registrado").
+
+- **Status:** `a fazer` · `em andamento` · `em revisão` (PR aberto) · `concluído` · `bloqueado` (motivo em Notas)
+- **Testes:** testes automatizados do item: `a fazer` · `ok` (no PR, rodando na CI quando ela existir)
+- **Esforço**, em dias de trabalho focado: P ≈ 1 · P–M ≈ 2 · M ≈ 3 · G ≈ 10
+
+**Concluídos: 0 de 27**
+
+## Andamento
+
+| # | Item | Onda | Esforço | Depende de | Status | Testes | Issue | Notas |
+|---|---|---|---|---|---|---|---|---|
+| 01 | [Validar o header Host](specs/01-validar-host.md) | 1 | P | — | a fazer | no 08 | [#1](https://github.com/mateusconrad/FanPilot/issues/1) | |
+| 02 | [SSE e proteção da GPU fora do laço de amostragem](specs/02-sse-e-protecao-gpu.md) | 1 | P–M | — | a fazer | a fazer | [#2](https://github.com/mateusconrad/FanPilot/issues/2) | |
+| 03 | [Leitura tolerante e gravação atômica](specs/03-arquivos-atomicos.md) | 1 | P | — | a fazer | a fazer | [#3](https://github.com/mateusconrad/FanPilot/issues/3) | |
+| 04 | [Chave estável para cada header](specs/04-identidade-dos-headers.md) | 1 | P–M | 03 | a fazer | a fazer | [#4](https://github.com/mateusconrad/FanPilot/issues/4) | |
+| 05 | [Instância única e porta ocupada](specs/05-instancia-unica.md) | 1 | P | — | a fazer | a fazer | [#5](https://github.com/mateusconrad/FanPilot/issues/5) | |
+| 06 | [Rotação e deduplicação do log](specs/06-log.md) | 1 | P | — | a fazer | a fazer | [#6](https://github.com/mateusconrad/FanPilot/issues/6) | |
+| 07 | [Correções pequenas](specs/07-correcoes-pequenas.md) | 1 | P | — | a fazer | a fazer | [#7](https://github.com/mateusconrad/FanPilot/issues/7) | |
+| 08 | [Testes automatizados (unitários e integração)](specs/08-testes.md) | 1 | M | 09 | a fazer | a fazer | [#8](https://github.com/mateusconrad/FanPilot/issues/8) | |
+| 09 | [Projeto SDK-style (net472)](specs/09-projeto-sdk.md) | 1 | M | — | a fazer | a fazer | [#9](https://github.com/mateusconrad/FanPilot/issues/9) | |
+| 10 | [Ponte Gigabyte sem dependência de compilação](specs/10-gigabyte-sem-compilacao.md) | 2 | M | 09 | a fazer | a fazer | [#10](https://github.com/mateusconrad/FanPilot/issues/10) | |
+| 11 | [CI, versão e releases](specs/11-ci-versao-release.md) | 2 | P–M | 08, 09, 10 | a fazer | a fazer | [#11](https://github.com/mateusconrad/FanPilot/issues/11) | |
+| 12 | [Assinatura de código](specs/12-assinatura.md) | 2 | P + aprovação | 11 | a fazer | a fazer | [#12](https://github.com/mateusconrad/FanPilot/issues/12) | |
+| 13 | [Relatos de compatibilidade](specs/13-compatibilidade.md) | 2 | P | — | a fazer | a fazer | [#13](https://github.com/mateusconrad/FanPilot/issues/13) | |
+| 14 | [Serviço, bandeja e instalador](specs/14-servico-bandeja-instalador.md) | 3 | G | 03, 05, 06 | a fazer | a fazer | [#14](https://github.com/mateusconrad/FanPilot/issues/14) | |
+| 15 | [Curvas por software suaves](specs/15-curvas-suaves.md) | 3 | M | 08 | a fazer | a fazer | [#15](https://github.com/mateusconrad/FanPilot/issues/15) | |
+| 16 | [Alertas de fan parado e temperatura](specs/16-alertas.md) | 3 | M | 02 | a fazer | a fazer | [#16](https://github.com/mateusconrad/FanPilot/issues/16) | |
+| 17 | [Nomes dos fans e papel "bomba"](specs/17-nomes-e-bomba.md) | 3 | P–M | 04 | a fazer | a fazer | [#17](https://github.com/mateusconrad/FanPilot/issues/17) | |
+| 18 | [Perfis globais](specs/18-perfis.md) | 3 | P–M | 07, 17 | a fazer | a fazer | [#18](https://github.com/mateusconrad/FanPilot/issues/18) | |
+| 19 | [Temperatura dos núcleos na Gigabyte](specs/19-temperatura-cpu-gigabyte.md) | 3 | P–M | — | a fazer | a fazer | [#19](https://github.com/mateusconrad/FanPilot/issues/19) | |
+| 20 | [Editor acessível e com ajuste fino](specs/20-acessibilidade-editor.md) | 3 | P | — | a fazer | a fazer | [#20](https://github.com/mateusconrad/FanPilot/issues/20) | |
+| 21 | [Inglês e internacionalização](specs/21-internacionalizacao.md) | 4 | M | — | a fazer | a fazer | [#21](https://github.com/mateusconrad/FanPilot/issues/21) | |
+| 22 | [Modo painel](specs/22-modo-painel.md) | 4 | P–M | — | a fazer | a fazer | [#22](https://github.com/mateusconrad/FanPilot/issues/22) | |
+| 23 | [Integrações (Prometheus, Home Assistant)](specs/23-integracoes.md) | 4 | M | 01, 09 | a fazer | a fazer | [#23](https://github.com/mateusconrad/FanPilot/issues/23) | |
+| 24 | [Histórico persistente](specs/24-historico.md) | 4 | M | — | a fazer | a fazer | [#24](https://github.com/mateusconrad/FanPilot/issues/24) | |
+| 25 | [Fonte de temperatura combinada](specs/25-fonte-combinada.md) | 4 | P–M | 15 | a fazer | a fazer | [#25](https://github.com/mateusconrad/FanPilot/issues/25) | |
+| 26 | [Testes de ponta a ponta (painel e executável)](specs/26-testes-ponta-a-ponta.md) | 2 | M | 08, 11 | a fazer | a fazer | [#26](https://github.com/mateusconrad/FanPilot/issues/26) | |
+| 27 | [Teste automatizado na placa real](specs/27-teste-em-hardware.md) | 2 | P–M | 08 | a fazer | a fazer | [#27](https://github.com/mateusconrad/FanPilot/issues/27) | |
+
+## Ordem de execução
+
+### Fase A · Onda 1 · Estabilidade e testes (≈ 3 semanas)
+
+`01 → 09 → 08 → 03 → 05 → 02 → 04 → 06 → 07`
+
+- O 01 vem primeiro: é a única falha de segurança alcançável de fora do PC, e a correção é pequena. O teste de regressão dele é escrito no 08.
+- A infraestrutura de testes (09 → 08) vem logo em seguida, para que todos os outros itens já saiam com testes automatizados.
+- O 03 vem antes do 04: o 04 muda o formato dos arquivos de estado e usa o `DataFile` do 03.
+
+### Fase B · Onda 2 · Entrega (≈ 3 semanas, mais a aprovação da assinatura)
+
+`27 → 10 → 11 → 26 → 13`, com o 12 em paralelo
+
+- O 27 vem primeiro: automatiza o roteiro de hardware antes do 10, a mudança mais arriscada no caminho Gigabyte.
+- O 10 vem antes do 11: sem ele, a CI não gera a release completa.
+- O 26 vem depois do 11, para os testes de ponta a ponta já rodarem na CI.
+- Pedir a assinatura (12) logo no início da fase: a aprovação é externa e pode demorar.
+
+### Fase C · Onda 3 · Produto (≈ 4,5 semanas)
+
+`15 → 17 → 14 (14a → 14b → 14c) → 16 → 18 → 19 → 20`
+
+- O 15 vem cedo: é o maior ganho nas placas que não são Gigabyte e prepara o motor de curvas para o 25.
+- O 17 vem antes do 14, do 16 e do 18: bomba e nomes aparecem na bandeja, nos alertas e nos perfis.
+- O 14a tem um ponto de parada: confirmar que GCC, NVML e PawnIO funcionam rodando como serviço antes de seguir para o 14b e o 14c.
+- O 16 vem depois do 14: a notificação no Windows sai pela bandeja.
+
+### Fase D · Onda 4 · Crescimento (≈ 2,5 semanas)
+
+`21 → 22 → 25 → 24 → 23`
+
+- O 21 vem primeiro: o que vier depois já nasce nos dois idiomas.
+
+**Total estimado:** ≈ 63 dias de trabalho focado (≈ 13 semanas).
+
+## Estratégia de testes
+
+| Camada | O quê | Ferramenta | Onde roda | Item |
+|---|---|---|---|---|
+| Unitários | Regras de curva, persistência, pareamento, motores (curvas, alertas, perfis) | xUnit e `node --test` | CI, em cada PR | 08 e cada item |
+| Integração | Servidor web com a placa falsa: rotas, autenticação, SSE | xUnit | CI, em cada PR | 08 e cada item |
+| Ponta a ponta | Painel num navegador de verdade; smoke do zip da release (e do instalador, no 14) | Playwright | CI, em cada PR | 26 |
+| Hardware | Roteiro de verificação na placa real | `FanPilot.exe --hardware-test` | B760M, antes do merge | 27 |
+
+**Regra:** todo item entrega testes automatizados do que muda, e o PR só fecha com eles passando. A única exceção é o 01, que vem antes da infraestrutura e ganha seu teste de regressão no 08.
+
+## Como cada item é entregue
+
+- Branch `item/NN-descricao` a partir da `main`; um PR por item (o 14 em três), com `Closes #<issue>`.
+- Código, testes automatizados e documentação quando o usuário percebe a mudança (README e, a partir do 11, CHANGELOG).
+- Item que mexe em fans, GPU, ponte da placa ou build: rodar o teste em hardware (item 27; até ele existir, o roteiro manual abaixo) e anexar o resultado ao PR.
+
+## Como o andamento é registrado
+
+- **Issue:** ao começar, label `status: em andamento` e um comentário com a branch; ao abrir o PR, `status: em revisão`; o merge fecha a issue pelo `Closes #N`; impedimento → `status: bloqueado` e um comentário com o motivo.
+- **Este arquivo:** as colunas Status e Testes e o contador são atualizados direto na `main`, em commits só de documentação, a cada mudança de status. Os PRs dos itens não mexem neste arquivo, para não conflitarem entre si.
+- **Spec:** se a implementação mudar a solução, a spec é atualizada no PR do item.
+
+## Roteiro de verificação em hardware
+
+Placa de referência: B760M GAMING X AX com Gigabyte Control Center 26.03.26.01. O item 27 automatiza este roteiro.
+
+1. Abrir o FanPilot: nenhum `WARN` inesperado no log; backend e placa corretos.
+2. Painel no PC e no celular: temperaturas, RPM e GPU batem com o GCC/HWiNFO.
+3. System 1 → Fixo 40%: o RPM cai em poucos segundos. Restaurar original: o RPM volta.
+4. System 1 com a curva "Padrão": 60 s sem "changed externally" no log.
+5. Turbo ligado: todos os fans da placa em 100%. Desligado: cada um volta ao que estava.
+6. GPU: Fixo 50% → Automático.
+7. Fechar com Ctrl+C: mensagem de encerramento no log; na Gigabyte, as curvas continuam no chip.
+8. Abrir de novo: curvas reaplicadas, sem loop no watchdog.
+9. No fim, restaurar todos os fans alterados.
+
+## Decisões
+
+| Data | Decisão | Item | Situação |
+|---|---|---|---|
+| 24/10/2026 | O build vira projeto SDK-style para .NET Framework 4.7.2; compilar passa a exigir o .NET SDK | 09 | aprovada |
+| 24/10/2026 | Testes automatizados obrigatórios em todo item; infraestrutura de testes (09 → 08) logo depois do 01; novos itens 26 e 27 | 08, 26, 27 | aprovada |
+| 24/10/2026 | Uma branch e um PR por item; issues controladas por labels de status | todos | aprovada |
+| 24/10/2026 | Primeira versão com tag: `v0.1.0` | 11 | proposta |
+| 24/10/2026 | Assinatura pelo SignPath Foundation (Azure Trusted Signing como alternativa) | 12 | proposta |
+| 24/10/2026 | Instalador com Inno Setup; dados da versão instalada em `%ProgramData%\FanPilot` | 14 | proposta |
+| 24/10/2026 | Resposta "Equilibrada" como padrão, inclusive nas curvas por software já salvas | 15 | proposta |
+| 24/10/2026 | Logs em inglês; README principal em inglês, com versão em português | 21 | proposta |
+
+"Proposta" quer dizer que a decisão final sai na revisão da spec ou do PR.
+
+## Riscos
+
+| Risco | Mitigação |
+|---|---|
+| Uma atualização do GCC muda a API interna | A checagem de contrato do item 10 detecta a mudança e cai para o LibreHardwareMonitor com aviso |
+| Só existe uma placa de teste (B760M) | Forçar `"backend": "lhm"` nela, se o LHM controlar o IT8689E (conferir no início da Fase C), e usar os relatos estruturados do item 13 |
+| GCC, NVML ou PawnIO não funcionarem rodando como serviço | Ponto de parada no 14a, antes de investir na bandeja e no instalador |
+| A aprovação da assinatura demorar | Releases sem assinatura, com `SHA256SUMS.txt` e instruções de verificação |
+| Chamadas IPC do GCC sem timeout | O item 02 isola a GPU e o HTTP delas; o risco fica registrado no item 10 |
+| Testes em hardware exigem Administrador | O `--hardware-test` (27) roda na B760M pelo dono do repositório (ou numa sessão elevada) e o relatório vai no PR |
