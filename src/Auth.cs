@@ -90,12 +90,26 @@ sealed class AuthManager
     {
         lock (_sync)
         {
+            PruneFailures();
             List<DateTime> list;
-            if (!_failures.TryGetValue(ip, out list)) return false;
-            list.RemoveAll(t => t < _utcNow().AddMinutes(-1));
-            return list.Count >= MaxFailuresPerMinute;
+            return _failures.TryGetValue(ip, out list) && list.Count >= MaxFailuresPerMinute;
         }
     }
+
+    // Only the last minute counts: older attempts, and the IPs left with none, are dropped (the map would otherwise
+    // keep every address that ever mistyped a code).
+    void PruneFailures()
+    {
+        var since = _utcNow().AddMinutes(-1);
+        foreach (var ip in _failures.Keys.ToList())
+        {
+            _failures[ip].RemoveAll(t => t < since);
+            if (_failures[ip].Count == 0) _failures.Remove(ip);
+        }
+    }
+
+    // For the tests: how many addresses have recent wrong attempts.
+    internal int TrackedFailureIps { get { lock (_sync) { PruneFailures(); return _failures.Count; } } }
 
     // Returns a new session token, or null if the code is wrong/expired.
     public string Redeem(string code, string ip, string userAgent)
@@ -104,6 +118,7 @@ sealed class AuthManager
         {
             if (_utcNow() >= _codeExpiresUtc || !FixedTimeEquals(code, _code))
             {
+                PruneFailures();
                 List<DateTime> list;
                 if (!_failures.TryGetValue(ip, out list)) _failures[ip] = list = new List<DateTime>();
                 list.Add(_utcNow());

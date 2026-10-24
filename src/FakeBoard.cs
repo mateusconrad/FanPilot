@@ -28,8 +28,9 @@ sealed class FakeBoard : IBoard
     public Func<FanCurve, FanCurve> Readback;
     // Thrown once, by the next call, like the Gigabyte service going away.
     public Exception NextFailure;
-    // Every sensor read takes this long, like the Gigabyte service answering slowly over IPC.
-    public int ReadDelayMs;
+    // Every sensor read (ReadDelayMs) or curve write (WriteDelayMs) takes this long, like the Gigabyte service
+    // answering slowly over IPC; the write delay also widens the windows a race would need.
+    public int ReadDelayMs, WriteDelayMs;
     // Temperatures drift with time (the --fake-board demo); the tests keep them fixed.
     public bool Animated;
 
@@ -151,6 +152,7 @@ sealed class FakeBoard : IBoard
     // software-curve boards can hand a header back to the BIOS.
     public FanCurve SetCurve(FanCurve curve)
     {
+        if (WriteDelayMs > 0) System.Threading.Thread.Sleep(WriteDelayMs);
         lock (_sync)
         {
             Fail();
