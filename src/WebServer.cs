@@ -14,6 +14,7 @@ sealed class WebServer
     readonly Sampler _sampler;
     readonly FanManager _fans;
     readonly GpuMonitor _gpu;
+    readonly HostGuard _hosts;
     readonly HttpListener _listener = new HttpListener();
 
     static readonly Dictionary<string, string> ContentTypes = new Dictionary<string, string> {
@@ -25,6 +26,7 @@ sealed class WebServer
     public WebServer(AppConfig cfg, string root, AuthManager auth, Sampler sampler, FanManager fans, GpuMonitor gpu)
     {
         _cfg = cfg; _root = root; _auth = auth; _sampler = sampler; _fans = fans; _gpu = gpu;
+        _hosts = new HostGuard(cfg.Port, cfg.PublicHost);
     }
 
     public void Start()
@@ -59,22 +61,38 @@ sealed class WebServer
 
     void Handle(HttpListenerContext ctx)
     {
-        var r = new Req
-        {
-            Ctx = ctx,
-            Path = ctx.Request.Url.AbsolutePath,
-            Method = ctx.Request.HttpMethod,
-            Ip = ctx.Request.RemoteEndPoint.Address.ToString(),
-            Loopback = IPAddress.IsLoopback(ctx.Request.RemoteEndPoint.Address)
-        };
-        var cookie = ctx.Request.Cookies[AuthManager.CookieName];
-        if (cookie != null) r.Session = _auth.Validate(cookie.Value);
-
         var h = ctx.Response.Headers;
         h["X-Content-Type-Options"] = "nosniff";
         h["X-Frame-Options"] = "DENY";
         h["Referrer-Policy"] = "no-referrer";
         h["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'";
+
+        // Before anything else, static files included: a request for some other host is never served.
+        var url = ctx.Request.Url;
+        if (!_hosts.IsAllowed(url))
+        {
+            _hosts.LogRejected(url.Authority);
+            try
+            {
+                ctx.Response.StatusDescription = "Misdirected Request"; // .NET Framework has no reason phrase for 421
+                Text(ctx, 421, "Misdirected Request");
+                ctx.Response.Close();
+            }
+            catch { }
+            return;
+        }
+
+        var r = new Req
+        {
+            Ctx = ctx,
+            Path = url.AbsolutePath,
+            Method = ctx.Request.HttpMethod,
+            Ip = ctx.Request.RemoteEndPoint.Address.ToString(),
+            Loopback = IPAddress.IsLoopback(ctx.Request.RemoteEndPoint.Address) && HostGuard.IsLoopbackName(url)
+        };
+        var cookie = ctx.Request.Cookies[AuthManager.CookieName];
+        if (cookie != null) r.Session = _auth.Validate(cookie.Value);
+
         try
         {
             if (!Route(r)) return; // response kept open (SSE)
@@ -154,14 +172,16 @@ sealed class WebServer
         return true;
     }
 
-    // Custom header forces a CORS preflight (which we never grant), and Origin must match when present.
-    static bool SameOriginPost(Req r)
+    // Custom header forces a CORS preflight (which we never grant). Origin, when present, must be this same server
+    // under one of the PC's own names, not merely equal to the Host header.
+    bool SameOriginPost(Req r)
     {
         if (r.Ctx.Request.Headers["X-FanPilot"] != "1") return false;
         string origin = r.Ctx.Request.Headers["Origin"];
         if (string.IsNullOrEmpty(origin)) return true;
         Uri o;
-        return Uri.TryCreate(origin, UriKind.Absolute, out o) && string.Equals(o.Authority, r.Ctx.Request.Url.Authority, StringComparison.OrdinalIgnoreCase);
+        return Uri.TryCreate(origin, UriKind.Absolute, out o) && _hosts.IsAllowed(o) &&
+               string.Equals(o.Authority, r.Ctx.Request.Url.Authority, StringComparison.OrdinalIgnoreCase);
     }
 
     void Redeem(Req r)
