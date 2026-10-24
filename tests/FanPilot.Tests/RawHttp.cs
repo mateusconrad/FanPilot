@@ -35,6 +35,20 @@ static class RawHttp
         }
     }
 
+    // An open /api/stream connection that has received its response headers (the caller keeps it, then closes it).
+    public static TcpClient OpenStream(int port, string path)
+    {
+        var tcp = new TcpClient();
+        tcp.Connect(IPAddress.Loopback, port);
+        var stream = tcp.GetStream();
+        stream.ReadTimeout = 10000;
+        WriteRequest(stream, port, "GET", path, null, null, new string[0]);
+        var reader = new StreamReader(stream, Encoding.ASCII);
+        string status = reader.ReadLine();
+        if (status == null || !status.Contains(" 200 ")) { tcp.Close(); throw new IOException("stream recusado: " + status); }
+        return tcp;
+    }
+
     // First "data:" line of a Server-Sent Events stream that satisfies the predicate, or null on timeout.
     public static string FirstEvent(int port, string path, Func<string, bool> accept, TimeSpan timeout)
     {

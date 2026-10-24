@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 sealed class WebServer
 {
@@ -17,6 +18,7 @@ sealed class WebServer
     GpuMonitor _gpu;
     volatile bool _ready;
     readonly HostGuard _hosts;
+    readonly SseHub _hub = new SseHub();
     readonly HttpListener _listener = new HttpListener();
     // "+" = every address, so phones on the LAN reach it (needs Administrator). Tests use "localhost", which does not.
     internal string ListenHost = "+";
@@ -41,6 +43,8 @@ sealed class WebServer
     public void Attach(AuthManager auth, Sampler sampler, FanManager fans, GpuMonitor gpu)
     {
         _auth = auth; _sampler = sampler; _fans = fans; _gpu = gpu;
+        // The sampler only hands the snapshot over: the hub writes to each client on its own.
+        sampler.Subscribe(json => _hub.Publish(Frame(json)));
         _ready = true; // volatile: the fields above are visible to whoever sees this
     }
 
@@ -58,7 +62,11 @@ sealed class WebServer
         new Thread(AcceptLoop) { IsBackground = true, Name = "http" }.Start();
     }
 
-    public void Stop() { try { _listener.Stop(); } catch { } }
+    public void Stop()
+    {
+        _hub.CloseAll();
+        try { _listener.Stop(); } catch { }
+    }
 
     void AcceptLoop()
     {
@@ -166,7 +174,7 @@ sealed class WebServer
         if (r.Method == "POST" && !SameOriginPost(r)) { WriteJson(r.Ctx, 403, Error("Origem inválida.")); return true; }
 
         if (r.Method == "GET" && p == "/api/state") { RawJson(r.Ctx, 200, _sampler.LatestJson); return true; }
-        if (r.Method == "GET" && p == "/api/stream") { Stream(r); return false; }
+        if (r.Method == "GET" && p == "/api/stream") return Stream(r);
         if (r.Method == "GET" && p == "/api/history") { WriteJson(r.Ctx, 200, CompactHistory()); return true; }
         if (r.Method == "GET" && p == "/api/fans") { WriteJson(r.Ctx, 200, _fans.Describe()); return true; }
         if (r.Method == "POST" && p == "/api/logout")
@@ -298,7 +306,8 @@ sealed class WebServer
         list.Add(value);
     }
 
-    void Stream(Req r)
+    // Returns false (response kept open) once the client joined the stream; true after a 503 for a full hub.
+    bool Stream(Req r)
     {
         var resp = r.Ctx.Response;
         resp.StatusCode = 200;
@@ -306,24 +315,15 @@ sealed class WebServer
         resp.Headers["Cache-Control"] = "no-store";
         resp.SendChunked = true;
         var output = resp.OutputStream;
-        Action<string> sub = null;
-        sub = json =>
-        {
-            try
-            {
-                var bytes = Encoding.UTF8.GetBytes("data: " + json + "\n\n");
-                output.Write(bytes, 0, bytes.Length);
-                output.Flush();
-            }
-            catch
-            {
-                _sampler.Unsubscribe(sub);
-                try { resp.Abort(); } catch { }
-            }
-        };
-        sub(_sampler.LatestJson);
-        _sampler.Subscribe(sub);
+        if (_hub.Add(bytes => output.WriteAsync(bytes, 0, bytes.Length), () => resp.Abort(), Frame(_sampler.LatestJson))) return false;
+        // Nothing has been written yet, so the status can still change.
+        resp.SendChunked = false;
+        resp.Headers["Retry-After"] = "10";
+        WriteJson(r.Ctx, 503, Error("Conexões demais com o painel ao mesmo tempo: feche alguma aba ou aparelho."));
+        return true;
     }
+
+    static byte[] Frame(string json) { return Encoding.UTF8.GetBytes("data: " + json + "\n\n"); }
 
     Dictionary<string, object> ReadBody(Req r)
     {

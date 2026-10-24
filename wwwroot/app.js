@@ -721,7 +721,15 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
 
   function connect() {
     const es = new EventSource('/api/stream');
-    es.onmessage = (m) => { try { onSnapshot(JSON.parse(m.data)); } catch (e) { /* ignore malformed frame */ } };
+    let lastFrame = Date.now();
+    es.onmessage = (m) => {
+      lastFrame = Date.now();
+      try { onSnapshot(JSON.parse(m.data)); } catch (e) { /* ignore malformed frame */ }
+    };
+    // A snapshot arrives every second: 5 s of silence on an open stream means the readings are stuck, not live.
+    setInterval(() => {
+      if (es.readyState === EventSource.OPEN && Date.now() - lastFrame > 5000) setStatus(false, 'dados atrasados');
+    }, 1000);
     es.onerror = async () => {
       setStatus(false, 'reconectando…');
       // EventSource hides the status code; check whether we lost the pairing.

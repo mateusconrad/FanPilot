@@ -105,6 +105,30 @@ public sealed class WebServerTests : IDisposable
         Assert.Contains("\"fanRpm\"", snapshot);
     }
 
+    // Item 02: a 17th panel open at the same time is turned away instead of piling up writers.
+    [Fact]
+    public void StreamIsLimitedToSixteenClients()
+    {
+        var open = new System.Collections.Generic.List<System.Net.Sockets.TcpClient>();
+        try
+        {
+            for (int i = 0; i < SseHub.MaxClients; i++) open.Add(RawHttp.OpenStream(_port, "/api/stream"));
+            var refused = RawHttp.Send(_port, "GET", "/api/stream");
+            Assert.Equal(503, refused.Status);
+            Assert.Contains("Retry-After", refused.Head);
+            open[0].Close();
+            open.RemoveAt(0);
+            string snapshot = null;
+            for (int attempt = 0; attempt < 20 && snapshot == null; attempt++)
+            {
+                snapshot = RawHttp.FirstEvent(_port, "/api/stream", json => true, TimeSpan.FromSeconds(2));
+                if (snapshot == null) System.Threading.Thread.Sleep(100); // the closed one may take a write to be noticed
+            }
+            Assert.NotNull(snapshot);
+        }
+        finally { foreach (var c in open) c.Close(); }
+    }
+
     // Item 05: the port is taken before the board is opened; until everything is attached, requests wait.
     [Fact]
     public void ServerThatIsStillStartingAnswers503()

@@ -27,6 +27,8 @@ sealed class FakeBoard : IBoard
     public Func<FanCurve, FanCurve> Readback;
     // Thrown once, by the next call, like the Gigabyte service going away.
     public Exception NextFailure;
+    // Every sensor read takes this long, like the Gigabyte service answering slowly over IPC.
+    public int ReadDelayMs;
     // Temperatures drift with time (the --fake-board demo); the tests keep them fixed.
     public bool Animated;
 
@@ -77,6 +79,7 @@ sealed class FakeBoard : IBoard
 
     public List<SensorReading> ReadSensors()
     {
+        if (ReadDelayMs > 0) System.Threading.Thread.Sleep(ReadDelayMs);
         lock (_sync)
         {
             Fail();

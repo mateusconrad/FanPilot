@@ -8,14 +8,14 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 - **Testes:** testes automatizados do item: `a fazer` · `ok` (commitados com o item; rodam na CI quando ela existir)
 - **Esforço**, em dias de trabalho focado: P ≈ 1 · P–M ≈ 2 · M ≈ 3 · G ≈ 10
 
-**Concluídos: 5 de 27** · verificação em hardware pendente: 01, 05, 09 (veja a seção própria)
+**Concluídos: 6 de 27** · verificação em hardware pendente: 01, 02, 05, 09 (veja a seção própria)
 
 ## Andamento
 
 | # | Item | Onda | Esforço | Depende de | Status | Testes | Issue | Notas |
 |---|---|---|---|---|---|---|---|---|
 | 01 | [Validar o header Host](specs/01-validar-host.md) | 1 | P | — | concluído | ok | [#1](https://github.com/mateusconrad/FanPilot/issues/1) | falta a verificação em hardware; testes de regressão no 08 |
-| 02 | [SSE e proteção da GPU fora do laço de amostragem](specs/02-sse-e-protecao-gpu.md) | 1 | P–M | — | a fazer | a fazer | [#2](https://github.com/mateusconrad/FanPilot/issues/2) | |
+| 02 | [SSE e proteção da GPU fora do laço de amostragem](specs/02-sse-e-protecao-gpu.md) | 1 | P–M | — | concluído | ok | [#2](https://github.com/mateusconrad/FanPilot/issues/2) | falta a verificação em hardware |
 | 03 | [Leitura tolerante e gravação atômica](specs/03-arquivos-atomicos.md) | 1 | P | — | concluído | ok | [#3](https://github.com/mateusconrad/FanPilot/issues/3) | faixa de avisos nova no painel (`AppNotices`) |
 | 04 | [Chave estável para cada header](specs/04-identidade-dos-headers.md) | 1 | P–M | 03 | a fazer | a fazer | [#4](https://github.com/mateusconrad/FanPilot/issues/4) | |
 | 05 | [Instância única e porta ocupada](specs/05-instancia-unica.md) | 1 | P | — | concluído | ok | [#5](https://github.com/mateusconrad/FanPilot/issues/5) | falta conferir como Administrador |
@@ -109,6 +109,7 @@ Itens já na `main` cujo comportamento na placa real ainda não foi conferido. P
 | Item | O que conferir |
 |---|---|
 | 01 | `curl.exe -H "Host: exemplo.invalid:8787" http://127.0.0.1:8787/api/fans` → `421`; sem o header → `200`; POST com `X-FanPilot: 1` e `Origin: http://exemplo.invalid:8787` em `/api/logout` → `403`; `/pair`, o painel no PC e o celular pareado funcionam como antes; o log registra a recusa uma vez só |
+| 02 | GPU: Fixo 50% → Automático pelo painel. Painel aberto no celular por 10 min, com a tela apagando e voltando: continua atualizando, sem "dados atrasados". O log não mostra "Leitura dos sensores lenta" |
 | 05 | Abrir o FanPilot duas vezes: a segunda diz que já está rodando, abre o painel e sai, e o log da primeira não registra mudança de fan. Com a porta ocupada (`python -m http.server 8787`): mensagem clara, saída com código 5, nenhum fan tocado. `--diagnose` com o FanPilot aberto avisa no relatório |
 | 09 | Os 9 passos do roteiro abaixo com o exe gerado pelo build novo |
 
