@@ -8,7 +8,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 - **Testes:** testes automatizados do item: `a fazer` · `ok` (commitados com o item; rodam na CI quando ela existir)
 - **Esforço**, em dias de trabalho focado: P ≈ 1 · P–M ≈ 2 · M ≈ 3 · G ≈ 10
 
-**Concluídos: 7 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09 (veja a seção própria)
+**Concluídos: 8 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09 (veja a seção própria)
 
 ## Andamento
 
@@ -19,7 +19,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 | 03 | [Leitura tolerante e gravação atômica](specs/03-arquivos-atomicos.md) | 1 | P | — | concluído | ok | [#3](https://github.com/mateusconrad/FanPilot/issues/3) | faixa de avisos nova no painel (`AppNotices`) |
 | 04 | [Chave estável para cada header](specs/04-identidade-dos-headers.md) | 1 | P–M | 03 | concluído | ok | [#4](https://github.com/mateusconrad/FanPilot/issues/4) | migração v1→v2 testada numa cópia dos dados reais da B760M; falta a verificação em hardware |
 | 05 | [Instância única e porta ocupada](specs/05-instancia-unica.md) | 1 | P | — | concluído | ok | [#5](https://github.com/mateusconrad/FanPilot/issues/5) | falta conferir como Administrador |
-| 06 | [Rotação e deduplicação do log](specs/06-log.md) | 1 | P | — | a fazer | a fazer | [#6](https://github.com/mateusconrad/FanPilot/issues/6) | |
+| 06 | [Rotação e deduplicação do log](specs/06-log.md) | 1 | P | — | concluído | ok | [#6](https://github.com/mateusconrad/FanPilot/issues/6) | nível `ERROR` novo; sensores da placa e LHM registram só as mudanças de estado |
 | 07 | [Correções pequenas](specs/07-correcoes-pequenas.md) | 1 | P | — | a fazer | a fazer | [#7](https://github.com/mateusconrad/FanPilot/issues/7) | |
 | 08 | [Testes automatizados (unitários e integração)](specs/08-testes.md) | 1 | M | 09 | concluído | ok | [#8](https://github.com/mateusconrad/FanPilot/issues/8) | 65 testes C# + 4 JS; 2 de integração só rodam como Administrador (CI); painel conferido num navegador headless |
 | 09 | [Projeto SDK-style (net472)](specs/09-projeto-sdk.md) | 1 | M | — | concluído | ok | [#9](https://github.com/mateusconrad/FanPilot/issues/9) | falta a verificação em hardware |
