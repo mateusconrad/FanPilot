@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Guia para testar outras placas
+    url: https://github.com/mateusconrad/FanPilot/blob/main/docs/TESTANDO-OUTRAS-PLACAS.md
+    about: O passo a passo seguro antes de um relato de compatibilidade.
+  - name: Placas já relatadas
+    url: https://github.com/mateusconrad/FanPilot/blob/main/docs/COMPATIBILIDADE.md
+    about: Veja se a sua placa já foi testada e como foi.

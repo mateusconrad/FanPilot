@@ -21,7 +21,10 @@ Primeira versão publicada (será a 0.1.0).
   ASRock…) pelo LibreHardwareMonitor e o driver PawnIO, que o FanPilot oferece instalar pelo `winget`.
 - GPU NVIDIA pelo driver (NVML); AMD e Intel Arc pelo LibreHardwareMonitor.
 - `FanPilot.exe --diagnose`: relatório só de leitura para placas ainda não testadas, com a versão do GCC e se ela é
-  compatível.
+  compatível. Sai sem números de série nem UUIDs, pronto para anexar numa issue, e começa com o link do formulário
+  de relato já preenchido.
+- Formulários de relato de compatibilidade e de problemas no GitHub, e a lista das placas testadas
+  ([docs/COMPATIBILIDADE.md](docs/COMPATIBILIDADE.md)).
 - `FanPilot.exe --hardware-test [--fan N]`: roteiro automático de verificação na placa real, que grava
   `data\hwtest-<data>.md` e devolve tudo como estava.
 - `FanPilot.exe --version`; a versão também aparece na primeira linha do log, no `--diagnose` e no rodapé do painel.
