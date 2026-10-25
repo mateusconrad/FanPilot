@@ -13,4 +13,10 @@
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- The .NET Framework reference assemblies come from NuGet on every machine. The SDK only adds this package
+         where the targeting pack is missing (a PC without Visual Studio) and not where it is installed (the CI
+         runner), so packages.lock.json differed between the two and the CI's locked restore failed. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
 </Project>
