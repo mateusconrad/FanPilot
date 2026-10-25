@@ -1,0 +1,122 @@
+// The running FanPilot: web server, board, fans, GPU and sampler. Started in that order (the port before the hardware,
+// so a port taken by another program fails before anything touches a fan), and stopped by Stop() on every way out.
+// The console (App.Run) and the Windows service (FanPilotService) share it.
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Threading;
+
+sealed class FanPilotHost
+{
+    readonly AppConfig _cfg;
+    readonly string _wwwroot, _dataDir;
+    readonly Func<IBoard> _openBoard;
+    readonly Func<GpuMonitor> _openGpu;
+    readonly bool _interactive, _admin;
+    readonly object _sync = new object();
+    WebServer _server;
+    IBoard _bridge;
+    GpuMonitor _gpu;
+    FanManager _fans;
+    Sampler _sampler;
+    bool _stopped;
+
+    // openBoard: Boards.Create, or the fake board; it may throw InvalidOperationException with the reason.
+    public FanPilotHost(AppConfig cfg, string wwwroot, string dataDir, Func<IBoard> openBoard, Func<GpuMonitor> openGpu, bool interactive, bool admin)
+    {
+        _cfg = cfg; _wwwroot = wwwroot; _dataDir = dataDir; _openBoard = openBoard; _openGpu = openGpu;
+        _interactive = interactive; _admin = admin;
+    }
+
+    internal FanManager Fans { get { return _fans; } }
+
+    // 0 when running; otherwise the exit code (5: port taken, 3: no board), with the reason on the console and in the log.
+    public int Start()
+    {
+        var server = new WebServer(_cfg, _wwwroot) { ListenHost = _admin ? "+" : "localhost" };
+        try { server.Start(); }
+        catch (HttpListenerException ex)
+        {
+            Console.WriteLine(WebServer.PortProblem(_cfg.Port, ex));
+            Log.Error(WebServer.PortProblem(_cfg.Port, ex));
+            return 5;
+        }
+        lock (_sync)
+        {
+            if (_stopped) { server.Stop(); return 0; } // stopped while starting (a service stop during a slow board)
+            _server = server;
+        }
+
+        if (!_admin) Log.Info("Sem Administrador: o painel só abre em http://localhost:" + _cfg.Port + "/ (nenhum celular pareia).");
+        IBoard bridge;
+        try { bridge = _openBoard(); }
+        catch (InvalidOperationException ex)
+        {
+            Console.WriteLine(ex.Message);
+            Log.Error(ex.Message);
+            return 3;
+        }
+        Log.Info("Placa-mãe via " + bridge.BackendName + (bridge.HardwareCurves ? " (curvas no chip)" : " (curvas executadas pelo FanPilot)"));
+        if (bridge.Notice != null) Log.Warn(bridge.Notice);
+
+        var gpu = _openGpu();
+        var fans = new FanManager(bridge, _cfg, _dataDir);
+        var sampler = new Sampler(bridge, gpu);
+        lock (_sync)
+        {
+            _bridge = bridge; _gpu = gpu; _fans = fans; _sampler = sampler;
+            if (_stopped) { bridge.Shutdown(); gpu.Shutdown(); return 0; }
+        }
+
+        try { fans.Start(); } catch (Exception ex) { Log.Warn("Fan manager: " + ex.Message); }
+        gpu.Start();
+        sampler.Start();
+        // Only now: until Start() has saved the original curves, no request may change a fan.
+        server.Attach(new AuthManager(_dataDir, _cfg), sampler, fans, gpu);
+
+        string pairUrl = "http://localhost:" + _cfg.Port + "/pair";
+        Log.Info("FanPilot rodando na porta " + _cfg.Port + ". Endereços na rede: " + string.Join(", ", NetworkInfo.CandidateHosts(_cfg).Select(h => "http://" + h + ":" + _cfg.Port)));
+        Log.Info("Para parear o celular, abra " + pairUrl + " neste PC e escaneie o QR code.");
+        if (_interactive) try { Process.Start(pairUrl); } catch { }
+        return 0;
+    }
+
+    // Every way out ends here, once: the server closes, a software-curve board hands its headers back to the BIOS,
+    // the GPU fan goes back to automatic. Fast: the service gets a few seconds at shutdown, the BIOS hand-back is
+    // meant to take under one.
+    public void Stop()
+    {
+        IBoard bridge;
+        GpuMonitor gpu;
+        WebServer server;
+        Sampler sampler;
+        lock (_sync)
+        {
+            if (_stopped) return;
+            _stopped = true;
+            bridge = _bridge; gpu = _gpu; server = _server; sampler = _sampler;
+        }
+        var watch = Stopwatch.StartNew();
+        if (bridge != null)
+            Log.Info(bridge.HardwareCurves
+                ? "Encerrando: fan da GPU volta para automático; curvas da placa-mãe permanecem no chip (com ponto de segurança)."
+                : "Encerrando: fans da placa-mãe e da GPU voltam ao controle automático (BIOS/driver).");
+        if (sampler != null) sampler.Stop();
+        if (server != null) server.Stop();
+        if (bridge != null) bridge.Shutdown();
+        if (gpu != null) { gpu.Stop(); gpu.Shutdown(); }
+        Log.Info("Encerrado em " + watch.ElapsedMilliseconds + " ms.");
+    }
+
+    // Back from sleep (the service's power event): the BIOS may have reset the chip. Curves are checked and put back
+    // now, not on the watchdog's next round (up to 15 s).
+    public void Resumed()
+    {
+        var fans = _fans;
+        if (fans == null) return;
+        Log.Info("Retorno da suspensão: curvas conferidas agora.");
+        fans.Watchdog();
+    }
+}

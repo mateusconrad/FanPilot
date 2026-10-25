@@ -102,6 +102,9 @@ sealed class LhmBoard : IBoard
             foreach (var c in hw.Sensors.Where(s => s.SensorType == SensorType.Control && s.Control != null).OrderBy(s => s.Index))
                 headers.Add(new Header { Control = c, Tach = tachs.FirstOrDefault(f => f.Index == c.Index), Title = c.Name, Key = c.Identifier.ToString() });
         }
+        // A clean start: a FanPilot that was killed (or crashed) left its last duty on the headers. Everything goes
+        // back to the BIOS, and FanManager then puts the saved curves back.
+        foreach (var h in headers) TryDefault(h);
 
         lock (_sync)
         {

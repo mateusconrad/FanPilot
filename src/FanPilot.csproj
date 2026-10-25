@@ -26,6 +26,8 @@
   <ItemGroup>
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
     <Reference Include="System.Web.Extensions" />
+    <!-- The Windows service mode (item 14a). -->
+    <Reference Include="System.ServiceProcess" />
     <InternalsVisibleTo Include="FanPilot.Tests" />
   </ItemGroup>
 
