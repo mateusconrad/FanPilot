@@ -1,5 +1,5 @@
 // FanPilot dashboard: live data over SSE (/api/stream), fan curve editor, GPU fan control.
-import { curveAt, resample, normalize } from './js/curve.mjs';
+import { curveAt, resample, normalize, movePoint } from './js/curve.mjs';
 import { cpuMain } from './js/sensors.mjs';
 
 (function () {
@@ -442,9 +442,12 @@ import { cpuMain } from './js/sensors.mjs';
   // { quiet: { name: 'Silencioso', points: [[°C, %], …] }, standard, performance, max }
   const presetPoints = (key, limits, n) =>
     normalize(resample(state.fans.presets[key].points.map(([t, p]) => [Math.min(t, limits.maxFullSpeedTemp), p]), n), limits);
-  const ED = { w: 340, h: 230, l: 34, r: 12, t: 10, b: 26 };
+  // t: 28 leaves room above the 100% line for a whole touch target.
+  const ED = { w: 340, h: 248, l: 34, r: 12, t: 28, b: 26 };
   const exX = (t) => ED.l + t / 100 * (ED.w - ED.l - ED.r);
   const exY = (p) => ED.t + (1 - p / 100) * (ED.h - ED.t - ED.b);
+  // A point's touch target: 27 units are 45 px across on a 320 px phone, where the SVG is 286 px wide.
+  const HIT_R = 27;
 
   // Editor works in [temp, percent] with the fan's own point count; hardware readbacks may differ, so resample.
   function toEditorPoints(points, limits, n) {
@@ -474,13 +477,13 @@ import { cpuMain } from './js/sensors.mjs';
       pointCount: f.pointCount,
       points: toEditorPoints(f.points, limits, f.pointCount),
       response: (req && RESPONSES[req.response] && req.response) || 'balanced',
+      selected: null,    // the point the fine-tune bar adjusts
     };
-    $('edTitle').textContent = (f.role === 'pump' ? 'Bomba · ' : 'Fan · ') + fanName(f);
+    renderEditorTitle(f);
     renderPresetChips();
     const profile = profileName(state.fans.mode);
     $('edProfileNote').hidden = !profile;
     $('edProfileNote').textContent = profile ? `O perfil ${profile} está ativo: aplicar ou restaurar aqui desliga o perfil, e os outros fans ficam com a curva dele como configuração pessoal.` : '';
-    $('edPumpNote').hidden = !(f.role === 'pump' && f.pumpPolicy === 'full');
     $('edMeta').open = false;
     $('edLabel').value = f.label || '';
     $('edLabel').placeholder = f.title;
@@ -510,17 +513,74 @@ import { cpuMain } from './js/sensors.mjs';
     }
     $('edRestore').textContent = hw ? 'Restaurar original' : 'Devolver à BIOS';
     $('edRestore').disabled = !f.hasBackup || (!hw && !f.managed);
+    state.editor.savedCurve = curveDraft(state.editor);
+    state.editor.savedMeta = metaDraft();
+    $('edDiscard').hidden = true;
+    $('edTuneLive').textContent = '';
     show($('sheet'));
     show($('backdrop'));
     document.body.classList.add('sheet-open');
+    setBackgroundInert(true);
     renderEditor();
+    $('sheet').scrollTop = 0;
+    $('edClose').focus({ preventScroll: true });
   }
 
+  function renderEditorTitle(f) {
+    $('edTitle').textContent = (f.role === 'pump' ? 'Bomba · ' : 'Fan · ') + fanName(f);
+    $('edPumpNote').hidden = !(f.role === 'pump' && f.pumpPolicy === 'full');
+  }
+
+  // What "Aplicar" and "Salvar nome e função" would save: closing the sheet with a change asks first.
+  const curveDraft = (e) => JSON.stringify([e.mode, e.percent, e.style, e.tempInput, e.points, e.response]);
+  const metaDraft = () => JSON.stringify([$('edLabel').value.trim(), $('edRole').value, $('edPumpPolicy').value, $('edPumpMin').value]);
+
+  // While the sheet is open, Tab and screen readers can't reach the page behind it.
+  const setBackgroundInert = (on) => document.querySelectorAll('body > header, body > main').forEach((n) => { n.inert = on; });
+
   function closeEditor() {
+    if (!state.editor) return;
+    const index = state.editor.index;
     state.editor = null;
     hide($('sheet'), 200);
     hide($('backdrop'), 200);
     document.body.classList.remove('sheet-open');
+    setBackgroundInert(false);
+    // Focus goes back to the fan the sheet was opened from.
+    const card = $('fans').querySelectorAll('.fan')[index];
+    if (card) card.focus({ preventScroll: true });
+  }
+
+  // "Fechar", Esc and the backdrop: with something not saved, the sheet asks before throwing it away.
+  function requestClose() {
+    const e = state.editor;
+    if (!e) return;
+    if (curveDraft(e) === e.savedCurve && metaDraft() === e.savedMeta) { closeEditor(); return; }
+    if ($('edDiscard').hidden) e.returnFocus = document.activeElement;
+    $('edDiscard').hidden = false;
+    $('edKeep').focus();
+  }
+
+  function keepEditing() {
+    const back = state.editor && state.editor.returnFocus;
+    $('edDiscard').hidden = true;
+    (back && back.isConnected && $('sheet').contains(back) ? back : $('edClose')).focus();
+  }
+
+  // Esc closes the sheet (or answers "Continuar editando"); Tab and Shift+Tab go around inside it.
+  function sheetKey(ev) {
+    if (!state.editor || ev.isComposing) return;
+    if (ev.key === 'Escape') {
+      ev.preventDefault();
+      if ($('edDiscard').hidden) requestClose(); else keepEditing();
+      return;
+    }
+    if (ev.key !== 'Tab') return;
+    const items = [...$('sheet').querySelectorAll('button, select, input, summary, [tabindex="0"]')]
+      .filter((n) => !n.disabled && (n.checkVisibility ? n.checkVisibility() : n.getClientRects().length > 0));
+    const first = items[0], last = items[items.length - 1];
+    if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+    else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
   }
 
   function renderEditor() {
@@ -534,6 +594,43 @@ import { cpuMain } from './js/sensors.mjs';
     $('edResponseHint').textContent = `${RESPONSES[e.response][0]}: ${RESPONSES[e.response][1]} Em qualquer resposta, no último ponto da curva o fan vai a 100% na hora.`;
 
     const svg = $('edSvg');
+    const pts = e.points;
+    if (svg.querySelectorAll('.point').length !== pts.length) buildEditorSvg(pts.length);
+    let d = '';
+    pts.forEach(([t, p], i) => {
+      if (i === 0) d += `M${exX(t)} ${exY(p)}`;
+      else if (e.style === 'StairStepMode') d += `H${exX(t)}V${exY(p)}`;
+      else d += `L${exX(t)} ${exY(p)}`;
+    });
+    d += `H${exX(100)}`;
+    svg.querySelector('.area').setAttribute('d', d + `V${exY(0)}H${exX(0)}Z`);
+    svg.querySelector('.curve').setAttribute('d', d);
+
+    const snap = state.snap || {};
+    const srcT = snap.tempInputs ? snap.tempInputs[e.tempInput] : null;
+    const hasT = srcT !== null && srcT !== undefined;
+    const now = svg.querySelector('.now');
+    now.toggleAttribute('hidden', !hasT);
+    if (hasT) { now.setAttribute('x1', exX(srcT)); now.setAttribute('x2', exX(srcT)); }
+    $('edNow').textContent = hasT ? `agora: ${fmt(srcT)} °C → ${pct(curveAt(pts.map(([t, p]) => [t, p * 2.55]), e.style, srcT))}%` : '';
+
+    const limits = state.fans.limits;
+    svg.querySelectorAll('.point').forEach((g, i) => {
+      const [t, p] = pts[i];
+      g.setAttribute('transform', `translate(${exX(t)} ${exY(p)})`);
+      g.setAttribute('aria-valuenow', p);
+      g.setAttribute('aria-valuemin', limits.minDutyPercent);
+      g.setAttribute('aria-valuetext', `${t} °C, ${p}%`);
+      g.classList.toggle('selected', i === e.selected);
+    });
+    $('edPoints').textContent = pts.map(([t, p]) => `${t}° ${p}%`).join(' · ');
+    renderTune();
+  }
+
+  // Grid, axes and one slider per point, built when the editor opens. renderEditor moves them in place, so a point
+  // keeps its node, and the focus, while it moves and while the live data redraws the sheet.
+  function buildEditorSvg(n) {
+    const svg = $('edSvg');
     svg.innerHTML = '';
     const grid = el('g', { class: 'grid' }, svg);
     const axis = el('g', { class: 'axis' }, svg);
@@ -545,31 +642,97 @@ import { cpuMain } from './js/sensors.mjs';
       el('line', { x1: exX(t), x2: exX(t), y1: ED.t, y2: ED.h - ED.b }, grid);
       el('text', { x: exX(t), y: ED.h - 8, 'text-anchor': 'middle' }, axis).textContent = t + '°';
     }
-    const pts = e.points;
-    let d = '';
-    pts.forEach(([t, p], i) => {
-      if (i === 0) d += `M${exX(t)} ${exY(p)}`;
-      else if (e.style === 'StairStepMode') d += `H${exX(t)}V${exY(p)}`;
-      else d += `L${exX(t)} ${exY(p)}`;
-    });
-    d += `H${exX(100)}`;
-    el('path', { class: 'area', d: d + `V${exY(0)}H${exX(0)}Z` }, svg);
-    el('path', { class: 'curve', d }, svg);
-
-    const snap = state.snap || {};
-    const srcT = snap.tempInputs ? snap.tempInputs[e.tempInput] : null;
-    if (srcT !== null && srcT !== undefined) {
-      el('line', { class: 'now', x1: exX(srcT), x2: exX(srcT), y1: ED.t, y2: ED.h - ED.b }, svg);
-      const nowPct = pct(curveAt(pts.map(([t, p]) => [t, p * 2.55]), e.style, srcT));
-      $('edNow').textContent = `agora: ${fmt(srcT)} °C → ${nowPct}%`;
+    el('path', { class: 'area' }, svg);
+    el('path', { class: 'curve' }, svg);
+    el('line', { class: 'now', y1: ED.t, y2: ED.h - ED.b }, svg);
+    // The value a screen reader adjusts (swipe up or down) is the speed; ←/→ change the temperature.
+    for (let i = 0; i < n; i++) {
+      const g = el('g', {
+        class: 'point', tabindex: 0, role: 'slider', 'aria-orientation': 'vertical',
+        'aria-label': `Ponto ${i + 1} de ${n}`, 'aria-valuemax': 100, 'data-i': i,
+      }, svg);
+      el('circle', { class: 'ring', r: 11 }, g);
+      el('circle', { class: 'pt' + (i === 0 || i === n - 1 ? ' fixed' : ''), r: 6 }, g);
+      el('circle', { class: 'hit', r: HIT_R }, g);
     }
-    pts.forEach(([t, p], i) => {
-      const fixedAxis = i === 0 || i === pts.length - 1;
-      el('circle', { class: 'pt' + (fixedAxis ? ' fixed' : ''), cx: exX(t), cy: exY(p), r: 6 }, svg);
-      const hit = el('circle', { class: 'hit', cx: exX(t), cy: exY(p), r: 16, 'data-i': i }, svg);
-      hit.addEventListener('pointerdown', startDrag);
-    });
-    $('edPoints').textContent = pts.map(([t, p]) => `${t}° ${p}%`).join(' · ');
+  }
+
+  // The fine-tune bar shows the selected point; the hint takes its place until a point is selected.
+  function renderTune() {
+    const e = state.editor, i = e.selected;
+    $('edTune').hidden = i === null;
+    $('edTuneHint').hidden = i !== null;
+    if (i === null) return;
+    const [t, p] = e.points[i];
+    $('edTuneLabel').textContent = `Ponto ${i + 1} de ${e.points.length}: ${t} °C, ${p}%`;
+    // The first point's temperature and the last one's speed don't move.
+    $('edTuneTMinus').disabled = $('edTuneTPlus').disabled = i === 0;
+    $('edTunePMinus').disabled = $('edTunePPlus').disabled = i === e.points.length - 1;
+  }
+
+  // Moves point i by [dt °C, dp %] within the rules (arrow keys and the fine-tune bar); it becomes the selected one.
+  function nudge(i, dt, dp) {
+    const e = state.editor;
+    cancelAnimationFrame(morphFrame);
+    const [t, p] = e.points[i];
+    e.points[i] = movePoint(e.points, i, t + dt, p + dp, state.fans.limits);
+    e.selected = i;
+    renderEditor();
+  }
+
+  // A focused point: ←/→ the temperature and ↑/↓ the speed, 1 at a time or 5 with Shift; PageUp/PageDown 10%,
+  // Home/End the lowest and the highest speed the point can have.
+  const POINT_KEYS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowDown: [0, -1], ArrowUp: [0, 1], PageDown: [0, -10], PageUp: [0, 10], Home: [0, -100], End: [0, 100] };
+  function pointKey(ev) {
+    const g = ev.target.closest('.point');
+    const step = POINT_KEYS[ev.key];
+    if (!g || !step || ev.altKey || ev.ctrlKey || ev.metaKey) return;
+    ev.preventDefault();
+    const k = ev.shiftKey ? 5 : 1;
+    nudge(Number(g.getAttribute('data-i')), step[0] * k, step[1] * k);
+  }
+
+  // One fine-tune step on the selected point, said to screen readers; false when nothing moved.
+  function tune(dt, dp) {
+    const e = state.editor;
+    if (!e || e.selected === null) return false;
+    const before = e.points[e.selected].join();
+    nudge(e.selected, dt, dp);
+    $('edTuneLive').textContent = $('edTuneLabel').textContent;
+    return e.points[e.selected].join() !== before;
+  }
+
+  // ◀ ▶ in the bar: the previous or the next point, going around.
+  function selectNearby(d) {
+    const e = state.editor;
+    e.selected = (e.selected + d + e.points.length) % e.points.length;
+    renderEditor();
+    $('edTuneLive').textContent = $('edTuneLabel').textContent;
+  }
+
+  // − and + step once per tap, click or key press, and repeat while a pointer holds them. The click that ends a hold
+  // doesn't add one more step.
+  function wireTune() {
+    const steps = { edTuneTMinus: [-1, 0], edTuneTPlus: [1, 0], edTunePMinus: [0, -1], edTunePPlus: [0, 1] };
+    for (const [id, [dt, dp]] of Object.entries(steps)) {
+      const b = $(id);
+      let timer = 0, repeatedAt = -Infinity;
+      const stop = () => clearTimeout(timer);
+      b.addEventListener('pointerdown', (ev) => {
+        if (ev.button !== 0) return;
+        stop();
+        timer = setTimeout(function repeat() {
+          if (!tune(dt, dp)) return;
+          repeatedAt = performance.now();
+          timer = setTimeout(repeat, 80);
+        }, 400);
+      });
+      for (const type of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(type, stop);
+      b.addEventListener('click', () => { if (performance.now() - repeatedAt > 300) tune(dt, dp); });
+      b.addEventListener('contextmenu', (ev) => ev.preventDefault());
+    }
+    $('edTunePrev').onclick = () => selectNearby(-1);
+    $('edTuneNext').onclick = () => selectNearby(1);
   }
 
   // Picking a preset morphs the curve into place instead of jumping, so the change is visible.
@@ -614,27 +777,38 @@ import { cpuMain } from './js/sensors.mjs';
     };
   }
 
+  // Pressing within a point's target grabs the nearest point (targets overlap where points are close) and selects it
+  // for the fine-tune bar. It follows the pointer, at the same offset it was grabbed, once the pointer moves 4 px:
+  // a tap only selects.
   function startDrag(ev) {
+    const e = state.editor;
+    if (!e || ev.button !== 0) return;
+    const svg = $('edSvg');
+    const at = (v) => {
+      const box = svg.getBoundingClientRect();
+      return [(v.clientX - box.left) / box.width * ED.w, (v.clientY - box.top) / box.height * ED.h];
+    };
+    const [sx, sy] = at(ev);
+    let i = -1, nearest = HIT_R;
+    e.points.forEach(([t, p], k) => {
+      const dist = Math.hypot(exX(t) - sx, exY(p) - sy);
+      if (dist <= nearest) { i = k; nearest = dist; }
+    });
+    if (i < 0) return;
     ev.preventDefault();
     cancelAnimationFrame(morphFrame); // grabbing a point stops a running preset morph
-    const svg = $('edSvg');
-    const i = Number(ev.target.getAttribute('data-i'));
-    const e = state.editor;
-    const limits = state.fans.limits;
-    const last = e.points.length - 1;
+    const dx = exX(e.points[i][0]) - sx, dy = exY(e.points[i][1]) - sy;
+    e.selected = i;
+    renderEditor();
+    svg.querySelectorAll('.point')[i].focus({ preventScroll: true });
     svg.setPointerCapture(ev.pointerId);
+    let moved = false;
     const move = (mv) => {
-      const box = svg.getBoundingClientRect();
-      const sx = (mv.clientX - box.left) / box.width * ED.w;
-      const sy = (mv.clientY - box.top) / box.height * ED.h;
-      let t = Math.round((sx - ED.l) / (ED.w - ED.l - ED.r) * 100);
-      let p = Math.round((1 - (sy - ED.t) / (ED.h - ED.t - ED.b)) * 100);
-      const prev = e.points[i - 1], next = e.points[i + 1];
-      if (i === 0) t = 0;
-      else t = Math.max(prev[0] + 1, Math.min(next ? next[0] - 1 : limits.maxFullSpeedTemp, t));
-      if (i === last) p = 100;
-      else p = Math.max(Math.max(limits.minDutyPercent, prev ? prev[1] : 0), Math.min(next[1], p));
-      e.points[i] = [t, p];
+      if (!moved && Math.hypot(mv.clientX - ev.clientX, mv.clientY - ev.clientY) < 4) return;
+      moved = true;
+      const [x, y] = at(mv);
+      e.points[i] = movePoint(e.points, i, (x + dx - ED.l) / (ED.w - ED.l - ED.r) * 100,
+        (1 - (y + dy - ED.t) / (ED.h - ED.t - ED.b)) * 100, state.fans.limits);
       renderEditor();
     };
     const up = () => {
@@ -681,7 +855,13 @@ import { cpuMain } from './js/sensors.mjs';
       await api('/api/fans/' + e.index + '/meta', body);
       toast('Nome e função salvos');
       await loadFans();
-      closeEditor();
+      // A curve not applied yet keeps the sheet open: saving the name doesn't throw it away.
+      if (state.editor === e && curveDraft(e) !== e.savedCurve) {
+        renderEditorTitle(state.fans.fans[e.index]);
+        e.savedMeta = metaDraft();
+        $('edMeta').open = false;
+        $('edMeta').querySelector('summary').focus();
+      } else closeEditor();
     } catch (err) { toast(err.message, true); }
     finally { $('edMetaSave').disabled = false; }
   }
@@ -699,8 +879,22 @@ import { cpuMain } from './js/sensors.mjs';
   }
 
   function wireEditor() {
-    $('edClose').onclick = closeEditor;
-    $('backdrop').onclick = closeEditor;
+    $('edClose').onclick = requestClose;
+    $('backdrop').onclick = requestClose;
+    $('edKeep').onclick = keepEditing;
+    $('edDiscardYes').onclick = closeEditor;
+    document.addEventListener('keydown', sheetKey);
+    const svg = $('edSvg');
+    svg.addEventListener('pointerdown', startDrag);
+    svg.addEventListener('keydown', pointKey);
+    // Reaching a point with Tab selects it, as a tap does.
+    svg.addEventListener('focusin', (ev) => {
+      const g = ev.target.closest('.point');
+      if (!g || !state.editor) return;
+      state.editor.selected = Number(g.getAttribute('data-i'));
+      renderEditor();
+    });
+    wireTune();
     $('edModeCurve').onclick = () => { state.editor.mode = 'curve'; renderEditor(); };
     $('edModeFixed').onclick = () => { state.editor.mode = 'fixed'; renderEditor(); };
     $('edStyle').onchange = (ev) => { state.editor.style = ev.target.value; renderEditor(); };

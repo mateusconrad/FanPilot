@@ -152,6 +152,13 @@
       <h2 id="edTitle">Fan</h2>
       <button class="btn ghost" id="edClose">Fechar</button>
     </div>
+    <div class="discard" id="edDiscard" role="group" aria-labelledby="edDiscardText" hidden>
+      <p id="edDiscardText"><strong>Descartar alterações?</strong> O que você mudou aqui ainda não foi aplicado.</p>
+      <div class="row">
+        <button class="btn" id="edKeep">Continuar editando</button>
+        <button class="btn" id="edDiscardYes">Descartar</button>
+      </div>
+    </div>
     <div class="row" style="justify-content:space-between">
       <div class="seg" role="group" aria-label="Modo">
         <button id="edModeCurve" aria-pressed="true">Curva</button>
@@ -164,7 +171,26 @@
 
     <div id="edCurveBox">
       <div class="chips" id="edPresets" style="margin-bottom:8px"></div>
-      <svg id="edSvg" viewBox="0 0 340 230" aria-label="Editor da curva: arraste os pontos"></svg>
+      <svg id="edSvg" viewBox="0 0 340 248" role="group" aria-label="Pontos da curva: arraste, ou use as setas do teclado"></svg>
+      <p class="hint" id="edTuneHint">Toque num ponto para ajustá-lo de 1 em 1. No teclado: Tab até o ponto e as setas (com Shift, de 5 em 5).</p>
+      <div class="tune" id="edTune" hidden>
+        <button class="btn" id="edTunePrev" aria-label="Ponto anterior">&#x25C0;&#xFE0E;</button>
+        <span class="tune-label" id="edTuneLabel"></span>
+        <button class="btn" id="edTuneNext" aria-label="Próximo ponto">&#x25B6;&#xFE0E;</button>
+        <div class="tune-steps">
+          <div class="tune-group" role="group" aria-label="Temperatura">
+            <button class="btn" id="edTuneTMinus" aria-label="Diminuir 1 °C">−</button>
+            <span aria-hidden="true">°C</span>
+            <button class="btn" id="edTuneTPlus" aria-label="Aumentar 1 °C">+</button>
+          </div>
+          <div class="tune-group" role="group" aria-label="Velocidade">
+            <button class="btn" id="edTunePMinus" aria-label="Diminuir 1%">−</button>
+            <span aria-hidden="true">%</span>
+            <button class="btn" id="edTunePPlus" aria-label="Aumentar 1%">+</button>
+          </div>
+        </div>
+        <p class="sr-only" id="edTuneLive" aria-live="polite"></p>
+      </div>
       <div class="row" style="justify-content:space-between;margin-top:6px">
         <label class="field">Transição
           <select id="edStyle">

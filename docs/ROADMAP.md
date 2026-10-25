@@ -8,7 +8,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 - **Testes:** testes automatizados do item: `a fazer` · `ok` (commitados com o item; rodam na [CI](https://github.com/mateusconrad/FanPilot/actions) a cada push)
 - **Esforço**, em dias de trabalho focado: P ≈ 1 · P–M ≈ 2 · M ≈ 3 · G ≈ 10
 
-**Concluídos: 19 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 14a, 15, 16, 17, 18, 19, 27 (veja a seção própria)
+**Concluídos: 20 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 14a, 15, 16, 17, 18, 19, 20, 27 (veja a seção própria)
 
 ## Andamento
 
@@ -33,7 +33,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 | 17 | [Nomes dos fans e papel "bomba"](specs/17-nomes-e-bomba.md) | 3 | P–M | 04 | concluído | ok | [#17](https://github.com/mateusconrad/FanPilot/issues/17) | política da bomba no `BuildCurve`, por onde passam editor, Turbo, reaplicação e os perfis do 18; falta conferir na B760M |
 | 18 | [Perfis globais](specs/18-perfis.md) | 3 | P–M | 07, 17 | concluído | ok | [#18](https://github.com/mateusconrad/FanPilot/issues/18) | modo global com o Turbo por cima, predefinições no backend; o menu da bandeja vem com a 14b; falta conferir na B760M |
 | 19 | [Temperatura dos núcleos na Gigabyte](specs/19-temperatura-cpu-gigabyte.md) | 3 | P–M | — | concluído | ok | [#19](https://github.com/mateusconrad/FanPilot/issues/19) | papel `cpu-main` nas leituras; LibreHardwareMonitor só com a CPU ao lado do GCC; falta conferir na B760M com o PawnIO |
-| 20 | [Editor acessível e com ajuste fino](specs/20-acessibilidade-editor.md) | 3 | P | — | a fazer | a fazer | [#20](https://github.com/mateusconrad/FanPilot/issues/20) | |
+| 20 | [Editor acessível e com ajuste fino](specs/20-acessibilidade-editor.md) | 3 | P | — | concluído | ok | [#20](https://github.com/mateusconrad/FanPilot/issues/20) | pontos como sliders, barra de ajuste fino, folha com foco, Esc, `inert` e Tab em volta, alvos de 44 px (`movePoint` compartilhada); falta TalkBack e VoiceOver num celular |
 | 21 | [Inglês e internacionalização](specs/21-internacionalizacao.md) | 4 | M | — | a fazer | a fazer | [#21](https://github.com/mateusconrad/FanPilot/issues/21) | |
 | 22 | [Modo painel](specs/22-modo-painel.md) | 4 | P–M | — | a fazer | a fazer | [#22](https://github.com/mateusconrad/FanPilot/issues/22) | |
 | 23 | [Integrações (Prometheus, Home Assistant)](specs/23-integracoes.md) | 4 | M | 01, 09 | a fazer | a fazer | [#23](https://github.com/mateusconrad/FanPilot/issues/23) | |
@@ -112,6 +112,7 @@ Itens já na `main` cujo comportamento na placa real ainda não foi conferido. P
 | 11 | O zip feito pela CI (artefato `FanPilot-0.1.0-win-x64.zip` da última execução em [Actions](https://github.com/mateusconrad/FanPilot/actions)), extraído numa pasta nova com uma cópia da `data\` do `bin\`, passa no `--hardware-test`; o log começa com "FanPilot 0.1.0+<commit>" e o rodapé do painel mostra a mesma versão. A `data\` do `bin\` não é tocada, e a pasta de teste pode ser apagada depois. É esse zip que a `v0.1.0` vai publicar |
 | 14a | O ponto de parada do item 14: o FanPilot como serviço na B760M (GCC como LocalSystem, NVML na sessão 0, suspensão, parada em menos de 1 s, partida antes do logon, caminho LHM). Passo a passo na [spec 14](specs/14-servico-bandeja-instalador.md#ponto-de-parada-como-verificar-na-b760m). Passando, o item segue para a bandeja e o instalador |
 | 16 | Na B760M: em "Alertas", gerar um tópico do ntfy, assinar o mesmo tópico no app do ntfy no celular, salvar e "Enviar teste": a mensagem chega ao celular. Pôr o limite da CPU em 60 °C (abaixo da temperatura atual): em ~10 s aparece "CPU a … °C" na faixa e no celular; voltar o limite a 95 °C: o alerta termina 30 s depois e chega o "Resolvido" |
+| 20 | No celular pareado, com o TalkBack (Android) ou o VoiceOver (iPhone) ligado: abrir um fan; os pontos são anunciados como "Ponto 3 de 8" com a temperatura e a velocidade, e o gesto de ajuste muda a velocidade. Sem o leitor de tela: tocar num ponto não o move, o − °C + muda 1 °C por toque e segurar o + repete; fechar com uma mudança pergunta "Descartar alterações?" |
 | 19 | Na B760M: sem o PawnIO, o card diz "CPU · socket" com a dica. Com o PawnIO instalado (`winget install namazso.PawnIO`) e o FanPilot reaberto, o log mostra "Temperatura da CPU (…) pelo LibreHardwareMonitor", o card diz "CPU · pacote" com um valor próximo do "CPU Package" do HWiNFO, e o GCC continua respondendo (o `--hardware-test` passa) |
 | 18 | Na B760M: anotar as curvas de cada fan, escolher "Silencioso" (o RPM cai em poucos segundos; a bomba não muda), ligar e desligar o Turbo (volta ao Silencioso), reiniciar o FanPilot (continua no Silencioso) e escolher "Personalizado": cada fan volta exatamente à curva anotada |
 | 17 | Na B760M: marcar como bomba, em "Nome e função", o header em que ela estiver (o README desconfia do System 1): ele vai a 100%, o card mostra o selo "Bomba", e o Turbo ligado e desligado não o muda. Dar um nome a outro fan e reiniciar o FanPilot: nome e bomba continuam. O `--hardware-test` sem `--fan` não escolhe a bomba |

@@ -15,7 +15,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 // The editor's SVG geometry (ED in app.js): [°C, %] to a point on the screen.
-const ED = { w: 340, h: 230, l: 34, r: 12, t: 10, b: 26 };
+const ED = { w: 340, h: 248, l: 34, r: 12, t: 28, b: 26 };
 async function screenPoint(page, t, p) {
   const box = await page.locator('#edSvg').boundingBox();
   const x = ED.l + t / 100 * (ED.w - ED.l - ED.r), y = ED.t + (1 - p / 100) * (ED.h - ED.t - ED.b);
@@ -132,7 +132,9 @@ test('fechar o editor não aplica nada', async ({ page }) => {
   const before = await fan0();
   await openFan(page, 0);
   await drag(page, 3, 60, 90);
+  // A change not applied: the sheet asks first (item 20).
   await page.locator('#edClose').click();
+  await page.locator('#edDiscardYes').click();
   await expect(page.locator('#sheet')).toBeHidden();
   const after = await fan0();
   expect([after.managed, after.points, after.request]).toEqual([before.managed, before.points, before.request]);

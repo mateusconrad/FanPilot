@@ -32,3 +32,14 @@ export function normalize(pts, limits) {
   pts[pts.length - 1][1] = 100;
   return pts;
 }
+
+// Where editor point i can go when asked for [t, p]: the same rules for dragging, the arrow keys and the fine-tune
+// buttons. The first point stays at 0 °C and the last at 100%; temperatures keep at least 1 °C between points, the
+// last one at most at maxFullSpeedTemp; a point is never slower than the one before it nor faster than the next,
+// and never below the minimum duty.
+export function movePoint(pts, i, t, p, limits) {
+  const prev = pts[i - 1], next = pts[i + 1];
+  t = i === 0 ? 0 : Math.max(prev[0] + 1, Math.min(next ? next[0] - 1 : limits.maxFullSpeedTemp, Math.round(t)));
+  p = next ? Math.max(limits.minDutyPercent, prev ? prev[1] : 0, Math.min(next[1], Math.round(p))) : 100;
+  return [t, p];
+}
