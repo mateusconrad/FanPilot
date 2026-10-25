@@ -21,6 +21,7 @@ sealed class FanPilotHost
     GpuMonitor _gpu;
     FanManager _fans;
     Sampler _sampler;
+    AlertMonitor _alerts;
     bool _stopped;
 
     // openBoard: Boards.Create, or the fake board; it may throw InvalidOperationException with the reason.
@@ -64,17 +65,20 @@ sealed class FanPilotHost
         var gpu = _openGpu();
         var fans = new FanManager(bridge, _cfg, _dataDir);
         var sampler = new Sampler(bridge, gpu);
+        var alerts = new AlertMonitor(sampler, fans, bridge, _dataDir);
+        sampler.Alerts = alerts.ActiveForSnapshot;
         lock (_sync)
         {
-            _bridge = bridge; _gpu = gpu; _fans = fans; _sampler = sampler;
+            _bridge = bridge; _gpu = gpu; _fans = fans; _sampler = sampler; _alerts = alerts;
             if (_stopped) { bridge.Shutdown(); gpu.Shutdown(); return 0; }
         }
 
         try { fans.Start(); } catch (Exception ex) { Log.Warn("Fan manager: " + ex.Message); }
         gpu.Start();
         sampler.Start();
+        alerts.Start();
         // Only now: until Start() has saved the original curves, no request may change a fan.
-        server.Attach(new AuthManager(_dataDir, _cfg), sampler, fans, gpu);
+        server.Attach(new AuthManager(_dataDir, _cfg), sampler, fans, gpu, alerts);
 
         string pairUrl = "http://localhost:" + _cfg.Port + "/pair";
         Log.Info("FanPilot rodando na porta " + _cfg.Port + ". Endereços na rede: " + string.Join(", ", NetworkInfo.CandidateHosts(_cfg).Select(h => "http://" + h + ":" + _cfg.Port)));
@@ -92,12 +96,14 @@ sealed class FanPilotHost
         GpuMonitor gpu;
         WebServer server;
         Sampler sampler;
+        AlertMonitor alerts;
         lock (_sync)
         {
             if (_stopped) return;
             _stopped = true;
-            bridge = _bridge; gpu = _gpu; server = _server; sampler = _sampler;
+            bridge = _bridge; gpu = _gpu; server = _server; sampler = _sampler; alerts = _alerts;
         }
+        if (alerts != null) alerts.Stop();
         var watch = Stopwatch.StartNew();
         if (bridge != null)
             Log.Info(bridge.HardwareCurves

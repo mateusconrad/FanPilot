@@ -78,6 +78,10 @@ WORST = {
     "power": [("CPU Package", 253.6), ("CPU Cores", 231.04), ("CPU SoC", 22.5)],
     "clocks": [("CPU", 5875), ("BCLK", 100.02), ("CPU Ratio", 58.75), ("DDR", 8000)],
     # A curve saved for a header the board no longer reports (FanManager orphans).
+    "alerts": [{"id": "temp-cpu", "severity": "critical", "title": "CPU a 98 °C", "detail": "Acima do limite de 95 °C há mais de 10 s.",
+                "since": 1792929600000, "resolved": None, "acknowledged": False},
+               {"id": "fan-1a2b3c4d", "severity": "warning", "title": "Fan parado: SYS_FAN2", "detail": "Lê 0 RPM com 45% comandado; antes girava.",
+                "since": 1792929660000, "resolved": None, "acknowledged": False}],
     "orphans": [{"key": "v1:9:SYS_FAN9_PUMP", "title": "SYS_FAN9_PUMP (bomba do watercooler antigo, removida da placa)"}],
     # What AppNotices reports after a damaged state file and a hand-edited config.json (long names, must wrap).
     "notices": ["desired-curves.json estava ilegível (Invalid object passed in, member name expected. (13): {\"1\": {\"request\") "
@@ -140,6 +144,7 @@ def snapshot(fx, t_ms=None, wobble=0.0):
         snap["service"]["notice"] = fx["notice"]
     if fx.get("notices"):
         snap["service"]["notices"] = fx["notices"]
+    snap["alerts"] = fx.get("alerts", [])
     if "temp" in snap["gpu"]:
         snap["gpu"]["temp"] = round(snap["gpu"]["temp"] + wobble / 2)
     return snap
@@ -223,6 +228,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if fx.get("service_down"):
                 return self.send_json({"error": "EasyTuneEngineService indisponível: Falha ao se conectar a uma porta de IPC"}, 503)
             return self.send_json(fans_payload(fx))
+        if path == "/api/alerts":
+            return self.send_json({"active": fx.get("alerts", []), "recent": []})
+        if path == "/api/alerts/settings":
+            return self.send_json({"cpuTemp": 95, "gpuTemp": 87, "pcName": "PC de teste", "ntfy": None, "telegram": None, "telegramChatId": None})
         if path == "/api/info":
             return self.send_json({"version": "0.1.0+mock", "backend": fx.get("backend", "Gigabyte Control Center"),
                                    "board": fx["board"]})

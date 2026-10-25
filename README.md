@@ -175,6 +175,15 @@ ele avisa no painel o que mudou e segue com o LibreHardwareMonitor (com `"gigaby
   100%). Vale para o editor, o Turbo e a reaplicação das curvas salvas. "Restaurar original" continua permitido.
 - **Nomes:** cada fan pode ter um nome seu (até 32 caracteres), que aparece no card e nos gráficos com o original ao
   lado. Nomes e funções ficam em `bin\data\fan-meta.json`, pela identidade do fan, e sobrevivem a reordenações.
+- **Alertas:** o painel avisa, numa faixa no topo e no card "Alertas", quando um fan que girava para (lê menos de 100
+  RPM por 5 s com pelo menos 30% comandado; bomba parada é crítico), quando a CPU passa de 95 °C ou a GPU de 87 °C
+  por 10 s (limites ajustáveis; o alerta só termina 5 °C abaixo, depois de 30 s), quando a placa não responde por 1
+  minuto e quando um fan foi devolvido à BIOS por segurança. Fans sem tacômetro nunca geram alerta.
+  - **Fora do painel**, opcional: um tópico do [ntfy](https://ntfy.sh) (o botão "Gerar tópico" sugere um aleatório,
+    difícil de adivinhar; assine o mesmo tópico no app do ntfy) ou um bot do Telegram (token e chat id). Cada alerta
+    avisa no máximo uma vez a cada 10 min, e avisa de novo quando termina. Nada sai do PC sem um destino
+    configurado, e as mensagens levam só o alerta e o nome do PC. O endereço do tópico e o token ficam cifrados com a
+    DPAPI em `bin\data\alerts.json` (outro PC não consegue lê-los).
 
 ### Placas sem GCC: curvas executadas pelo FanPilot
 
@@ -286,6 +295,10 @@ Não fazem parte do projeto: compile cada um com o `csc.exe` do .NET Framework, 
 | GET | `/api/history` | últimos 10 min (temperaturas, potência, rpm) |
 | GET | `/api/fans` | curvas atuais, sensores de referência, limites |
 | GET | `/api/info` | versão do FanPilot, backend e placa-mãe |
+| GET | `/api/alerts` | alertas ativos e recentes (os ativos também vêm em cada snapshot, no campo `alerts`) |
+| POST | `/api/alerts/ack` | `{"id":"…"}` tira o alerta da faixa (ele continua na lista enquanto durar) |
+| GET/POST | `/api/alerts/settings` | limites, nome do PC e destinos; os segredos voltam só mascarados; `""` remove um destino |
+| POST | `/api/alerts/test` | envia uma mensagem de teste para os destinos configurados |
 | POST | `/api/fans/{i}` | `{"mode":"fixed","percent":40}` ou `{"mode":"curve","style":"SmartFanMode","points":[[0,30],…N pontos em %, N = pointCount do fan],"tempInput":2}` |
 | POST | `/api/fans/{i}/restore` | volta à curva original |
 | POST | `/api/fans/{i}/meta` | `{"label":"Frente","role":"pump","pumpPolicy":"min","pumpMinPercent":70}` nome (até 32 caracteres; vazio volta ao original) e função; `role` `fan` ou `pump`, `pumpPolicy` `full` (sempre 100%) ou `min` (piso de 50 a 100%) |

@@ -175,6 +175,21 @@ main { max-width: 760px; margin: 0 auto; padding: 16px; display: grid; grid-temp
 }
 /* Problems from config.json or the state files: one per line, long file names wrap instead of widening the page. */
 .notice-banner { border-left-color: var(--warning); white-space: pre-line; overflow-wrap: anywhere; }
+/* Alerts (item 16): the banner holds the active ones not yet acknowledged; the card lists recent ones too. */
+.alert-banner { display: grid; gap: 8px; }
+.alert-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 12px; border-radius: 10px; background: var(--surface-2); border-left: 4px solid var(--warning); color: var(--ink);
+  font-size: 13px; overflow-wrap: anywhere;
+}
+.alert-item.critical { border-left-color: var(--critical); }
+.alert-item strong { display: block; font-size: 14px; }
+.alert-item .btn { flex: none; }
+.alert-item.resolved { border-left-color: var(--border); color: var(--ink-2); }
+.alert-list { display: grid; gap: 8px; margin-bottom: 10px; }
+.alert-list:empty { display: none; }
+#alertSettings { display: grid; gap: 10px; }
+#alertSettings .field input { width: 100%; }
 /* A saved configuration for a header the board no longer has, with its "Descartar" button. */
 .orphan { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .orphan .btn { flex: none; }

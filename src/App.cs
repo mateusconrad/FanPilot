@@ -371,12 +371,17 @@ sealed class Sampler
     readonly LinkedList<Dictionary<string, object>> _history = new LinkedList<Dictionary<string, object>>();
     readonly List<Action<string>> _subscribers = new List<Action<string>>();
     volatile string _latestJson = "{}";
+    volatile Dictionary<string, object> _latest;
     volatile bool _stopped;
     Thread _thread;
+    // The active alerts (item 16), put in every snapshot so the panel's banner follows them live.
+    public Func<List<Dictionary<string, object>>> Alerts;
 
     public Sampler(IBoard bridge, GpuMonitor gpu) { _bridge = bridge; _gpu = gpu; }
 
     public string LatestJson { get { return _latestJson; } }
+    // The same snapshot, not serialized (never changed after it is published); null before the first one.
+    public Dictionary<string, object> Latest { get { return _latest; } }
 
     public void Start()
     {
@@ -449,6 +454,8 @@ sealed class Sampler
         service["sampleMs"] = watch.ElapsedMilliseconds;
         snap["service"] = service;
         snap["gpu"] = _gpu.Latest;
+        var alerts = Alerts;
+        if (alerts != null) snap["alerts"] = alerts();
         return snap;
     }
 
@@ -456,6 +463,7 @@ sealed class Sampler
     {
         string json = Json.Serialize(snap);
         _latestJson = json;
+        _latest = snap;
         List<Action<string>> subs;
         lock (_sync)
         {
