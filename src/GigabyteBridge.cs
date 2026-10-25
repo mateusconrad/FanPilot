@@ -20,9 +20,16 @@ sealed class GigabyteBridge : IBoard
     public string LastError { get; private set; }
     public bool FanControlSupported { get; private set; }
 
-    public GigabyteBridge(GigabyteApi api)
+    // The cores' temperature next to GCC's socket sensor (item 19); a hint instead when PawnIO is missing.
+    readonly CpuPackageMonitor _cpu;
+
+    public GigabyteBridge(GigabyteApi api) : this(api, CpuPackageMonitor.Open()) { }
+
+    // cpu: the tests pass one without a reading.
+    internal GigabyteBridge(GigabyteApi api, CpuPackageMonitor cpu)
     {
         _api = api;
+        _cpu = cpu;
         ControlTitles = new string[0];
         TempInputTitles = new string[0];
     }
@@ -34,7 +41,7 @@ sealed class GigabyteBridge : IBoard
     // The curves run in the chip: there is nothing FanPilot hands back on its own.
     public List<string> ControlProblems() { return new List<string>(); }
     // Curves live in the chip, nothing to hand back.
-    public void Shutdown() { }
+    public void Shutdown() { _cpu.Close(); }
 
     // Every call goes through here: serialized (the modules are not thread-safe) and retried, because the
     // first call on a fresh IPC connection reliably fails with "pipe is being closed" and a retry succeeds.
@@ -94,7 +101,7 @@ sealed class GigabyteBridge : IBoard
 
     public List<SensorReading> ReadSensors()
     {
-        return Invoke(() => _api.ReadMonitoredData(_hw).Select(d => new SensorReading
+        var readings = Invoke(() => _api.ReadMonitoredData(_hw).Select(d => new SensorReading
         {
             Id = d.Type.ToLowerInvariant() + "-" + d.DeviceUuid,
             Type = d.Type,
@@ -102,6 +109,8 @@ sealed class GigabyteBridge : IBoard
             Value = Math.Round(d.Value, 3),
             Unit = UnitFor(d)
         }).ToList());
+        CpuRoles.Assign(readings, _cpu.Read(), true, _cpu.Hint);
+        return readings;
     }
 
     static string UnitFor(GigabyteApi.Reading d)

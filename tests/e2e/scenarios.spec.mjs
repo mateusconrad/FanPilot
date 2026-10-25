@@ -27,6 +27,9 @@ test.describe('pior caso: placa grande, nomes longos, sensor desconectado', () =
     await expect(page.locator('#fans .fan .name').last()).toHaveText('SYS_FAN6_PUMP · bomba do watercooler ligada no conector de 4 pinosBomba');
     await expect(page.locator('#gpuName')).toHaveText('NVIDIA GeForce RTX 5090 D v2 Laptop GPU');
     await expect(page.locator('#notices')).toContainText('turbo.json estava ilegível');
+    // No reading for the cores here: the socket, said so, with how to get the cores' one (item 19).
+    await expect(page.locator('#tiles .tile .label').first()).toHaveText('CPU · socket');
+    await expect(page.locator('#tiles .tile-hint')).toContainText('PawnIO');
     // Nothing wider than a 320 px phone.
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
 
@@ -127,6 +130,9 @@ test.describe('LibreHardwareMonitor: curvas executadas pelo FanPilot', () => {
     await page.goto(fp().url + '/');
     await expect(page.locator('#statusText')).toHaveText('ao vivo');
     await expect(page.locator('#fanMode')).toBeVisible();
+    // LibreHardwareMonitor's "CPU" already is the package: nothing visible changes (item 19).
+    await expect(page.locator('#tiles .tile .label').first()).toHaveText('CPU');
+    await expect(page.locator('#tiles .tile-hint')).toHaveCount(0);
     await expect(page.locator('#fans .fan .desc')).toHaveText(Array(4).fill(/^Controle da BIOS/));
 
     await page.locator('#fans .fan').nth(1).click();

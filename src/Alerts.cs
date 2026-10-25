@@ -423,7 +423,8 @@ sealed class AlertMonitor
         var service = Json.Get(snap, "service") as Dictionary<string, object>;
         input.BoardOk = service == null || !(Json.Get(service, "ok") is bool ok) || ok;
         var sensors = Json.Get(snap, "sensors") as IEnumerable<Dictionary<string, object>>;
-        var cpu = sensors == null ? null : sensors.FirstOrDefault(s => Json.GetString(s, "type", "") == "Temperature" && Json.GetString(s, "title", "") == "CPU");
+        var cpu = sensors == null ? null : sensors.FirstOrDefault(s => Json.GetString(s, "role", "") == CpuRoles.Main)
+                  ?? sensors.FirstOrDefault(s => Json.GetString(s, "type", "") == "Temperature" && Json.GetString(s, "title", "") == "CPU");
         if (cpu != null) input.CpuTemp = Json.ToDouble(Json.Get(cpu, "value"));
         var gpu = Json.Get(snap, "gpu") as Dictionary<string, object>;
         if (gpu != null && Json.Get(gpu, "ok") is bool gpuOk && gpuOk && Json.Get(gpu, "temp") != null) input.GpuTemp = Json.ToDouble(Json.Get(gpu, "temp"));

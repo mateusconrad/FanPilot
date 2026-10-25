@@ -122,6 +122,8 @@ main { max-width: 760px; margin: 0 auto; padding: 16px; display: grid; grid-temp
 .tile .value { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; margin-top: 2px; }
 .tile .value small { font-size: 15px; font-weight: 500; color: var(--ink-2); margin-left: 2px; }
 .tile .meta { font-size: 12px; color: var(--muted); margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+/* How to get a better reading (the CPU's cores on a Gigabyte board without PawnIO). */
+.tile-hint { font-size: 11px; color: var(--muted); margin-top: 4px; overflow-wrap: anywhere; }
 
 .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--ink-2); }
 .badge::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--muted); }

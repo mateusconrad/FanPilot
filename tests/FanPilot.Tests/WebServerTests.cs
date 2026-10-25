@@ -71,6 +71,19 @@ public sealed class WebServerTests : IDisposable
         Assert.Contains("\"backend\":\"Placa de teste\"", r.Body);
     }
 
+    // Item 19: the CPU chart's series, whichever reading is "the CPU" on this board.
+    [Fact]
+    public void HistoryHasTheCpuSeries()
+    {
+        Assert.True(SpinWait(() => RawHttp.Send(_port, "GET", "/api/history").Body.Contains("\"cpu-main\"")), "sem a série cpu-main");
+    }
+
+    static bool SpinWait(Func<bool> condition)
+    {
+        for (int i = 0; i < 50; i++) { if (condition()) return true; System.Threading.Thread.Sleep(100); }
+        return condition();
+    }
+
     [Fact]
     public void PanelModuleIsServedAsJavaScript()
     {

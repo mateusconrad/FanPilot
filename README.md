@@ -29,6 +29,8 @@ Como funciona por baixo: veja [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEE
 - Uma das duas formas de acesso à placa-mãe (o FanPilot escolhe sozinho):
   - **Placa Gigabyte com o Gigabyte Control Center** instalado e o serviço **EasyTune Engine Service** rodando.
     As curvas ficam gravadas no chip da placa. O FanPilot usa as DLLs do GCC já instalado, não as redistribui.
+    Opcional: com o driver [PawnIO](https://pawnio.eu) instalado, o card da CPU mostra a temperatura dos núcleos
+    (lida pelo LibreHardwareMonitor só na CPU, sem disputar o chip com o GCC); sem ele, mostra o sensor do socket.
   - **Qualquer outra placa (ASUS, MSI, ASRock… ou Gigabyte sem GCC)** via
     [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor), que precisa do driver
     **[PawnIO](https://pawnio.eu)**. Se ele faltar, o FanPilot oferece instalar na hora pelo `winget` (é só
@@ -277,7 +279,9 @@ Limites ajustáveis em `bin\data\config.json` (`minDutyPercent`, `fixedModeSafet
   editor ("Nome e função"): bomba lenta reduz muito a refrigeração, e com a proteção "Sempre 100%" nada que o
   FanPilot aplique a deixa mais lenta. O gráfico de RPM omite headers que leem 0.
 - Sensores de temperatura disponíveis para referência das curvas: System 1, PCH, CPU, PCIEX16, VRM MOS, System 2.
-  A temperatura "CPU" é a do sensor da placa (socket), não a dos núcleos.
+  A temperatura "CPU" do GCC é a do sensor da placa (socket), não a dos núcleos: o painel a chama de "CPU · socket" e,
+  com o PawnIO instalado, mostra no card a temperatura dos núcleos ("CPU · pacote"). As curvas continuam no sensor da
+  placa, porque é o que o chip lê.
 
 ## Ferramentas de engenharia reversa (`tools/`)
 

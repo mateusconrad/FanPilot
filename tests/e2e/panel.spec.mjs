@@ -13,7 +13,9 @@ test.beforeEach(async ({ page }) => {
 
 test('mostra temperaturas, fans, gráficos e sensores', async ({ page }) => {
   await expect(page.locator('#tiles .tile')).toHaveCount(4);
-  await expect(page.locator('#tiles .tile').first()).toContainText('CPU');
+  // The demo board is a Gigabyte with PawnIO: the card shows the cores, not the socket (item 19).
+  await expect(page.locator('#tiles .tile .label').first()).toHaveText('CPU · pacote');
+  await expect(page.locator('#tiles .tile-hint')).toHaveCount(0);
   await expect(page.locator('#fans .fan .name')).toHaveText(['CPU', 'System 1', 'System 2', 'System 3']);
   // CPU and System 3 have nothing with a tachometer plugged in, as on the real board.
   await expect(page.locator('#fans .fan .rpm').first()).toHaveText('sem leitura');
@@ -27,6 +29,8 @@ test('mostra temperaturas, fans, gráficos e sensores', async ({ page }) => {
   await page.locator('summary', { hasText: 'Todos os sensores' }).click();
   await expect(page.locator('#sensorTable tr.group')).toHaveText(['Temperaturas', 'Fans', 'Tensões', 'Clocks', 'Potência']);
   await expect(page.locator('#sensorTable')).toContainText('VCore');
+  await expect(page.locator('#sensorTable')).toContainText('CPU · pacote');
+  await expect(page.locator('#sensorTable')).toContainText('CPU · socket');
   await expect(page.locator('#appVersion')).toHaveText(/^FanPilot \d+\.\d+\.\d+(\+[0-9a-f]{7})? · Placa de teste$/);
 });
 

@@ -22,14 +22,21 @@ O card e o gráfico mostram a temperatura que o usuário espera, nos dois caminh
 4. **Curvas na Gigabyte** continuam nos sensores do chip (limite do hardware). O editor explica: "a curva segue o sensor da placa; o card mostra a temperatura dos núcleos".
 5. **Sem PawnIO:** o card mostra "socket" e uma dica para instalar o PawnIO e ver a temperatura dos núcleos.
 
+### Como ficou (25/10/2026)
+
+- `src/CpuTemperature.cs`: `CpuPackageMonitor` (o LibreHardwareMonitor só com a CPU, que o `GigabyteBridge` abre e fecha junto com ele) e `CpuRoles.Assign`, que marca as leituras de cada placa: com o pacote, ele entra como "CPU · pacote" (`cpu-main`) e o sensor do GCC vira "CPU · socket" (`cpu-socket`); sem o pacote, o sensor do GCC é o `cpu-main`, com o título "CPU · socket" e a dica; no LibreHardwareMonitor, o "CPU" já é o pacote e não muda. `SensorReading` ganhou `Role` e `Hint`, e o snapshot os leva.
+- O painel acha a CPU pelo `role` (`wwwroot/js/sensors.mjs`, testado com `node --test`); o histórico ganhou a série `cpu-main`; os alertas (item 16) e a trava de 80 °C do `--hardware-test` também usam o `cpu-main` (com o pacote, a trava fica mais conservadora: os núcleos esquentam mais que o socket).
+- O editor, numa placa com curva no chip e com o pacote, explica que a curva segue o sensor da placa.
+- A placa falsa `demo` tem o pacote (14 °C acima do socket); a `worst`, não, com a dica; a `lhm` mostra "CPU" como antes.
+
 ## Critérios de aceite
 
-- [ ] B760M com PawnIO: o card mostra a temperatura de pacote, próxima da do HWiNFO.
-- [ ] Sem PawnIO: comportamento atual, com o rótulo "socket" e a dica.
-- [ ] Caminho LHM: nenhuma mudança visível.
+- [ ] B760M com PawnIO: o card mostra a temperatura de pacote, próxima da do HWiNFO (verificação em hardware).
+- [x] Sem PawnIO: comportamento atual, com o rótulo "socket" e a dica.
+- [x] Caminho LHM: nenhuma mudança visível.
 - [ ] O GCC continua funcionando normalmente com as duas leituras ativas (roteiro de hardware).
 
 ## Testes
 
-- Automatizados: atribuição do `role` com fontes falsas; painel usando o `role` (teste JS).
+- Automatizados: atribuição do `role` com fontes falsas (`CpuRolesTests`, `CpuSnapshotTests`, o `GigabyteBridge` com o stub do GCC e um monitor de CPU sem leitura), a série `cpu-main` no histórico, e o painel usando o `role` (`tests/js/sensors.test.mjs`); de ponta a ponta, o card nas placas falsas `demo`, `worst` e `lhm`.
 - Manuais: B760M com e sem PawnIO.

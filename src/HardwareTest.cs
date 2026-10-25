@@ -222,9 +222,10 @@ sealed class HardwareTest
         Guard();
     }
 
+    // The cores' temperature when there is a reading for them (the safer one for the 80 °C abort), else the board's.
     double CpuTemp()
     {
-        var cpu = _board.ReadSensors().FirstOrDefault(s => s.Type == "Temperature" && s.Title == "CPU");
+        var cpu = CpuRoles.MainOf(_board.ReadSensors());
         return cpu == null ? double.NaN : cpu.Value;
     }
 
@@ -251,7 +252,7 @@ sealed class HardwareTest
         var sensors = _board.ReadSensors();
         var temps = sensors.Where(s => s.Type == "Temperature").ToList();
         if (temps.Count == 0) throw new StepFailed("nenhuma temperatura lida");
-        var implausible = temps.Where(s => s.Title == "CPU" && (s.Value < 5 || s.Value > 110)).ToList();
+        var implausible = temps.Where(s => (s.Role != null || s.Title == "CPU") && (s.Value < 5 || s.Value > 110)).ToList();
         if (implausible.Count > 0) throw new StepFailed("temperatura da CPU impossível: " + implausible[0].Value + " °C");
         var rpms = Rpms();
         var fans = Fans(_fans.Describe());

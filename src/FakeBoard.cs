@@ -37,6 +37,9 @@ sealed class FakeBoard : IBoard
     public int ReadDelayMs, WriteDelayMs;
     // Temperatures drift with time (the --fake-board demo); the tests keep them fixed.
     public bool Animated;
+    // The cores this many degrees above the "CPU" sensor, as LibreHardwareMonitor reads them next to Gigabyte Control
+    // Center when PawnIO is installed (item 19); null: no such reading.
+    public double? PackageAbove;
 
     public FakeBoard(int fans = 4, bool hardwareCurves = true)
     {
@@ -83,7 +86,7 @@ sealed class FakeBoard : IBoard
     // The board FanPilot was developed on (B760M GAMING X AX), moving a little so the panel looks alive.
     public static FakeBoard Demo()
     {
-        var b = new FakeBoard(4) { Animated = true };
+        var b = new FakeBoard(4) { Animated = true, PackageAbove = 14 };
         b.Headers[0].HasTach = false;
         b.Headers[3].HasTach = false;
         return b;
@@ -160,6 +163,9 @@ sealed class FakeBoard : IBoard
             list.Add(new SensorReading { Id = "power-fake-0", Type = "Power", Title = "CPU Package", Value = 41.2, Unit = "W" });
             list.Add(new SensorReading { Id = "frequency-fake-0", Type = "Frequency", Title = "CPU", Value = 4600, Unit = "MHz" });
             list.Add(new SensorReading { Id = "voltage-fake-0", Type = "Voltage", Title = "VCore", Value = 1.104, Unit = "V" });
+            int cpu = Array.IndexOf(TempInputTitles, "CPU");
+            double? package = PackageAbove.HasValue && cpu >= 0 ? Math.Round(temps[cpu] + PackageAbove.Value, 1) : (double?)null;
+            CpuRoles.Assign(list, package, HardwareCurves, "Instale o PawnIO (pawnio.eu) para ver a temperatura dos núcleos.");
             return list;
         }
     }
