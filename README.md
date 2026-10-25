@@ -100,6 +100,24 @@ despareia aparelhos.
   O workflow `Release` confere que a tag bate com a versão, compila, testa e publica a release. Para ensaiar sem
   publicar nada: `gh workflow run release.yml` (os arquivos ficam como artefato da execução).
 
+## Por que o Windows avisa ao abrir
+
+O `FanPilot.exe` ainda não é assinado: a assinatura gratuita para projetos open source está sendo pedida ao
+[SignPath Foundation](https://signpath.org). Um programa novo, sem editor verificável, que pede Administrador e fala
+com o hardware é o perfil que o SmartScreen ("O Windows protegeu o computador") e alguns antivírus barram.
+
+Para conferir que o zip é exatamente o publicado aqui (gerado pela CI a partir deste código, nunca num PC pessoal):
+
+1. Baixe o zip e o `SHA256SUMS.txt` da mesma [release](https://github.com/mateusconrad/FanPilot/releases).
+2. No PowerShell, na pasta do download:
+
+   ```powershell
+   (Get-FileHash .\FanPilot-0.1.0-win-x64.zip).Hash -eq (-split (Get-Content .\SHA256SUMS.txt))[0]
+   ```
+
+   `True` quer dizer que o arquivo é o da release. `False`: não use, baixe de novo.
+3. Com o hash conferido, no aviso do SmartScreen: "Mais informações" › "Executar assim mesmo".
+
 ## Segurança
 
 - Pareamento por QR: código aleatório de 144 bits, uso único, expira; tentativas erradas limitadas por IP.
