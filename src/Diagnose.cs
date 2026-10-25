@@ -18,8 +18,9 @@ static class Diagnose
         return Program.GccLibDir + ", versão " + api.Version + (api.Compatible ? ", compatível" : ", NÃO compatível: " + api.Problem);
     }
 
-    // otherInstance: a FanPilot is running and may be driving the fans while this reads them.
-    public static int Run(string dataDir, AppConfig cfg, bool otherInstance)
+    // otherInstance: a FanPilot is running and may be driving the fans while this reads them. interactive: a person
+    // is at the console (no --no-browser), so the report opens in Notepad.
+    public static int Run(string dataDir, AppConfig cfg, bool otherInstance, bool interactive)
     {
         string path = Path.Combine(dataDir, "diagnostico-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".txt");
         var sb = new StringBuilder();
@@ -70,7 +71,7 @@ static class Diagnose
         File.WriteAllText(path, sb.ToString(), Encoding.UTF8);
         Console.WriteLine("Diagnóstico salvo em " + path);
         Console.WriteLine("Nenhuma velocidade de fan foi alterada. Envie esse arquivo junto com o modelo da placa-mãe.");
-        try { Process.Start("notepad.exe", "\"" + path + "\""); } catch { }
+        if (interactive) try { Process.Start("notepad.exe", "\"" + path + "\""); } catch { }
         return 0;
     }
 }

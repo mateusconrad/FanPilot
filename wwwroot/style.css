@@ -5,7 +5,8 @@
   --surface-2: #f0efec;
   --ink: #0b0b0b;
   --ink-2: #52514e;
-  --muted: #898781;
+  /* Secondary text: at least 4.5:1 (WCAG AA) on every background it sits on, --surface-2 included. */
+  --muted: #6b6a64;
   --grid: #e1e0d9;
   --axis: #c3c2b7;
   --border: rgba(11, 11, 11, 0.10);
@@ -38,6 +39,7 @@
     --surface-2: #262624;
     --ink: #f0efec;
     --ink-2: #c3c2b7;
+    --muted: #95938c;
     --grid: #2c2c2a;
     --axis: #383835;
     --border: rgba(255, 255, 255, 0.10);
@@ -61,6 +63,7 @@
   --surface-2: #262624;
   --ink: #f0efec;
   --ink-2: #c3c2b7;
+  --muted: #95938c;
   --grid: #2c2c2a;
   --axis: #383835;
   --border: rgba(255, 255, 255, 0.10);

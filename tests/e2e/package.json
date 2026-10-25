@@ -1,0 +1,13 @@
+{
+  "name": "fanpilot-e2e",
+  "private": true,
+  "type": "module",
+  "description": "Testes de ponta a ponta do FanPilot: o painel num navegador de verdade, contra o FanPilot.exe com a placa falsa.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.64.1"
+  }
+}

@@ -1,5 +1,6 @@
-# A tag vX.Y.Z publishes that version: the tag must match Directory.Build.props, then build, tests, the zip,
-# SHA256SUMS.txt and the GitHub release, with the version's CHANGELOG.md section as its notes (0.x = pre-release).
+# A tag vX.Y.Z publishes that version: the tag must match Directory.Build.props, then build, tests, the zip and its
+# smoke test (with the end-to-end tests), SHA256SUMS.txt and the GitHub release, with the version's CHANGELOG.md
+# section as its notes (0.x = pre-release).
 # Started by hand (Actions > Release > Run workflow, or gh workflow run release.yml) it is a dry run: the same steps,
 # with the notes taken from "Não lançado" when needed and the files kept as the run's artifact. Nothing is published.
 name: Release
@@ -56,6 +57,25 @@ jobs:
       # Item 12 signs FanPilot.exe here, before it goes into the zip.
       - name: Empacotar
         run: ./scripts/package.ps1
+      # Nothing is published unless the zip's own exe starts and answers (smoke.spec.mjs).
+      - name: Compilar (Debug, para a placa falsa)
+        run: dotnet build src/FanPilot.csproj -c Debug --no-restore
+      - name: Instalar o Playwright
+        working-directory: tests/e2e
+        run: npm ci
+      - name: Testes de ponta a ponta e smoke do zip
+        working-directory: tests/e2e
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $env:FANPILOT_ZIP = (Resolve-Path "../../dist/FanPilot-$env:VERSION-win-x64.zip").Path
+          npx playwright test
+      - name: Guardar o relatório do Playwright
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: tests/e2e/playwright-report
       - name: Checksum
         env:
           VERSION: ${{ steps.version.outputs.version }}
