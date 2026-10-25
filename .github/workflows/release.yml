@@ -1,0 +1,87 @@
+# A tag vX.Y.Z publishes that version: the tag must match Directory.Build.props, then build, tests, the zip,
+# SHA256SUMS.txt and the GitHub release, with the version's CHANGELOG.md section as its notes (0.x = pre-release).
+# Started by hand (Actions > Release > Run workflow, or gh workflow run release.yml) it is a dry run: the same steps,
+# with the notes taken from "Não lançado" when needed and the files kept as the run's artifact. Nothing is published.
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      DOTNET_NOLOGO: 'true'
+      DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+    steps:
+      - uses: actions/checkout@v7
+
+      # Before the build: a tag that does not match the version, or a CHANGELOG.md without its section, fails here.
+      - name: Conferir a versão e as notas
+        id: version
+        run: |
+          $version = (Select-Xml -Path Directory.Build.props -XPath '//VersionPrefix').Node.InnerText
+          $tag = $env:GITHUB_REF_TYPE -eq 'tag'
+          if ($tag -and $env:GITHUB_REF_NAME -ne "v$version") {
+            throw "A tag $env:GITHUB_REF_NAME não bate com a versão do projeto ($version, no Directory.Build.props)."
+          }
+          New-Item -ItemType Directory -Force dist | Out-Null
+          ./scripts/release-notes.ps1 -Version $version -OutFile dist/release-notes.md -AllowUnreleased:(-not $tag)
+          Get-Content dist/release-notes.md
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 8.0.x
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Encoding dos scripts PowerShell
+        run: ./scripts/check-encoding.ps1
+      - name: Restaurar pacotes (packages.lock.json)
+        run: dotnet restore FanPilot.sln --locked-mode
+      - name: Compilar
+        run: dotnet build FanPilot.sln -c Release --no-restore
+      - name: Testes C#
+        run: dotnet test FanPilot.sln -c Release --no-build
+      - name: Testes do painel
+        run: node --test "tests/js/*.test.mjs"
+
+      # Item 12 signs FanPilot.exe here, before it goes into the zip.
+      - name: Empacotar
+        run: ./scripts/package.ps1
+      - name: Checksum
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $zip = Get-Item "dist/FanPilot-$env:VERSION-win-x64.zip"
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          # sha256sum's format and LF line ends: "sha256sum -c SHA256SUMS.txt" checks it.
+          [IO.File]::WriteAllText("$PWD/dist/SHA256SUMS.txt", "$hash  $($zip.Name)`n")
+          Get-Content dist/SHA256SUMS.txt
+
+      - name: Publicar a release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $extra = @()
+          if ($env:VERSION.StartsWith('0.')) { $extra += '--prerelease' }
+          gh release create $env:GITHUB_REF_NAME "dist/FanPilot-$env:VERSION-win-x64.zip" dist/SHA256SUMS.txt `
+            --title "FanPilot $env:VERSION" --notes-file dist/release-notes.md --verify-tag @extra
+      - name: Guardar os arquivos do ensaio
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-ensaio-${{ steps.version.outputs.version }}
+          path: |
+            dist/FanPilot-*-win-x64.zip
+            dist/SHA256SUMS.txt
+            dist/release-notes.md

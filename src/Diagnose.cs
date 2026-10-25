@@ -23,7 +23,7 @@ static class Diagnose
     {
         string path = Path.Combine(dataDir, "diagnostico-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".txt");
         var sb = new StringBuilder();
-        sb.AppendLine("FanPilot --diagnose  " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+        sb.AppendLine("FanPilot " + AppVersion.Text + " --diagnose  " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
         if (otherInstance) sb.AppendLine("Atenção: outro FanPilot está rodando agora; as leituras abaixo podem refletir o controle dele.");
         sb.AppendLine("Windows: " + Environment.OSVersion.VersionString + (Environment.Is64BitOperatingSystem ? " x64" : ""));
         sb.AppendLine("Placa-mãe (registro): " + MachineData.Board);

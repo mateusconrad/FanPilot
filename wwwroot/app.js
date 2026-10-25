@@ -780,6 +780,14 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     await loadFans();
     connect();
     setInterval(loadFans, 30000); // picks up curve changes made elsewhere (watchdog, GCC)
+    loadInfo();
+  }
+
+  async function loadInfo() {
+    try {
+      const info = await api('/api/info');
+      $('appVersion').textContent = 'FanPilot ' + info.version + (info.backend ? ' · ' + info.backend : '');
+    } catch (e) { /* the footer just stays empty */ }
   }
 
   init();

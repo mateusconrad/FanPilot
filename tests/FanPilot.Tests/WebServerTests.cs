@@ -55,6 +55,16 @@ public sealed class WebServerTests : IDisposable
         Assert.Contains("nosniff", r.Head);
     }
 
+    // Item 11: the panel's footer says which FanPilot answers, the first thing a bug report needs.
+    [Fact]
+    public void InfoTellsTheVersionAndTheBackend()
+    {
+        var r = RawHttp.Send(_port, "GET", "/api/info");
+        Assert.Equal(200, r.Status);
+        Assert.Contains("\"version\":\"" + AppVersion.Text + "\"", r.Body);
+        Assert.Contains("\"backend\":\"Placa de teste\"", r.Body);
+    }
+
     [Fact]
     public void PanelModuleIsServedAsJavaScript()
     {

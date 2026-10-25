@@ -1,6 +1,10 @@
 <Project>
   <!-- Shared by src\FanPilot.csproj and the test projects. -->
   <PropertyGroup>
+    <!-- The version, in one place: FanPilot.exe's version option, the log, the diagnose report, /api/info, the panel
+         and the release zip show it (with the commit, e.g. 0.1.0+1a2b3c4), and a release tag must match it
+         (.github/workflows/release.yml). -->
+    <VersionPrefix>0.1.0</VersionPrefix>
     <LangVersion>latest</LangVersion>
     <!-- FanPilot only runs on 64-bit Windows; the LibreHardwareMonitor package ships its assembly per runtime. -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>

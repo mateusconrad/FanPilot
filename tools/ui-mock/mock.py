@@ -217,6 +217,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if fx.get("service_down"):
                 return self.send_json({"error": "EasyTuneEngineService indisponível: Falha ao se conectar a uma porta de IPC"}, 503)
             return self.send_json(fans_payload(fx))
+        if path == "/api/info":
+            return self.send_json({"version": "0.1.0+mock", "backend": fx.get("backend", "Gigabyte Control Center"),
+                                   "board": fx["board"]})
         if path == "/api/stream":
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")

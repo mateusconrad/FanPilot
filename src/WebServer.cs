@@ -177,6 +177,12 @@ sealed class WebServer
         if (r.Method == "GET" && p == "/api/stream") return Stream(r);
         if (r.Method == "GET" && p == "/api/history") { WriteJson(r.Ctx, 200, CompactHistory()); return true; }
         if (r.Method == "GET" && p == "/api/fans") { WriteJson(r.Ctx, 200, _fans.Describe()); return true; }
+        if (r.Method == "GET" && p == "/api/info")
+        {
+            WriteJson(r.Ctx, 200, new Dictionary<string, object> {
+                { "version", AppVersion.Text }, { "backend", _fans.BackendName }, { "board", MachineData.Board } });
+            return true;
+        }
         if (r.Method == "POST" && p == "/api/logout")
         {
             var c = r.Ctx.Request.Cookies[AuthManager.CookieName];
