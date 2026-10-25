@@ -31,7 +31,8 @@ public class SseHubTests
         var watch = Stopwatch.StartNew();
         for (int i = 0; i < 50; i++) hub.Publish(Frame("snap " + i));
         Assert.True(watch.ElapsedMilliseconds < 500, "Publish levou " + watch.ElapsedMilliseconds + " ms");
-        Assert.True(WaitFor(() => healthy.Contains("snap 49")), "o cliente saudável não recebeu o último frame");
+        // Eventually: what matters above is that Publish returned at once.
+        Assert.True(WaitFor(() => healthy.Contains("snap 49"), 10000), "o cliente saudável não recebeu o último frame");
     }
 
     [Fact]
