@@ -12,22 +12,28 @@ public sealed class WebServerTests : IDisposable
 {
     readonly TempDir _dir = new TempDir();
     readonly FakeBoard _board = new FakeBoard(4);
-    readonly int _port = TestEnv.FreePort();
+    readonly int _port;
     readonly Sampler _sampler;
     readonly WebServer _server;
 
+    // In App.Run's order: the port first, then the board's side attached.
     public WebServerTests()
     {
-        var cfg = new AppConfig { Port = _port };
+        var cfg = new AppConfig();
+        _server = TestEnv.StartServer(port =>
+        {
+            cfg.Port = port;
+            return new WebServer(cfg, System.IO.Path.Combine(TestEnv.OutputDir, "wwwroot"))
+            {
+                ListenHost = TestEnv.IsAdministrator ? "+" : "localhost"
+            };
+        });
+        _port = cfg.Port;
         var gpu = new FakeGpu(cfg.GpuSafetyTemp);
         var fans = new FanManager(_board, cfg, _dir.Path);
         fans.Describe();
         _sampler = new Sampler(_board, gpu);
-        _server = new WebServer(cfg, System.IO.Path.Combine(TestEnv.OutputDir, "wwwroot"), new AuthManager(_dir.Path, cfg), _sampler, fans, gpu)
-        {
-            ListenHost = TestEnv.IsAdministrator ? "+" : "localhost"
-        };
-        _server.Start();
+        _server.Attach(new AuthManager(_dir.Path, cfg), _sampler, fans, gpu);
         _sampler.Start();
     }
 
@@ -150,9 +156,13 @@ public sealed class WebServerTests : IDisposable
     [Fact]
     public void ServerThatIsStillStartingAnswers503()
     {
-        int port = TestEnv.FreePort();
-        var starting = new WebServer(new AppConfig { Port = port }, System.IO.Path.Combine(TestEnv.OutputDir, "wwwroot")) { ListenHost = "localhost" };
-        starting.Start();
+        var cfg = new AppConfig();
+        var starting = TestEnv.StartServer(p =>
+        {
+            cfg.Port = p;
+            return new WebServer(cfg, System.IO.Path.Combine(TestEnv.OutputDir, "wwwroot")) { ListenHost = "localhost" };
+        });
+        int port = cfg.Port;
         try
         {
             var api = RawHttp.Send(port, "GET", "/api/fans");

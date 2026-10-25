@@ -35,11 +35,6 @@ sealed class WebServer
         _hosts = new HostGuard(cfg.Port, cfg.PublicHost);
     }
 
-    public WebServer(AppConfig cfg, string root, AuthManager auth, Sampler sampler, FanManager fans, GpuMonitor gpu) : this(cfg, root)
-    {
-        Attach(auth, sampler, fans, gpu);
-    }
-
     public void Attach(AuthManager auth, Sampler sampler, FanManager fans, GpuMonitor gpu)
     {
         _auth = auth; _sampler = sampler; _fans = fans; _gpu = gpu;
