@@ -49,8 +49,8 @@ Primeira versão publicada (será a 0.1.0).
 
 ### Para quem compila
 
-- Projeto no formato SDK (`dotnet build`, .NET SDK 8 ou mais novo), ainda rodando no .NET Framework 4.7.2 do
-  Windows, com os pacotes do NuGet fixados por `packages.lock.json`.
+- Projeto no formato SDK (`dotnet build`, .NET SDK 8 fixado pelo `global.json`), ainda rodando no .NET Framework
+  4.7.2 do Windows, com os pacotes do NuGet fixados por `packages.lock.json`.
 - O build não depende mais do Gigabyte Control Center: as DLLs do GCC são carregadas só na hora de rodar, e um mesmo
   zip atende todas as placas.
 - Testes automatizados (`dotnet test`, `node --test`) e uma placa falsa para rodar o FanPilot inteiro sem hardware
