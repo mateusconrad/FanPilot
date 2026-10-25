@@ -72,6 +72,17 @@ test.describe('pior caso: placa grande, nomes longos, sensor desconectado', () =
     await expect(page.locator('#fans .fan').nth(2).locator('.name')).toContainText('Frente do gabinete');
   });
 
+  test('os perfis não mexem nas bombas', async ({ page }) => {
+    await page.goto(fp().url + '/');
+    const before = (await (await page.request.get(fp().url + '/api/fans')).json()).fans;
+    await page.locator('#profileSeg').getByRole('button', { name: 'Silencioso' }).click();
+    await expect(page.locator('#fans .fan').nth(2).locator('.desc')).toContainText('Perfil Silencioso');
+    const after = (await (await page.request.get(fp().url + '/api/fans')).json()).fans;
+    for (const i of [6, 7]) expect(after[i].points).toEqual(before[i].points);
+    await page.locator('#profileSeg').getByRole('button', { name: 'Personalizado' }).click();
+    await expect(page.locator('#toast')).toHaveText('Configuração pessoal de volta');
+  });
+
   test('a configuração órfã pode ser descartada', async ({ page }) => {
     await page.goto(fp().url + '/');
     const orphan = page.locator('#orphans .orphan');

@@ -168,6 +168,12 @@ ele avisa no painel o que mudou e segue com o LibreHardwareMonitor (com `"gigaby
 - **Turbo** (botão no card dos fans): coloca todos os fans da placa-mãe em 100% sem tocar no fan da GPU.
   Enquanto ligado, a edição individual fica bloqueada; ao desligar, cada fan volta exatamente ao que estava
   (curva/fixo do FanPilot ou curva original). O estado sobrevive a um reinício (`bin\data\turbo.json`).
+- **Perfis** (seletor no card dos fans): **Silencioso**, **Padrão** e **Performance** põem a curva da predefinição em
+  todos os fans de uma vez (menos as bombas), no sensor de referência que cada um já usa; **Personalizado** devolve
+  exatamente a sua configuração de antes. O Turbo funciona por cima de qualquer modo e, ao desligar, volta a ele.
+  Editar um fan com um perfil ativo desliga o perfil: os outros fans ficam com a curva dele como configuração
+  pessoal (o editor avisa antes). O modo sobrevive a um reinício (`bin\data\global-mode.json`, que substituiu o
+  `turbo.json`).
 - Fan da GPU em modo fixo volta sozinho para automático se a GPU chegar a 83 °C ou quando o FanPilot fecha.
 - **Bomba do watercooler:** um header com "pump", "bomba" ou "AIO" no nome já aparece como bomba, e qualquer header
   pode ser marcado assim no editor ("Nome e função"). Com a proteção **Sempre 100%** (o padrão), qualquer
@@ -303,6 +309,7 @@ Não fazem parte do projeto: compile cada um com o `csc.exe` do .NET Framework, 
 | POST | `/api/fans/{i}/restore` | volta à curva original |
 | POST | `/api/fans/{i}/meta` | `{"label":"Frente","role":"pump","pumpPolicy":"min","pumpMinPercent":70}` nome (até 32 caracteres; vazio volta ao original) e função; `role` `fan` ou `pump`, `pumpPolicy` `full` (sempre 100%) ou `min` (piso de 50 a 100%) |
 | POST | `/api/fans/turbo` | `{"on":true}` todos os fans da placa-mãe em 100%; `{"on":false}` devolve cada fan ao estado anterior |
+| POST | `/api/fans/mode` | `{"mode":"profile:quiet"}` (ou `profile:standard`, `profile:performance`) põe o perfil em todos os fans menos as bombas; `{"mode":"custom"}` devolve a configuração pessoal |
 | POST | `/api/gpu/fan` | `{"mode":"auto"}` ou `{"mode":"fixed","percent":50}` |
 
 ## Estrutura

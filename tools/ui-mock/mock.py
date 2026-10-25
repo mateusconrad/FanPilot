@@ -150,8 +150,18 @@ def snapshot(fx, t_ms=None, wobble=0.0):
     return snap
 
 
+# FanPresets.cs: the editor's chips and the global profiles.
+PRESETS = {
+    "quiet": {"name": "Silencioso", "points": [[0, 25], [40, 25], [50, 30], [60, 40], [65, 50], [70, 65], [75, 80], [85, 100]]},
+    "standard": {"name": "Padrão", "points": [[0, 30], [35, 30], [45, 40], [55, 55], [62, 65], [68, 75], [74, 85], [82, 100]]},
+    "performance": {"name": "Performance", "points": [[0, 45], [30, 45], [40, 55], [50, 70], [58, 80], [64, 90], [70, 95], [78, 100]]},
+    "max": {"name": "Máximo", "points": [[0, 100], [20, 100], [30, 100], [40, 100], [50, 100], [60, 100], [70, 100], [80, 100]]},
+}
+
+
 def fans_payload(fx):
     return {"supported": fx.get("supported", True), "board": fx["board"], "turbo": fx.get("turbo", False),
+            "mode": fx.get("mode", "custom"), "presets": PRESETS,
             "backend": fx.get("backend", "Gigabyte Control Center"), "hardwareCurves": fx.get("hardwareCurves", True),
             "notice": fx.get("notice"), "orphans": fx.get("orphans", []),
             "tempInputs": [n for n, _ in fx["temps"]],
@@ -262,6 +272,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self.send_json(fx["gpu"])
         if self.path == "/api/fans/turbo":
             return self.send_json({"turbo": not fx.get("turbo", False)})
+        if self.path == "/api/fans/mode":
+            return self.send_json({"mode": json.loads(body or b"{}").get("mode", "custom"), "turbo": fx.get("turbo", False)})
         if self.path.startswith("/api/fans/"):
             return self.send_json(fx["fans"][0] if fx["fans"] else {})
         return self.send_json({"ok": True})

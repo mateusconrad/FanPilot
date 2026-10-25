@@ -9,7 +9,7 @@ using Microsoft.Win32;
 
 static class MachineData
 {
-    static readonly string[] MachineFiles = { "backup-curves.json", "desired-curves.json", "turbo.json", "sessions.json", "fan-meta.json", "alerts.json" };
+    static readonly string[] MachineFiles = { "backup-curves.json", "desired-curves.json", "turbo.json", "sessions.json", "fan-meta.json", "alerts.json", "global-mode.json" };
 
     public static string Board { get; private set; }
 

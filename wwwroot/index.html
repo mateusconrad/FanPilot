@@ -61,6 +61,12 @@
         </div>
         <button class="btn turbo" id="turboBtn" aria-pressed="false">⚡ Turbo 100%</button>
       </div>
+      <div class="seg profiles" role="group" aria-label="Perfil de todos os fans" id="profileSeg" hidden>
+        <button data-mode="profile:quiet" aria-pressed="false">Silencioso</button>
+        <button data-mode="profile:standard" aria-pressed="false">Padrão</button>
+        <button data-mode="profile:performance" aria-pressed="false">Performance</button>
+        <button data-mode="custom" aria-pressed="true">Personalizado</button>
+      </div>
       <p class="turbo-banner" id="turboBanner" hidden>Turbo ativo: todos os fans da placa-mãe em 100% (a GPU não é afetada). Toque de novo para voltar às configurações anteriores.</p>
       <p class="hint fan-mode" id="fanMode" hidden>As curvas desta placa rodam no FanPilot: ao fechá-lo, os fans voltam ao controle da BIOS.</p>
       <div id="orphans"></div>
@@ -190,6 +196,7 @@
     </div>
 
     <p class="hint" id="edLimits"></p>
+    <p class="notice-banner" id="edProfileNote" hidden></p>
     <p class="notice-banner" id="edPumpNote" hidden>Bomba protegida: qualquer configuração aplicada aqui vira 100%. Para permitir outra velocidade, mude a proteção em "Nome e função".</p>
     <details class="meta" id="edMeta">
       <summary>Nome e função</summary>

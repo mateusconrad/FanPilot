@@ -112,10 +112,28 @@ test('velocidade fixa e depois a curva original de volta', async ({ page }) => {
   expect((await (await page.request.get(fp.url + '/api/fans')).json()).fans[3].managed).toBe(false);
 });
 
+test('editar com um perfil ativo avisa antes e deixa o perfil', async ({ page }) => {
+  const seg = page.locator('#profileSeg');
+  await seg.getByRole('button', { name: 'Performance' }).click();
+  await expect(seg.getByRole('button', { name: 'Performance' })).toHaveAttribute('aria-pressed', 'true');
+  await openFan(page, 1);
+  await expect(page.locator('#edProfileNote')).toContainText('O perfil Performance está ativo');
+  // The presets come from the backend, the same ones the profiles use.
+  await expect(page.locator('#edPresets button')).toHaveText(['Silencioso', 'Padrão', 'Performance', 'Máximo']);
+  await page.locator('#edApply').click();
+  await expect(seg.getByRole('button', { name: 'Personalizado' })).toHaveAttribute('aria-pressed', 'true');
+  expect((await (await page.request.get(fp.url + '/api/fans')).json()).mode).toBe('custom');
+  // The others keep the profile's curve, now as their own setting.
+  await expect(page.locator('#fans .fan').nth(2).locator('.desc')).toContainText('Perfil Performance');
+});
+
 test('fechar o editor não aplica nada', async ({ page }) => {
+  const fan0 = async () => (await (await page.request.get(fp.url + '/api/fans')).json()).fans[0];
+  const before = await fan0();
   await openFan(page, 0);
   await drag(page, 3, 60, 90);
   await page.locator('#edClose').click();
   await expect(page.locator('#sheet')).toBeHidden();
-  expect((await (await page.request.get(fp.url + '/api/fans')).json()).fans[0].managed).toBe(false);
+  const after = await fan0();
+  expect([after.managed, after.points, after.request]).toEqual([before.managed, before.points, before.request]);
 });
