@@ -1,336 +1,350 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/brand/banner-dark.png">
-    <img alt="FanPilot — temperaturas e fans da sua placa-mãe, no celular" src="assets/brand/banner-light.png" width="560">
+    <img alt="FanPilot — your motherboard's temperatures and fans, on your phone" src="assets/brand/banner-light.png" width="560">
   </picture>
 </p>
 
+<p align="center"><b>English</b> · <a href="README.pt-BR.md">Português</a></p>
+
 # FanPilot
 
-Monitor de temperatura e controle de fans pelo celular.
+Temperature monitoring and fan control from your phone.
 
-Painel web servido pelo próprio PC: temperaturas de CPU/placa-mãe/GPU, potência, clocks, gráfico dos últimos
-10 minutos, curvas de fan da placa-mãe (editor de arrastar pontos, com ajuste fino de 1 em 1 e uso pelo teclado e
-pelo leitor de tela) e fan da GPU. Acesso pela LAN só depois de parear o celular escaneando um QR code exibido no PC.
+A web panel served by the PC itself: CPU, motherboard and GPU temperatures, power, clocks, a chart of the last
+10 minutes, the motherboard's fan curves (a drag-the-points editor, with one-step fine tuning and full keyboard and
+screen reader support) and the GPU fan. On the local network, a phone gets in only after pairing with a QR code shown
+on the PC. The panel speaks English and Portuguese: it follows the browser's language, and the footer switches it.
 
-Como funciona por baixo: veja [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEERING.md).
+How it works under the hood: see [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEERING.md) (in Portuguese).
 
-> **Aviso:** projeto independente, **sem relação com GIGABYTE, ASUS, NVIDIA** ou outros fabricantes, e não
-> endossado por eles. "GIGABYTE", "Control Center", "EasyTune", "ASUS" e "NVIDIA" são marcas de seus respectivos
-> donos. O FanPilot não distribui arquivos da Gigabyte: usa o GCC já instalado no seu PC. Ele altera o
-> comportamento dos fans do seu hardware;
-> **use por sua conta e risco** (veja as [proteções](#proteções-de-hardware)). Sem garantia, conforme a
-> [licença](LICENSE).
+> **Disclaimer:** an independent project, **not affiliated with GIGABYTE, ASUS, NVIDIA** or any other maker, and not
+> endorsed by them. "GIGABYTE", "Control Center", "EasyTune", "ASUS" and "NVIDIA" are trademarks of their respective
+> owners. FanPilot ships no Gigabyte files: it uses the GCC already installed on your PC. It changes how your
+> hardware's fans behave;
+> **use it at your own risk** (see the [protections](#hardware-protections)). No warranty, as the
+> [license](LICENSE) says.
 
-## Requisitos
+## Requirements
 
-- Windows 10/11 64-bit (o .NET Framework 4.x necessário já vem no Windows).
-- Executar como **Administrador** (o `.exe` já pede elevação).
-- Uma das duas formas de acesso à placa-mãe (o FanPilot escolhe sozinho):
-  - **Placa Gigabyte com o Gigabyte Control Center** instalado e o serviço **EasyTune Engine Service** rodando.
-    As curvas ficam gravadas no chip da placa. O FanPilot usa as DLLs do GCC já instalado, não as redistribui.
-    Opcional: com o driver [PawnIO](https://pawnio.eu) instalado, o card da CPU mostra a temperatura dos núcleos
-    (lida pelo LibreHardwareMonitor só na CPU, sem disputar o chip com o GCC); sem ele, mostra o sensor do socket.
-  - **Qualquer outra placa (ASUS, MSI, ASRock… ou Gigabyte sem GCC)** via
-    [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor), que precisa do driver
-    **[PawnIO](https://pawnio.eu)**. Se ele faltar, o FanPilot oferece instalar na hora pelo `winget` (é só
-    responder `S` na janela). Nessas placas o FanPilot executa as curvas (veja
-    [Placas sem GCC](#placas-sem-gcc-curvas-executadas-pelo-fanpilot)). **Em teste.**
-- GPU: NVIDIA pelo `nvml.dll` do driver; AMD, Intel Arc (e NVIDIA sem NVML) pelo LibreHardwareMonitor. Sem GPU
-  dedicada, o resto funciona.
+- Windows 10/11 64-bit (the .NET Framework 4.x it needs comes with Windows).
+- Run as **Administrator** (the `.exe` asks for elevation by itself).
+- One of two ways to reach the motherboard (FanPilot picks it):
+  - **A Gigabyte board with Gigabyte Control Center** installed and the **EasyTune Engine Service** running.
+    The curves are written to the board's chip. FanPilot uses the DLLs of the GCC already installed and doesn't
+    redistribute them. Optional: with the [PawnIO](https://pawnio.eu) driver installed, the CPU card shows the cores'
+    temperature (read by LibreHardwareMonitor from the CPU only, without fighting the GCC over the chip); without it,
+    the card shows the socket's sensor.
+  - **Any other board (ASUS, MSI, ASRock… or a Gigabyte without GCC)** through
+    [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor), which needs the
+    **[PawnIO](https://pawnio.eu)** driver. If it's missing, FanPilot offers to install it right away with `winget`
+    (just answer `Y` in the window). On these boards FanPilot runs the curves itself (see
+    [Boards without GCC](#boards-without-gcc-fanpilot-runs-the-curves)). **Being tested.**
+- GPU: NVIDIA through the driver's `nvml.dll`; AMD, Intel Arc (and NVIDIA without NVML) through
+  LibreHardwareMonitor. Without a dedicated GPU, everything else works.
 
-## Compilar e rodar
+## Build and run
 
 ```powershell
-.\build.ps1                     # .NET SDK 8; pacotes do NuGet fixados (com hash) pelo src\packages.lock.json
-dotnet test                     # testes automatizados (sem hardware nem Administrador)
-node --test "tests/js/*.test.mjs"  # testes do painel (Node 22+)
-dotnet build src\FanPilot.csproj -c Debug; cd tests\e2e; npm ci; npx playwright test   # ponta a ponta, no Edge
-.\bin\FanPilot.exe              # pede UAC, abre http://localhost:8787/pair
-.\scripts\firewall.ps1          # (admin, uma vez) libera a porta 8787 no perfil de rede Privado
-.\scripts\autostart.ps1         # (admin, opcional) inicia elevado no logon, sem UAC
-.\scripts\package.ps1           # gera dist\FanPilot-<versão>-win-x64.zip para distribuir (sem data\)
-.\bin\FanPilot.exe --version    # versão e commit, ex.: FanPilot 0.1.0+1a2b3c4
-.\bin\FanPilot.exe --diagnose   # relatório só de leitura da placa (para placas ainda não testadas)
-.\bin\FanPilot.exe --hardware-test [--fan N]   # (FanPilot fechado) roteiro de verificação na placa real, ~2 min
-.\bin\FanPilot.exe --data <pasta>              # dados em outra pasta (padrão: data\ ao lado do exe)
-.\bin\FanPilot.exe --service --data <pasta>    # modo serviço do Windows; o instalador (em preparação) o registra
-.\bin\FanPilot.exe --import-data <pasta antiga> --data <pasta>   # (FanPilot fechado) traz curvas, pareamentos e nomes
+.\build.ps1                     # .NET SDK 8; NuGet packages pinned (with hashes) by src\packages.lock.json
+dotnet test                     # automated tests (no hardware, no Administrator)
+node --test "tests/js/*.test.mjs"  # panel tests (Node 22+)
+dotnet build src\FanPilot.csproj -c Debug; cd tests\e2e; npm ci; npx playwright test   # end to end, in Edge
+.\bin\FanPilot.exe              # asks for UAC, opens http://localhost:8787/pair
+.\scripts\firewall.ps1          # (admin, once) opens port 8787 on the Private network profile
+.\scripts\autostart.ps1         # (admin, optional) starts elevated at logon, without UAC
+.\scripts\package.ps1           # builds dist\FanPilot-<version>-win-x64.zip to hand out (without data\)
+.\bin\FanPilot.exe --version    # version and commit, e.g. FanPilot 0.1.0+1a2b3c4
+.\bin\FanPilot.exe --diagnose   # read-only report of the board (for boards nobody has tested yet)
+.\bin\FanPilot.exe --hardware-test [--fan N]   # (FanPilot closed) check-up on the real board, ~2 min
+.\bin\FanPilot.exe --data <folder>             # data in another folder (default: data\ next to the exe)
+.\bin\FanPilot.exe --service --data <folder>   # Windows service mode; the installer (in the works) registers it
+.\bin\FanPilot.exe --import-data <old folder> --data <folder>   # (FanPilot closed) brings curves, pairings and names
 ```
 
-Compilar exige o [.NET SDK 8](https://dotnet.microsoft.com/download/dotnet/8.0): o `global.json` fixa a versão, para
-este PC e a CI compilarem igual (com outro SDK, o lock file e a versão do C# mudariam). Para **rodar**, basta o Windows: o
-FanPilot usa o .NET Framework 4.7.2 que já vem nele.
+Building needs the [.NET SDK 8](https://dotnet.microsoft.com/download/dotnet/8.0): `global.json` pins the version, so
+a PC and the CI build alike (another SDK would change the lock file and the C# version). To **run** it, Windows is
+enough: FanPilot uses the .NET Framework 4.7.2 that comes with it.
 
-O build não depende do Gigabyte Control Center: o FanPilot carrega as DLLs do GCC instalado só na hora de rodar, então
-um mesmo build (ou zip) atende as placas Gigabyte e as outras.
+The build doesn't depend on Gigabyte Control Center: FanPilot loads the installed GCC's DLLs only at run time, so one
+build (or zip) serves Gigabyte boards and every other one.
 
-O `--hardware-test` passa por velocidade fixa, uma curva vigiada pelo watchdog, Turbo, o fan da GPU e um "fechar e
-abrir de novo", e grava `data\hwtest-<data>.md`. Ele só mexe no fan escolhido (e em todos no Turbo, a 100%), nunca
-abaixo de 40%, recusa o fan da CPU e as bombas (pelo nome ou marcadas no painel), para se a CPU ou a GPU passarem
-de 80 °C e devolve tudo como estava,
-inclusive com Ctrl+C (fechar a janela no meio é a única saída que ele não intercepta). Código de saída: 0 passou,
-6 falhou, 7 interrompido, 8 não executado.
+`--hardware-test` goes through a fixed speed, a curve watched by the watchdog, Turbo, the GPU fan and a "close and
+open again", and writes `data\hwtest-<date>.md`. It touches only the chosen fan (and all of them for Turbo, at 100%),
+never below 40%, refuses the CPU fan and pumps (by name, or marked in the panel), stops if the CPU or the GPU passes
+80 °C, and puts everything back as it was, Ctrl+C included (closing the window midway is the one way out it can't
+catch). Exit code: 0 passed, 6 failed, 7 stopped, 8 not run.
 
-Builds Debug aceitam `--fake-board`: o FanPilot inteiro roda com uma placa e uma GPU falsas, guardando os dados em
-`data-fake\` (nunca no `data\` da placa real). `--fake-board=<cenário>` escolhe a placa: `demo` (o padrão, a B760M),
-`worst` (8 fans, nomes longos, sensor desconectado), `unsupported` (sem controle de fans nem GPU), `down` (serviço da
-placa fora do ar), `lhm` (curvas executadas pelo FanPilot) e `slow` (demora 4 s para abrir, como o GCC às vezes). A
-placa falsa não precisa de Administrador: sem ele, o painel só abre em `localhost`. Para mexer só no visual, use o
+Debug builds accept `--fake-board`: the whole of FanPilot runs on a fake board and GPU, keeping its data in
+`data-fake\` (never in the real board's `data\`). `--fake-board=<scenario>` picks the board: `demo` (the default, the
+B760M), `worst` (8 fans, long names, a disconnected sensor), `unsupported` (no fan control, no GPU), `down` (the
+board's service is down), `lhm` (curves run by FanPilot) and `slow` (takes 4 s to open, as the GCC sometimes does). The
+fake board needs no Administrator: without it, the panel only opens on `localhost`. To work on the looks only, use
 `tools/ui-mock`.
 
-Os testes de ponta a ponta (`tests/e2e`, Playwright) abrem o painel no Edge contra esse FanPilot, um cenário de cada
-vez: dados, editor de curvas (arraste com as restrições, teclado, ajuste fino, foco e Esc, alvos de toque de 44 px,
-predefinições, aplicar, restaurar), Turbo, GPU, reconexão do
-painel quando o FanPilot reinicia, acessibilidade (axe-core) e screenshots em 320, 390 e 1024 px nos dois temas. Sem
-Administrador, os testes que fazem o papel do celular na rede são pulados. A CI roda tudo como Administrador, mais o
-smoke do zip da release (o exe do zip sobe, responde, `--version` e `--diagnose`), e guarda o relatório e os
-screenshots como artefatos de cada execução.
+The end-to-end tests (`tests/e2e`, Playwright) open the panel in Edge against that FanPilot, one scenario at a time:
+data, the curve editor (dragging within the rules, keyboard, fine tuning, focus and Esc, 44 px touch targets,
+presets, apply, restore), Turbo, the GPU, the panel reconnecting when FanPilot restarts, accessibility (axe-core), both
+languages, and screenshots at 320, 390 and 1024 px in both themes. Without Administrator, the tests that play the
+phone on the network are skipped. The CI runs everything as Administrator, plus the release zip's smoke test (the zip's
+exe starts, answers, `--version` and `--diagnose`), and keeps the report and the screenshots as artifacts of each run.
 
-No celular (mesma rede Wi-Fi): escaneie o QR da página `/pair`. O código vale ~3 min e é de uso único;
-o aparelho fica pareado por 30 dias de inatividade. A página `/pair` (só acessível no próprio PC) lista e
-despareia aparelhos.
+On the phone (same Wi-Fi network): scan the QR code on the `/pair` page. The code lasts about 3 minutes and works
+once; the device stays paired until it goes 30 days unused. The `/pair` page (reachable on the PC itself only) lists
+paired devices and unpairs them.
 
-## Versões e releases
+## Versions and releases
 
-- **Baixar:** cada versão sai na página [Releases](https://github.com/mateusconrad/FanPilot/releases) como
-  `FanPilot-<versão>-win-x64.zip`, com um `SHA256SUMS.txt` para conferir o download
-  (`Get-FileHash .\FanPilot-0.1.0-win-x64.zip` deve dar o mesmo hash). Versões `0.x` saem como pre-release.
-- **Qual versão está rodando:** no rodapé do painel, na primeira linha do log, no `--diagnose` e em
-  `FanPilot.exe --version` (num terminal como Administrador: o exe pede elevação e, fora dele, a janela fecha antes de
-  dar para ler). O número vem do `Directory.Build.props` e o sufixo é o commit do build.
-- **O que mudou:** [CHANGELOG.md](CHANGELOG.md).
-- **CI:** cada push na `main` compila, roda os testes e guarda o zip como artefato da execução
+- **Download:** every version comes out on the [Releases](https://github.com/mateusconrad/FanPilot/releases) page as
+  `FanPilot-<version>-win-x64.zip`, with a `SHA256SUMS.txt` to check the download
+  (`Get-FileHash .\FanPilot-0.1.0-win-x64.zip` must give the same hash). `0.x` versions come out as pre-releases.
+- **Which version is running:** in the panel's footer, on the log's first line, in `--diagnose` and in
+  `FanPilot.exe --version` (in a terminal running as Administrator: the exe asks for elevation and, outside one, the
+  window closes before you can read it). The number comes from `Directory.Build.props`, and the suffix is the build's
+  commit.
+- **What changed:** [CHANGELOG.md](CHANGELOG.md) (in Portuguese).
+- **CI:** every push to `main` builds, runs the tests and keeps the zip as an artifact of the run
   ([Actions](https://github.com/mateusconrad/FanPilot/actions)).
-- **Lançar uma versão:** ajuste `VersionPrefix` no `Directory.Build.props`, troque `## [Não lançado]` no
-  `CHANGELOG.md` por `## [<versão>] - <data>`, faça o commit e crie a tag: `git tag v0.1.0; git push origin v0.1.0`.
-  O workflow `Release` confere que a tag bate com a versão, compila, testa e publica a release. Para ensaiar sem
-  publicar nada: `gh workflow run release.yml` (os arquivos ficam como artefato da execução).
+- **Releasing a version:** set `VersionPrefix` in `Directory.Build.props`, replace `## [Não lançado]` in
+  `CHANGELOG.md` with `## [<version>] - <date>`, commit and create the tag: `git tag v0.1.0; git push origin v0.1.0`.
+  The `Release` workflow checks that the tag matches the version, builds, tests and publishes the release. To rehearse
+  without publishing anything: `gh workflow run release.yml` (the files stay as an artifact of the run).
 
-## Por que o Windows avisa ao abrir
+## Why Windows warns when you open it
 
-O `FanPilot.exe` ainda não é assinado: a assinatura gratuita para projetos open source está sendo pedida ao
-[SignPath Foundation](https://signpath.org). Um programa novo, sem editor verificável, que pede Administrador e fala
-com o hardware é o perfil que o SmartScreen ("O Windows protegeu o computador") e alguns antivírus barram.
+`FanPilot.exe` isn't signed yet: free signing for open source projects has been requested from the
+[SignPath Foundation](https://signpath.org). A new program, with no verifiable publisher, that asks for Administrator
+and talks to the hardware is exactly what SmartScreen ("Windows protected your PC") and some antivirus programs block.
 
-Para conferir que o zip é exatamente o publicado aqui (gerado pela CI a partir deste código, nunca num PC pessoal):
+To check that the zip is exactly the one published here (built by the CI from this code, never on a personal PC):
 
-1. Baixe o zip e o `SHA256SUMS.txt` da mesma [release](https://github.com/mateusconrad/FanPilot/releases).
-2. No PowerShell, na pasta do download:
+1. Download the zip and the `SHA256SUMS.txt` from the same [release](https://github.com/mateusconrad/FanPilot/releases).
+2. In PowerShell, in the download folder:
 
    ```powershell
    (Get-FileHash .\FanPilot-0.1.0-win-x64.zip).Hash -eq (-split (Get-Content .\SHA256SUMS.txt))[0]
    ```
 
-   `True` quer dizer que o arquivo é o da release. `False`: não use, baixe de novo.
-3. Com o hash conferido, no aviso do SmartScreen: "Mais informações" › "Executar assim mesmo".
+   `True` means the file is the release's. `False`: don't use it, download it again.
+3. With the hash checked, on the SmartScreen warning: "More info" › "Run anyway".
 
-## Segurança
+## Security
 
-- Pareamento por QR: código aleatório de 144 bits, uso único, expira; tentativas erradas limitadas por IP.
-- Sessão: cookie `HttpOnly; SameSite=Strict` com token de 256 bits; no disco só o SHA-256 (`bin\data\sessions.json`).
-- `/pair` e `/api/pair/*` só respondem para `localhost`; requisições do próprio PC endereçadas a `localhost` ou
-  `127.0.0.1` são consideradas confiáveis.
-- Só são atendidas requisições endereçadas a este PC: o header `Host` precisa ser `localhost`, um IP das interfaces
-  de rede, o nome do PC ou o `publicHost`, na porta configurada (o resto recebe `421`). Isso impede que uma página
-  web alcance a API local por DNS rebinding. Para acessar por outro nome (ex.: o DNS do roteador), use `publicHost`.
-- POSTs exigem o header `X-FanPilot` e `Origin` igual ao host (bloqueia CSRF). CSP restringe scripts a `'self'`.
-- **Limitação:** é HTTP puro na LAN. Quem estiver na mesma rede e capturar o tráfego pode copiar o cookie.
-  Use só em rede doméstica confiável (o script de firewall abre a porta apenas no perfil Privado).
+- QR pairing: a random 144-bit code, single use, expiring; wrong attempts are rate-limited per IP.
+- Session: an `HttpOnly; SameSite=Strict` cookie with a 256-bit token; only its SHA-256 is stored
+  (`bin\data\sessions.json`).
+- `/pair` and `/api/pair/*` answer `localhost` only; requests from the PC itself addressed to `localhost` or
+  `127.0.0.1` are trusted.
+- Only requests addressed to this PC are served: the `Host` header must be `localhost`, an IP of the network
+  interfaces, the PC's name or `publicHost`, on the configured port (anything else gets `421`). This keeps a web page
+  from reaching the local API through DNS rebinding. To use another name (such as the router's DNS), set `publicHost`.
+- POSTs need the `X-FanPilot` header and an `Origin` equal to the host (blocks CSRF). The CSP limits scripts to
+  `'self'`.
+- **Limitation:** it's plain HTTP on the LAN. Someone on the same network capturing the traffic can copy the cookie.
+  Use it only on a trusted home network (the firewall script opens the port on the Private profile only).
 
-## Compatibilidade
+## Compatibility
 
-| Recurso | Gigabyte com GCC | Outras placas (LibreHardwareMonitor + PawnIO) |
+| Feature | Gigabyte with GCC | Other boards (LibreHardwareMonitor + PawnIO) |
 |---|---|---|
-| Monitoramento (temperaturas, RPM, tensões, clocks, potência) | Placas suportadas pelo GCC | Placas cujo chip de sensores o LibreHardwareMonitor reconhece (Nuvoton, ITE, Fintek…) |
-| Controle de fans | Placas em que o GCC usa o caminho de "3ª geração" | Headers que o LibreHardwareMonitor consegue controlar |
-| Onde a curva roda | No chip (continua sem o FanPilot) | No FanPilot (ao fechar, os fans voltam à BIOS) |
-| Fan e sensores da GPU | NVIDIA (NVML); AMD e Intel Arc via LibreHardwareMonitor | Igual |
+| Monitoring (temperatures, RPM, voltages, clocks, power) | Boards the GCC supports | Boards whose sensor chip LibreHardwareMonitor recognizes (Nuvoton, ITE, Fintek…) |
+| Fan control | Boards where the GCC uses its "3rd generation" path | Headers LibreHardwareMonitor can control |
+| Where the curve runs | In the chip (keeps working without FanPilot) | In FanPilot (when it closes, the fans go back to the BIOS) |
+| GPU fan and sensors | NVIDIA (NVML); AMD and Intel Arc through LibreHardwareMonitor | Same |
 
-Testado em: **B760M GAMING X AX** (GCC 26.03.26.01). ASUS e outras placas: **em teste**, ainda sem placa
-confirmada. A lista das placas relatadas está em [docs/COMPATIBILIDADE.md](docs/COMPATIBILIDADE.md). Se testar,
-siga [docs/TESTANDO-OUTRAS-PLACAS.md](docs/TESTANDO-OUTRAS-PLACAS.md) e relate pelo
-[formulário de compatibilidade](https://github.com/mateusconrad/FanPilot/issues/new?template=compatibilidade.yml):
-o arquivo do `--diagnose` traz o link já preenchido e sai sem números de série nem UUIDs.
+Tested on: **B760M GAMING X AX** (GCC 26.03.26.01). ASUS and other boards: **being tested**, none confirmed yet. The
+boards reported so far are in [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md). If you test one, follow
+[docs/TESTING-OTHER-BOARDS.md](docs/TESTING-OTHER-BOARDS.md) and report through the
+[compatibility form](https://github.com/mateusconrad/FanPilot/issues/new?template=compatibilidade.yml): the
+`--diagnose` file brings the link already filled in, and leaves out serial numbers and UUIDs.
 
-Para forçar um caminho, use `"backend"` no `config.json`: `"auto"` (padrão: GCC se instalado, senão
-LibreHardwareMonitor), `"gigabyte"` ou `"lhm"`. Se uma atualização do GCC mudar a API interna que o FanPilot usa,
-ele avisa no painel o que mudou e segue com o LibreHardwareMonitor (com `"gigabyte"`, ele para com a mensagem). O
-`--diagnose` mostra a versão do GCC e se ela é compatível.
+To force a path, set `"backend"` in `config.json`: `"auto"` (the default: GCC when installed, else
+LibreHardwareMonitor), `"gigabyte"` or `"lhm"`. If a GCC update changes the internal API FanPilot uses, it says in the
+panel what changed and goes on with LibreHardwareMonitor (with `"gigabyte"`, it stops with the message). `--diagnose`
+shows the GCC's version and whether it is compatible.
 
-## Proteções de hardware
+## Hardware protections
 
-- **Gigabyte com GCC:** as curvas rodam **no chip ITE** — continuam valendo se o FanPilot fechar.
-  Nas outras placas, veja [Placas sem GCC](#placas-sem-gcc-curvas-executadas-pelo-fanpilot).
-- Toda curva: o mesmo número de pontos que a placa usa (8 na B760M), temperaturas crescentes, PWM nunca diminui com a temperatura, mínimo de 20%,
-  100% obrigatório no último ponto (≤ 90 °C). O ponto 0 fica em 0 °C (o chip nunca desliga o fan).
-- Modo "Fixo": velocidade constante, mas o chip ainda vai a 100% acima de 85 °C.
-- "Restaurar original" volta à curva salva no primeiro uso (`bin\data\backup-curves.json`).
-- Watchdog (15 s) reaplica sua curva se algo a sobrescrever (resume do sleep, GCC, BIOS).
-  Se quiser voltar a usar o GCC para fans, clique em "Restaurar original" antes.
-- **Turbo** (botão no card dos fans): coloca todos os fans da placa-mãe em 100% sem tocar no fan da GPU.
-  Enquanto ligado, a edição individual fica bloqueada; ao desligar, cada fan volta exatamente ao que estava
-  (curva/fixo do FanPilot ou curva original). O estado sobrevive a um reinício (`bin\data\turbo.json`).
-- **Perfis** (seletor no card dos fans): **Silencioso**, **Padrão** e **Performance** põem a curva da predefinição em
-  todos os fans de uma vez (menos as bombas), no sensor de referência que cada um já usa; **Personalizado** devolve
-  exatamente a sua configuração de antes. O Turbo funciona por cima de qualquer modo e, ao desligar, volta a ele.
-  Editar um fan com um perfil ativo desliga o perfil: os outros fans ficam com a curva dele como configuração
-  pessoal (o editor avisa antes). O modo sobrevive a um reinício (`bin\data\global-mode.json`, que substituiu o
-  `turbo.json`).
-- Fan da GPU em modo fixo volta sozinho para automático se a GPU chegar a 83 °C ou quando o FanPilot fecha.
-- **Bomba do watercooler:** um header com "pump", "bomba" ou "AIO" no nome já aparece como bomba, e qualquer header
-  pode ser marcado assim no editor ("Nome e função"). Com a proteção **Sempre 100%** (o padrão), qualquer
-  configuração aplicada a ela vira 100%; com **Velocidade mínima**, nada fica abaixo do mínimo escolhido (50 a
-  100%). Vale para o editor, o Turbo e a reaplicação das curvas salvas. "Restaurar original" continua permitido.
-- **Nomes:** cada fan pode ter um nome seu (até 32 caracteres), que aparece no card e nos gráficos com o original ao
-  lado. Nomes e funções ficam em `bin\data\fan-meta.json`, pela identidade do fan, e sobrevivem a reordenações.
-- **Alertas:** o painel avisa, numa faixa no topo e no card "Alertas", quando um fan que girava para (lê menos de 100
-  RPM por 5 s com pelo menos 30% comandado; bomba parada é crítico), quando a CPU passa de 95 °C ou a GPU de 87 °C
-  por 10 s (limites ajustáveis; o alerta só termina 5 °C abaixo, depois de 30 s), quando a placa não responde por 1
-  minuto e quando um fan foi devolvido à BIOS por segurança. Fans sem tacômetro nunca geram alerta.
-  - **Fora do painel**, opcional: um tópico do [ntfy](https://ntfy.sh) (o botão "Gerar tópico" sugere um aleatório,
-    difícil de adivinhar; assine o mesmo tópico no app do ntfy) ou um bot do Telegram (token e chat id). Cada alerta
-    avisa no máximo uma vez a cada 10 min, e avisa de novo quando termina. Nada sai do PC sem um destino
-    configurado, e as mensagens levam só o alerta e o nome do PC. O endereço do tópico e o token ficam cifrados com a
-    DPAPI em `bin\data\alerts.json` (outro PC não consegue lê-los).
+- **Gigabyte with GCC:** the curves run **in the ITE chip** — they keep working if FanPilot closes.
+  On other boards, see [Boards without GCC](#boards-without-gcc-fanpilot-runs-the-curves).
+- Every curve: as many points as the board uses (8 on the B760M), rising temperatures, a PWM that never drops as the
+  temperature rises, at least 20%, and 100% required at the last point (≤ 90 °C). Point 0 stays at 0 °C (the chip
+  never turns the fan off).
+- "Fixed" mode: a constant speed, but the chip still goes to 100% above 85 °C.
+- "Restore original" goes back to the curve saved on first use (`bin\data\backup-curves.json`).
+- A watchdog (15 s) applies your curve again if something overwrites it (resume from sleep, the GCC, the BIOS).
+  To go back to using the GCC for fans, click "Restore original" first.
+- **Turbo** (button on the fans card): puts every motherboard fan at 100% without touching the GPU fan. While it's
+  on, single-fan editing is blocked; when it goes off, each fan goes back to exactly what it had (FanPilot's
+  curve or fixed speed, or the original curve). The state survives a restart (`bin\data\global-mode.json`).
+- **Profiles** (selector on the fans card): **Quiet**, **Standard** and **Performance** put the preset's curve on
+  every fan at once (pumps excepted), on the reference sensor each one already uses; **Custom** brings back exactly
+  your own settings from before. Turbo works on top of any mode and goes back to it when it turns off. Editing a fan
+  while a profile is on turns the profile off: the other fans keep its curve as their own setting (the editor warns
+  first). The mode survives a restart (`bin\data\global-mode.json`, which replaced `turbo.json`).
+- A GPU fan in fixed mode goes back to automatic by itself if the GPU reaches 83 °C, or when FanPilot closes.
+- **Liquid cooler pump:** a header with "pump", "bomba" or "AIO" in its name already shows as a pump, and any header
+  can be marked as one in the editor ("Name and role"). With the **Always 100%** protection (the default), anything
+  applied to it becomes 100%; with **Minimum speed**, nothing goes below the chosen minimum (50 to 100%). This holds
+  for the editor, Turbo and the saved curves applied again. "Restore original" is still allowed.
+- **Names:** each fan can have a name of your own (up to 32 characters), shown on the card and the charts with the
+  original next to it. Names and roles are kept in `bin\data\fan-meta.json`, by the fan's identity, and survive a
+  reordering.
+- **Alerts:** the panel warns, in a strip at the top and in the "Alerts" card, when a fan that was spinning stops
+  (reads under 100 RPM for 5 s with at least 30% commanded; a stopped pump is critical), when the CPU passes 95 °C or
+  the GPU 87 °C for 10 s (adjustable limits; the alert ends only 5 °C below, after 30 s), when the board doesn't answer
+  for a minute, and when a fan was handed back to the BIOS for safety. Fans without a tachometer never alert.
+  - **Outside the panel**, optional: an [ntfy](https://ntfy.sh) topic (the "New topic" button suggests a random one,
+    hard to guess; subscribe to the same topic in the ntfy app) or a Telegram bot (token and chat id). Each alert goes
+    out at most once every 10 minutes, and again when it ends. Nothing leaves the PC without a destination set, and
+    the messages carry only the alert and the PC's name, in the language of the panel the settings were saved from.
+    The topic's address and the token are encrypted with DPAPI in `bin\data\alerts.json` (another PC can't read them).
 
-### Placas sem GCC: curvas executadas pelo FanPilot
+### Boards without GCC: FanPilot runs the curves
 
-O LibreHardwareMonitor só consegue fixar uma porcentagem num header ou devolvê-lo à BIOS; o chip não guarda a
-curva. Por isso o FanPilot lê a temperatura e ajusta cada fan **uma vez por segundo**.
+LibreHardwareMonitor can only set a percentage on a header or hand it back to the BIOS; the chip doesn't keep the
+curve. So FanPilot reads the temperature and sets each fan **once a second**.
 
-Para o fan não ficar subindo e descendo a cada pico de carga da CPU, cada curva tem uma **resposta** (no editor):
-**Rápida**, **Equilibrada** (o padrão, também para as curvas salvas antes dela existir) ou **Suave**. Ela define
-quanto a temperatura é suavizada antes de virar velocidade, quantos graus o PC precisa esfriar para o fan
-desacelerar (1, 2 ou 4 °C) e a velocidade máxima de subida e de descida. O modo Fixo não é suavizado. As proteções
-valem em qualquer resposta:
+So the fan doesn't go up and down at every CPU load spike, each curve has a **response** (in the editor): **Fast**,
+**Balanced** (the default, also for curves saved before it existed) or **Smooth**. It sets how much the temperature is
+smoothed before it becomes a speed, how many degrees the PC has to cool down before the fan slows (1, 2 or 4 °C), and
+the fastest the speed may rise and fall. Fixed mode isn't smoothed. The protections hold with any response:
 
-- **Último ponto da curva:** com a temperatura (sem suavização) no último ponto ou acima dele, o fan vai a 100% na
-  hora.
-- **Fans que você não alterou ficam com a BIOS** ("Controle da BIOS" no painel). "Devolver à BIOS" desfaz uma
-  curva sua.
-- **Ao fechar** (janela, Ctrl+C, logoff, desligar o PC) ou **se o FanPilot der erro fatal**, todos os fans voltam
-  ao controle da BIOS.
-- **Sensor de referência sem leitura** (ou com valor impossível, como 127 °C de uma entrada desconectada): aquele
-  fan volta à BIOS até a leitura voltar.
-- **Falhas seguidas** do LibreHardwareMonitor (5 em sequência): todos os fans voltam à BIOS.
-- A velocidade é reaplicada a cada segundo, desfazendo o que a BIOS ou um app do fabricante tenha mudado.
-- **Limite:** se o processo for **encerrado à força** (Gerenciador de Tarefas > Finalizar tarefa, `taskkill /f`)
-  ou o PC travar, não há como reagir: o fan fica na última velocidade até a BIOS ou o FanPilot assumir de novo.
-  Por isso o piso de 20% e o 100% obrigatório até 90 °C valem aqui também, e o `autostart.ps1` configura a
-  tarefa agendada para tentar reiniciar o FanPilot.
-- Não use junto com o controle de fans do fabricante (**ASUS Armoury Crate / AI Suite "Fan Xpert"**, MSI Center
-  etc.): os dois vão disputar os fans. Desative o controle de fans de lá.
+- **The curve's last point:** with the temperature (unsmoothed) at the last point or above it, the fan goes to 100% at
+  once.
+- **Fans you didn't change stay with the BIOS** ("BIOS control" in the panel). "Hand back to BIOS" undoes a curve of
+  yours.
+- **When it closes** (the window, Ctrl+C, logoff, shutdown) or **if FanPilot hits a fatal error**, every fan goes back
+  to BIOS control.
+- **A reference sensor with no reading** (or an impossible value, such as the 127 °C of a disconnected input): that
+  fan goes back to the BIOS until the reading returns.
+- **Repeated failures** of LibreHardwareMonitor (5 in a row): every fan goes back to the BIOS.
+- The speed is set again every second, undoing whatever the BIOS or a maker's app changed.
+- **Limitation:** if the process is **killed** (Task Manager > End task, `taskkill /f`) or the PC freezes, there's no
+  way to react: the fan stays at its last speed until the BIOS or FanPilot takes over again. That's why the 20% floor
+  and the 100% required up to 90 °C hold here too, and why `autostart.ps1` sets the scheduled task to try to restart
+  FanPilot.
+- Don't use it together with the maker's fan control (**ASUS Armoury Crate / AI Suite "Fan Xpert"**, MSI Center and
+  so on): the two would fight over the fans. Turn the fan control off there.
 
-Limites ajustáveis em `bin\data\config.json` (`minDutyPercent`, `fixedModeSafetyTemp`, `maxFullSpeedTemp`,
+Adjustable limits in `bin\data\config.json` (`minDutyPercent`, `fixedModeSafetyTemp`, `maxFullSpeedTemp`,
 `gpuSafetyTemp`, `port`, `publicHost`, `pairCodeTtlSeconds`, `sessionDays`, `backend`).
 
-## Operação
+## Operation
 
-- **Parar:** feche a janela do FanPilot ou pressione Ctrl+C nela. Ao sair, o fan da GPU volta para automático.
-  Na Gigabyte com GCC as curvas ficam gravadas no chip; nas outras placas os fans voltam ao controle da BIOS.
-- **Uma instância por vez:** abrir o FanPilot com ele já rodando só abre o painel. Se outro programa estiver na
-  porta, o FanPilot avisa e fecha antes de mexer em qualquer fan.
-- **Log:** `bin\data\fanpilot.log` (pareamentos, mudanças de fan, reaplicações do watchdog, erros). Ao passar de
-  5 MB ele vira `fanpilot.1.log` (até 3 arquivos antigos). Uma mensagem repetida em sequência aparece uma vez, com um
-  resumo a cada minuto, e as falhas viram registros de mudança de estado (falhou, voltou).
-- **Dados:** `bin\data\` guarda `config.json`, `sessions.json`, `backup-curves.json` (curvas originais, gravado
-  só na primeira execução), `desired-curves.json` (curvas que o FanPilot mantém) e `machine.json` (identifica o PC
-  e a placa-mãe). Cada arquivo é gravado de uma vez só (nunca fica pela metade) e guarda a versão anterior em
-  `.bak`. Um arquivo ilegível é guardado como `<nome>.corrompido-<data>`, e o FanPilot segue com a versão anterior
-  ou sem ele, avisando no painel. Um `config.json` inválido nunca é alterado: o FanPilot usa os valores padrão até
-  ele ser corrigido. As curvas são guardadas pela identidade de cada fan, não pela posição: se uma atualização da
-  BIOS ou do LibreHardwareMonitor mudar a ordem dos fans, cada curva continua no seu; a de um fan que sumiu não é
-  aplicada a nenhum outro, e o painel oferece descartá-la. Versões do FanPilot anteriores a essa mudança não leem o
-  formato novo; os arquivos antigos ficam como `.v1`.
-- **Outro PC / troca de placa-mãe:** se `bin\data\` vier de outro PC ou de outra placa, o FanPilot não aplica as
-  curvas, o backup nem os pareamentos antigos: eles são movidos para `bin\data\outra-maquina-<data>\` e tudo
-  recomeça do zero (o `config.json` é mantido). Para levar o programa a outro PC, use o zip gerado por
-  `scripts\package.ps1` (ou copie a pasta `bin\` sem a `data\`).
-- **GCC e FanPilot juntos:** não use os dois para controlar fans ao mesmo tempo — um sobrescreve o outro, e o
-  watchdog do FanPilot vai reaplicar a curva dele a cada 15 s. Para voltar ao GCC, use "Restaurar original" em
-  cada fan alterado (isso também tira o fan do watchdog). Só monitorar com os dois abertos não tem problema.
+- **Stop:** close FanPilot's window or press Ctrl+C in it. On the way out, the GPU fan goes back to automatic. On a
+  Gigabyte with GCC the curves stay in the chip; on other boards the fans go back to BIOS control.
+- **One at a time:** opening FanPilot while it's running just opens the panel. If another program holds the port,
+  FanPilot says so and closes before touching any fan.
+- **Language:** the panel follows the browser's (Portuguese for any `pt-*`, English for everything else) and the footer
+  switches it; the choice is kept on the device. FanPilot's window, `--diagnose` and `--hardware-test` follow Windows'
+  language. Alerts sent to ntfy and Telegram go out in the language of the panel they were set up from.
+- **Log:** `bin\data\fanpilot.log` (pairings, fan changes, watchdog re-applies, errors), always in English, so a
+  message can be searched for in any issue. Past 5 MB it becomes `fanpilot.1.log` (up to 3 old files). A message
+  repeated in a row shows once, with a summary every minute, and failures become state-change records (failed,
+  recovered).
+- **Data:** `bin\data\` keeps `config.json`, `sessions.json`, `backup-curves.json` (the original curves, written
+  only on the first run), `desired-curves.json` (the curves FanPilot maintains) and `machine.json` (identifies the PC
+  and the motherboard). Each file is written in one go (never half written) and keeps the previous version in `.bak`.
+  An unreadable file is set aside as `<name>.corrompido-<date>`, and FanPilot goes on with the previous version or
+  without it, saying so in the panel. An invalid `config.json` is never changed: FanPilot uses the defaults until it
+  is fixed. Curves are kept by each fan's identity, not its position: if a BIOS or LibreHardwareMonitor update changes
+  the fans' order, each curve stays with its fan; one for a fan that's gone isn't applied to any other, and the panel
+  offers to discard it. FanPilot versions from before that change can't read the new format; the old files are kept
+  as `.v1`.
+- **Another PC / a motherboard swap:** if `bin\data\` came from another PC or another board, FanPilot doesn't apply
+  the old curves, backup or pairings: they are moved to `bin\data\outra-maquina-<date>\` and everything starts over
+  (`config.json` is kept). To take the program to another PC, use the zip made by `scripts\package.ps1` (or copy the
+  `bin\` folder without `data\`).
+- **GCC and FanPilot together:** don't use both to control fans at the same time — one overwrites the other, and
+  FanPilot's watchdog will apply its curve again every 15 s. To go back to the GCC, use "Restore original" on each fan
+  you changed (that also takes the fan out of the watchdog). Just monitoring with both open is fine.
 
-## Problemas comuns
+## Common problems
 
-| Sintoma | Causa provável / solução |
+| Symptom | Likely cause / fix |
 |---|---|
-| Celular não abre a página | Firewall: rode `scripts\firewall.ps1`. A regra vale só para rede **Privada** — se o Wi-Fi estiver como Pública, mude em Configurações › Rede › Propriedades. |
-| QR aponta para IP errado | Escolha outro endereço na caixa da página `/pair` (ex.: o do Wi-Fi, não o `vEthernet`), ou fixe `publicHost` no `config.json`. |
-| "Código inválido ou expirado" | O código é de uso único e dura ~3 min; escaneie o QR atual de novo. Muitas tentativas erradas bloqueiam o IP por 1 min. |
-| Celular volta para a tela de bloqueio | Sessão revogada em `/pair`, cookies apagados ou 30 dias sem uso: pareie de novo. |
-| Status "sensores da placa indisponíveis" | Gigabyte: `EasyTuneEngineService` parado (`services.msc`) ou GCC atualizado/removido. A GPU continua funcionando. |
-| "Falta o driver PawnIO" | Placa sem GCC: feche e abra o FanPilot pela janela e responda `S` para instalar (ou instale pelo [site](https://pawnio.eu)). Com o autostart (`--no-browser`) ele não pergunta. |
-| Placa sem GCC não mostra fans | O LibreHardwareMonitor não reconheceu ou não controla o chip dessa placa. Rode `FanPilot.exe --diagnose` e relate pelo link que vem no arquivo gerado. |
-| FanPilot fecha logo ao abrir | Não está como Administrador, ou o GCC não está instalado. Veja o log. |
-| "Esta placa-mãe não oferece controle de fans" | A placa não usa o caminho de controle que o FanPilot implementa; só o monitoramento funciona. |
-| Fan da GPU não aceita modo fixo | Driver recusou o controle manual (mensagem com código NVML); o fan fica em automático. |
-| Curva "volta sozinha" | Algo (GCC, BIOS, resume do sleep) a sobrescreveu; o watchdog reaplica em até 15 s e registra no log. |
+| The phone can't open the page | Firewall: run `scripts\firewall.ps1`. The rule only holds on a **Private** network — if the Wi-Fi is set to Public, change it in Settings › Network › Properties. |
+| The QR code points to the wrong IP | Pick another address in the `/pair` page's box (e.g. the Wi-Fi one, not `vEthernet`), or set `publicHost` in `config.json`. |
+| "Invalid or expired code" | The code works once and lasts about 3 minutes; scan the current QR code again. Too many wrong attempts block the IP for a minute. |
+| The phone goes back to the lock screen | Session revoked on `/pair`, cookies cleared, or 30 days unused: pair again. |
+| Status "board sensors unavailable" | Gigabyte: `EasyTuneEngineService` stopped (`services.msc`), or the GCC was updated or removed. The GPU keeps working. |
+| "The PawnIO driver is missing" | A board without GCC: close FanPilot, open it from its window and answer `Y` to install it (or install it from the [site](https://pawnio.eu)). With autostart (`--no-browser`) it doesn't ask. |
+| A board without GCC shows no fans | LibreHardwareMonitor doesn't recognize or can't control that board's chip. Run `FanPilot.exe --diagnose` and report through the link in the file it writes. |
+| FanPilot closes right after opening | It isn't running as Administrator, or the GCC isn't installed. See the log. |
+| "This motherboard has no fan control" | The board doesn't use the control path FanPilot implements; only monitoring works. |
+| The GPU fan won't take fixed mode | The driver refused manual control (a message with an NVML code); the fan stays on automatic. |
+| A curve "goes back by itself" | Something (the GCC, the BIOS, resume from sleep) overwrote it; the watchdog applies it again within 15 s and logs it. |
 
-## Exemplo: observações da placa de teste (B760M GAMING X AX)
+## Example: notes from the test board (B760M GAMING X AX)
 
-- O GCC estava no modo global **FullSpeed** (`Control Center\Fan\setupmode.xml`): todas as curvas originais
-  são 100% em qualquer temperatura. É isso que "Restaurar original" devolve.
-- O header **CPU** marca 0 RPM e **System 3** também: nada com tacômetro está ligado neles. Não há
-  controlador USB de watercooler (o único dispositivo USB de placa é o controlador RGB ITE da própria
-  placa-mãe), então o AIO não reporta nada por software. Hipóteses: a bomba do watercooler está num header
-  System (bombas costumam girar ~2000–2800 RPM constantes, como o **System 1** a ~2350) ou alimentada direto
-  pela fonte (SATA/Molex), sem fio de RPM; os fans do radiador provavelmente estão no **System 2** (~1680 RPM,
-  que usa o sensor CPU como referência). Confira fisicamente. **Se um header for a bomba, marque-o como bomba** no
-  editor ("Nome e função"): bomba lenta reduz muito a refrigeração, e com a proteção "Sempre 100%" nada que o
-  FanPilot aplique a deixa mais lenta. O gráfico de RPM omite headers que leem 0.
-- Sensores de temperatura disponíveis para referência das curvas: System 1, PCH, CPU, PCIEX16, VRM MOS, System 2.
-  A temperatura "CPU" do GCC é a do sensor da placa (socket), não a dos núcleos: o painel a chama de "CPU · socket" e,
-  com o PawnIO instalado, mostra no card a temperatura dos núcleos ("CPU · pacote"). As curvas continuam no sensor da
-  placa, porque é o que o chip lê.
+- The GCC was in the global **FullSpeed** mode (`Control Center\Fan\setupmode.xml`): every original curve is 100% at
+  any temperature. That's what "Restore original" gives back.
+- The **CPU** header reads 0 RPM, and so does **System 3**: nothing with a tachometer is plugged into them. There's no
+  USB liquid cooler controller (the only board USB device is the motherboard's own ITE RGB controller), so the AIO
+  reports nothing in software. Guesses: the cooler's pump is on a System header (pumps usually spin at a steady
+  ~2000–2800 RPM, like **System 1** at ~2350) or is powered straight from the PSU (SATA/Molex), without an RPM wire;
+  the radiator fans are probably on **System 2** (~1680 RPM, using the CPU sensor as its reference). Check it
+  physically. **If a header is the pump, mark it as a pump** in the editor ("Name and role"): a slow pump cuts cooling
+  a lot, and with the "Always 100%" protection nothing FanPilot applies makes it slower. The RPM chart leaves out
+  headers that read 0.
+- Temperature sensors available as curve references: System 1, PCH, CPU, PCIEX16, VRM MOS, System 2. The GCC's "CPU"
+  temperature is the board's sensor (the socket), not the cores': the panel calls it "CPU · socket" and, with PawnIO
+  installed, shows the cores' temperature ("CPU · package") on the card. The curves stay on the board's sensor,
+  because that's what the chip reads.
 
-## Ferramentas de engenharia reversa (`tools/`)
+## Reverse engineering tools (`tools/`)
 
-Programas de teste usados para validar a análise; precisam rodar como Administrador e referenciam as DLLs do GCC.
-Não fazem parte do projeto: compile cada um com o `csc.exe` do .NET Framework, passando as DLLs do GCC em `/r:`.
+Test programs used to check the analysis; they need Administrator and reference the GCC's DLLs. They aren't part of
+the project: build each one with the .NET Framework's `csc.exe`, passing the GCC's DLLs with `/r:`.
 
-| Arquivo | O que faz |
+| File | What it does |
 |---|---|
-| `Probe.cs` | Primeira leitura via remoting: sensores do HardwareMonitor e tentativa nos módulos SmartGuardian. |
-| `Probe2.cs` | Experimento que mostrou a falha da primeira chamada IPC (resolvida com retry) e os módulos "não suportados". |
-| `Probe3.cs` | Leitura (somente) das curvas pelo caminho de 3ª geração (`SmartGuardianFanControlCoordinateSystemModule`). |
-| `Probe4.cs` | Teste de escrita: aplica 40% no System 1 por 8 s, mede o RPM e **restaura a curva original** automaticamente. |
-| `ui-mock/` | Servidor de dados falsos para mexer no painel **sem placa Gigabyte nem Administrador**: `python tools/ui-mock/mock.py` e abra `http://127.0.0.1:8799/__mock`. Alterna entre Demo, Pior caso (placa com 8 fans, nomes longos, sensores desconectados), Sem controle, Serviço fora e Turbo, em 320/390/1024 px e tema claro/escuro. |
+| `Probe.cs` | First read through remoting: the HardwareMonitor's sensors and a try at the SmartGuardian modules. |
+| `Probe2.cs` | The experiment that showed the first IPC call failing (solved with a retry) and the "unsupported" modules. |
+| `Probe3.cs` | Reads (only) the curves through the 3rd-generation path (`SmartGuardianFanControlCoordinateSystemModule`). |
+| `Probe4.cs` | Write test: sets System 1 to 40% for 8 s, measures the RPM and **restores the original curve** by itself. |
+| `ui-mock/` | A fake-data server to work on the panel **without a Gigabyte board or Administrator**: `python tools/ui-mock/mock.py` and open `http://127.0.0.1:8799/__mock`. Switches between Demo, Worst case (an 8-fan board, long names, disconnected sensors), No control, Service down and Turbo, at 320/390/1024 px in light and dark themes. |
 
 ## API
 
-| Método | Rota | |
+| Method | Route | |
 |---|---|---|
-| GET | `/api/state` | snapshot atual (sensores, rpm, GPU) |
-| GET | `/api/stream` | Server-Sent Events, 1 snapshot/s |
-| GET | `/api/history` | últimos 10 min (temperaturas, potência, rpm) |
-| GET | `/api/fans` | curvas atuais, sensores de referência, limites |
-| GET | `/api/info` | versão do FanPilot, backend e placa-mãe |
-| GET | `/api/alerts` | alertas ativos e recentes (os ativos também vêm em cada snapshot, no campo `alerts`) |
-| POST | `/api/alerts/ack` | `{"id":"…"}` tira o alerta da faixa (ele continua na lista enquanto durar) |
-| GET/POST | `/api/alerts/settings` | limites, nome do PC e destinos; os segredos voltam só mascarados; `""` remove um destino |
-| POST | `/api/alerts/test` | envia uma mensagem de teste para os destinos configurados |
-| POST | `/api/fans/{i}` | `{"mode":"fixed","percent":40}` ou `{"mode":"curve","style":"SmartFanMode","points":[[0,30],…N pontos em %, N = pointCount do fan],"tempInput":2}` |
-| POST | `/api/fans/{i}/restore` | volta à curva original |
-| POST | `/api/fans/{i}/meta` | `{"label":"Frente","role":"pump","pumpPolicy":"min","pumpMinPercent":70}` nome (até 32 caracteres; vazio volta ao original) e função; `role` `fan` ou `pump`, `pumpPolicy` `full` (sempre 100%) ou `min` (piso de 50 a 100%) |
-| POST | `/api/fans/turbo` | `{"on":true}` todos os fans da placa-mãe em 100%; `{"on":false}` devolve cada fan ao estado anterior |
-| POST | `/api/fans/mode` | `{"mode":"profile:quiet"}` (ou `profile:standard`, `profile:performance`) põe o perfil em todos os fans menos as bombas; `{"mode":"custom"}` devolve a configuração pessoal |
-| POST | `/api/gpu/fan` | `{"mode":"auto"}` ou `{"mode":"fixed","percent":50}` |
+| GET | `/api/state` | current snapshot (sensors, RPM, GPU) |
+| GET | `/api/stream` | Server-Sent Events, one snapshot a second |
+| GET | `/api/history` | the last 10 minutes (temperatures, power, RPM) |
+| GET | `/api/fans` | current curves, reference sensors, limits |
+| GET | `/api/info` | FanPilot's version, backend and motherboard |
+| GET | `/api/alerts` | active and recent alerts (the active ones also come in every snapshot, in `alerts`) |
+| POST | `/api/alerts/ack` | `{"id":"…"}` takes the alert off the strip (it stays in the list while it lasts) |
+| GET/POST | `/api/alerts/settings` | limits, the PC's name, the message language and the destinations; secrets come back masked only; `""` removes a destination |
+| POST | `/api/alerts/test` | sends a test message to the configured destinations |
+| POST | `/api/fans/{i}` | `{"mode":"fixed","percent":40}` or `{"mode":"curve","style":"SmartFanMode","points":[[0,30],…N points in %, N = the fan's pointCount],"tempInput":2}` |
+| POST | `/api/fans/{i}/restore` | back to the original curve |
+| POST | `/api/fans/{i}/meta` | `{"label":"Front","role":"pump","pumpPolicy":"min","pumpMinPercent":70}` name (up to 32 characters; empty goes back to the original) and role; `role` `fan` or `pump`, `pumpPolicy` `full` (always 100%) or `min` (a floor from 50 to 100%) |
+| POST | `/api/fans/turbo` | `{"on":true}` every motherboard fan at 100%; `{"on":false}` gives each fan back its previous state |
+| POST | `/api/fans/mode` | `{"mode":"profile:quiet"}` (or `profile:standard`, `profile:performance`) puts the profile on every fan except pumps; `{"mode":"custom"}` brings back your own settings |
+| POST | `/api/gpu/fan` | `{"mode":"auto"}` or `{"mode":"fixed","percent":50}` |
 
-## Estrutura
+Errors come as `{"error": "<English text>", "code": "err.curve.points", "params": {"n": 8}}`; notices, alerts and the
+board's messages as `{"code", "params", "text"}`. The panel translates them by code (`wwwroot/i18n/`).
+
+## Layout
 
 ```
-src/        C# (.NET Framework 4.7.2, FanPilot.csproj): IBoard + pontes Gigabyte (GCC) e LibreHardwareMonitor,
-            NVML, servidor HTTP/SSE, auth, política de fans, --diagnose
-tests/      testes automatizados: xUnit (dotnet test), painel (tests/js, node --test) e ponta a ponta (tests/e2e, Playwright)
-wwwroot/    painel (index.html/app.js), pareamento (pair.html/pair.js), qrcode-generator (MIT)
-tools/      probes usados na engenharia reversa
-assets/     identidade visual: SVGs-fonte, ícone do .exe, banners (regenerar: python assets/brand/build.py)
-scripts/    firewall, auto-início, empacotamento da release, notas da release e checagem de encoding
-.github/    CI, release por tag e Dependabot
-docs/       relatório da engenharia reversa, guia para testar outras placas, roadmap e specs
+src/        C# (.NET Framework 4.7.2, FanPilot.csproj): IBoard + the Gigabyte (GCC) and LibreHardwareMonitor bridges,
+            NVML, HTTP/SSE server, auth, fan policy, --diagnose, I18n
+tests/      automated tests: xUnit (dotnet test), the panel (tests/js, node --test) and end to end (tests/e2e, Playwright)
+wwwroot/    the panel (index.html/app.js), pairing (pair.html/pair.js), the English and Portuguese dictionaries
+            (i18n/), qrcode-generator (MIT)
+tools/      probes used in the reverse engineering
+assets/     visual identity: source SVGs, the .exe icon, banners (to regenerate: python assets/brand/build.py)
+scripts/    firewall, autostart, release packaging, release notes and the encoding check
+.github/    CI, release by tag and Dependabot
+docs/       the reverse engineering report, the guide to testing other boards (in both languages), tested boards,
+            roadmap and specs (in Portuguese)
 ```
 
-## Licença
+## License
 
-[MIT](LICENSE). Componentes de terceiros: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+[MIT](LICENSE). Third-party components: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

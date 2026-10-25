@@ -1,88 +1,90 @@
-name: Relato de compatibilidade
-description: Testou o FanPilot numa placa-mãe? Conte como foi, mesmo que não tenha funcionado.
-title: "[Compatibilidade] "
+name: Compatibility report (Relato de compatibilidade)
+description: Tested FanPilot on a motherboard? Tell how it went, even if it didn't work. / Testou numa placa-mãe? Conte como foi.
+title: "[Compatibility] "
 labels: ["compatibilidade"]
 body:
   - type: markdown
     attributes:
       value: |
-        Obrigado por testar! Siga o [guia de teste](https://github.com/mateusconrad/FanPilot/blob/main/docs/TESTANDO-OUTRAS-PLACAS.md), da etapa mais segura para a menos segura, e pare na primeira que der algo estranho. O `FanPilot.exe --diagnose` grava um arquivo com o link deste formulário já preenchido e sem números de série.
-        As placas já relatadas estão em [docs/COMPATIBILIDADE.md](https://github.com/mateusconrad/FanPilot/blob/main/docs/COMPATIBILIDADE.md).
+        Thanks for testing! Follow the [testing guide](https://github.com/mateusconrad/FanPilot/blob/main/docs/TESTING-OTHER-BOARDS.md), from the safest step to the least safe, and stop at the first one that does something odd. `FanPilot.exe --diagnose` writes a file with the link to this form already filled in and without serial numbers.
+        The boards reported so far are in [docs/COMPATIBILITY.md](https://github.com/mateusconrad/FanPilot/blob/main/docs/COMPATIBILITY.md).
+
+        Obrigado por testar! Siga o [guia de teste](https://github.com/mateusconrad/FanPilot/blob/main/docs/TESTANDO-OUTRAS-PLACAS.md) e pare na primeira etapa que der algo estranho. Pode responder em português.
   - type: input
     id: placa
     attributes:
-      label: Modelo da placa-mãe
-      description: Como aparece no diagnóstico ("Placa-mãe (registro)") ou na caixa.
+      label: Motherboard model (modelo da placa-mãe)
+      description: As shown in the diagnostics ("Motherboard (registry)") or on the box.
       placeholder: ASUSTeK COMPUTER INC. ROG STRIX B550-F GAMING (WI-FI)
     validations:
       required: true
   - type: input
     id: bios
     attributes:
-      label: Versão da BIOS
+      label: BIOS version (versão da BIOS)
       placeholder: "3607"
   - type: dropdown
     id: fabricante
     attributes:
-      label: Fabricante
+      label: Maker (fabricante)
       options:
         - ASUS
         - ASRock
         - Biostar
         - Gigabyte
         - MSI
-        - Outro
+        - Other (outro)
     validations:
       required: true
   - type: dropdown
     id: caminho
     attributes:
-      label: Caminho usado pelo FanPilot
-      description: Aparece no rodapé do painel e no log ("Placa-mãe via …").
+      label: Path FanPilot used (caminho usado pelo FanPilot)
+      description: In the panel's footer and in the log ("Motherboard via …").
       options:
         - Gigabyte Control Center
         - LibreHardwareMonitor
-        - Não sei
+        - I don't know (não sei)
     validations:
       required: true
   - type: input
     id: versao
     attributes:
-      label: Versão do FanPilot
-      description: Rodapé do painel, primeira linha do log ou do diagnóstico.
+      label: FanPilot version (versão do FanPilot)
+      description: The panel's footer, or the first line of the log or of the diagnostics.
       placeholder: 0.1.0+1a2b3c4
     validations:
       required: true
   - type: checkboxes
     id: etapas
     attributes:
-      label: O que funcionou
-      description: As etapas do guia de teste.
+      label: What worked (o que funcionou)
+      description: The steps of the testing guide.
       options:
-        - label: "Diagnóstico: listou os fans e sensores de temperatura plausíveis"
-        - label: "Monitoramento: temperaturas e RPM batem com outro programa (HWiNFO, o app do fabricante)"
-        - label: "Fan fixo: o RPM mudou com 40%"
-        - label: "Curva: o RPM acompanhou a temperatura"
-        - label: "Ao fechar o FanPilot, os fans voltaram ao controle da BIOS (ou, na Gigabyte com GCC, a curva continuou no chip)"
+        - label: "Diagnostics: listed the fans and plausible temperature sensors (diagnóstico)"
+        - label: "Monitoring: temperatures and RPM match another program, such as HWiNFO or the maker's app (monitoramento)"
+        - label: "Fixed fan: the RPM changed at 40% (fan fixo)"
+        - label: "Curve: the RPM followed the temperature (curva)"
+        - label: "On closing FanPilot, the fans went back to BIOS control, or, on a Gigabyte with GCC, the curve stayed in the chip (ao fechar)"
   - type: dropdown
     id: resultado
     attributes:
-      label: Resultado
+      label: Result (resultado)
       options:
-        - Funcionou
-        - Funcionou em parte
-        - Não funcionou
+        - It worked (funcionou)
+        - It partly worked (funcionou em parte)
+        - It didn't work (não funcionou)
     validations:
       required: true
   - type: textarea
     id: detalhes
     attributes:
-      label: Detalhes
-      description: O que aconteceu em cada etapa, o que não funcionou, mensagens do painel, quais fans são de gabinete, CPU ou bomba.
+      label: Details (detalhes)
+      description: What happened at each step, what didn't work, messages in the panel, which fans are case fans, the CPU's or a pump.
   - type: textarea
     id: arquivos
     attributes:
-      label: Diagnóstico e log
-      description: Arraste aqui o `data\diagnostico-….txt` e o `data\fanpilot.log` da pasta do FanPilot.
+      label: Diagnostics and log (diagnóstico e log)
+      description: Drag here `data\diagnostico-….txt` and `data\fanpilot.log` from FanPilot's folder.
     validations:
       required: true
