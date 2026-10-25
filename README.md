@@ -40,7 +40,7 @@ Como funciona por baixo: veja [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEE
 ## Compilar e rodar
 
 ```powershell
-.\build.ps1                     # .NET SDK 8+; pacotes do NuGet fixados (com hash) pelo src\packages.lock.json
+.\build.ps1                     # .NET SDK 8; pacotes do NuGet fixados (com hash) pelo src\packages.lock.json
 dotnet test                     # testes automatizados (sem hardware nem Administrador)
 node --test "tests/js/*.test.mjs"  # testes do painel (Node 22+)
 .\bin\FanPilot.exe              # pede UAC, abre http://localhost:8787/pair
@@ -52,7 +52,8 @@ node --test "tests/js/*.test.mjs"  # testes do painel (Node 22+)
 .\bin\FanPilot.exe --hardware-test [--fan N]   # (FanPilot fechado) roteiro de verificação na placa real, ~2 min
 ```
 
-Compilar exige o [.NET SDK](https://dotnet.microsoft.com/download) 8 ou mais novo. Para **rodar**, basta o Windows: o
+Compilar exige o [.NET SDK 8](https://dotnet.microsoft.com/download/dotnet/8.0): o `global.json` fixa a versão, para
+este PC e a CI compilarem igual (com outro SDK, o lock file e a versão do C# mudariam). Para **rodar**, basta o Windows: o
 FanPilot usa o .NET Framework 4.7.2 que já vem nele.
 
 O build não depende do Gigabyte Control Center: o FanPilot carrega as DLLs do GCC instalado só na hora de rodar, então
