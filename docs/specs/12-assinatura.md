@@ -27,9 +27,9 @@ Condições e preços mudam; confirmar antes de decidir.
 ## Solução
 
 1. Inscrever o projeto no SignPath Foundation (ação do dono do repositório).
-2. Integrar a action de assinatura do SignPath ao `release.yml` (item 11): artefato sem assinatura → pedido de assinatura → artefato assinado → release.
+2. Integrar a action de assinatura do SignPath ao `release.yml` (item 11): artefato sem assinatura → pedido de assinatura → artefato assinado → release. A action é a `signpath/github-action-submit-signing-request@v2`: recebe o zip como artefato do GitHub (`github-artifact-id`, saída do `actions/upload-artifact`), a organização, o projeto, a política de assinatura e a configuração de artefato do SignPath, e devolve o zip com o `FanPilot.exe` assinado. Ela entra no `release.yml` depois da aprovação, com a configuração de artefato que o SignPath criar (zip com o exe dentro); escrita antes, só daria para conferir na primeira release.
 3. Assinar o `FanPilot.exe` e, quando existirem, o `FanPilotTray.exe` e o instalador (item 14). DLLs de terceiros ficam como vêm.
-4. Até a aprovação: releases com `SHA256SUMS.txt` e uma seção no README, "Por que o Windows avisa ao abrir", explicando como conferir o hash (`Get-FileHash`).
+4. Até a aprovação: releases com `SHA256SUMS.txt` e uma seção no README, "Por que o Windows avisa ao abrir", explicando como conferir o hash (`Get-FileHash`). **Feito** (25/10/2026): a seção tem o comando que compara o hash com o `SHA256SUMS.txt` e responde `True`/`False`.
 
 ## Ações do dono do repositório
 
