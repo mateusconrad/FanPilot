@@ -158,6 +158,8 @@ main { max-width: 760px; margin: 0 auto; padding: 16px; display: grid; grid-temp
 }
 .fan:active { transform: scale(0.98); }
 .fan .name { font-weight: 600; overflow-wrap: anywhere; }
+/* The chip's own name, next to the one the user gave. */
+.fan .name .orig { font-weight: 400; font-size: 12px; color: var(--muted); margin-left: 6px; }
 .fan .rpm { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 .fan .rpm small { font-size: 12px; color: var(--ink-2); font-weight: 500; }
 .fan .desc { font-size: 12px; color: var(--ink-2); grid-column: 1 / -1; }
@@ -180,6 +182,10 @@ main { max-width: 760px; margin: 0 auto; padding: 16px; display: grid; grid-temp
 .fan-mode { margin: 0 0 10px; }
 #rpmNote { margin: 8px 0 0; }
 .pill { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--ink-2); margin-left: 6px; vertical-align: 1px; }
+.pill.pump { border-color: var(--accent); color: var(--accent); }
+.editor details.meta { border-top: 1px solid var(--border); padding-top: 10px; display: grid; gap: 10px; }
+.editor details.meta[open] { padding-bottom: 2px; }
+.editor details.meta summary { font-size: 14px; }
 
 /* Never truncate numbers: drop to two columns before "10501 MHz" stops fitting. */
 .gpu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; margin-bottom: 12px; }
@@ -195,6 +201,8 @@ main { max-width: 760px; margin: 0 auto; padding: 16px; display: grid; grid-temp
 .field { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
 /* 16px minimum: iOS zooms into smaller form controls on focus and never zooms back out. */
 select { font-size: 16px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; }
+/* 16px: smaller text inputs make iOS zoom the page on focus. */
+input[type=text], input[type=number] { font-size: 16px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; min-width: 0; }
 input[type=range] { width: 100%; accent-color: var(--accent); }
 .big-value { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .hint { font-size: 12px; color: var(--muted); }

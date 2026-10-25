@@ -27,6 +27,9 @@ Primeira versão publicada (será a 0.1.0).
 - `FanPilot.exe --diagnose`: relatório só de leitura para placas ainda não testadas, com a versão do GCC e se ela é
   compatível. Sai sem números de série nem UUIDs, pronto para anexar numa issue, e começa com o link do formulário
   de relato já preenchido.
+- Um nome seu para cada fan, mostrado no painel e nos gráficos com o original ao lado.
+- Bombas de watercooler reconhecidas pelo nome (ou marcadas no editor) e protegidas: sempre 100% ou uma velocidade
+  mínima, valendo para o editor, o Turbo e as curvas salvas.
 - Formulários de relato de compatibilidade e de problemas no GitHub, e a lista das placas testadas
   ([docs/COMPATIBILIDADE.md](docs/COMPATIBILIDADE.md)).
 - `FanPilot.exe --hardware-test [--fan N]`: roteiro automático de verificação na placa real, que grava

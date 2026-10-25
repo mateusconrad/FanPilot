@@ -15,6 +15,8 @@ public sealed class MachineDataTests : IDisposable
         DataFile.WriteAtomic(_dir.File("desired-curves.json"), new System.Collections.Generic.Dictionary<string, object> { { "1", 1 } });
         DataFile.WriteAtomic(_dir.File("desired-curves.json"), new System.Collections.Generic.Dictionary<string, object> { { "1", 2 } }); // + .bak
         File.WriteAllText(_dir.File("sessions.json"), "{\"sessions\": []}");
+        // Names and pump roles belong to that board's headers too (item 17).
+        File.WriteAllText(_dir.File("fan-meta.json"), "{\"version\": 1, \"fans\": {}}");
     }
 
     [Fact]
@@ -51,6 +53,8 @@ public sealed class MachineDataTests : IDisposable
         Assert.True(File.Exists(Path.Combine(archive, "desired-curves.json")));
         Assert.True(File.Exists(Path.Combine(archive, "desired-curves.json.bak")));
         Assert.True(File.Exists(Path.Combine(archive, "sessions.json")));
+        Assert.True(File.Exists(Path.Combine(archive, "fan-meta.json")));
+        Assert.False(File.Exists(_dir.File("fan-meta.json")));
         Assert.False(File.Exists(_dir.File("desired-curves.json")));
         Assert.False(File.Exists(_dir.File("desired-curves.json.bak")));
         Assert.Null(DataFile.Read(_dir.File("desired-curves.json")));

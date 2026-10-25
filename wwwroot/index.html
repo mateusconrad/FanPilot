@@ -148,6 +148,34 @@
     </div>
 
     <p class="hint" id="edLimits"></p>
+    <p class="notice-banner" id="edPumpNote" hidden>Bomba protegida: qualquer configuração aplicada aqui vira 100%. Para permitir outra velocidade, mude a proteção em "Nome e função".</p>
+    <details class="meta" id="edMeta">
+      <summary>Nome e função</summary>
+      <div class="row">
+        <label class="field">Nome
+          <input type="text" id="edLabel" maxlength="32" autocomplete="off">
+        </label>
+        <label class="field">Função
+          <select id="edRole">
+            <option value="fan">Fan</option>
+            <option value="pump">Bomba do watercooler</option>
+          </select>
+        </label>
+      </div>
+      <div class="row" id="edPumpBox">
+        <label class="field">Proteção da bomba
+          <select id="edPumpPolicy">
+            <option value="full">Sempre 100%</option>
+            <option value="min">Velocidade mínima</option>
+          </select>
+        </label>
+        <label class="field" id="edPumpMinField">Mínimo (%)
+          <input type="number" id="edPumpMin" min="50" max="100" step="5">
+        </label>
+      </div>
+      <p class="hint">O nome aparece no painel e nos gráficos, com o original ao lado. Numa bomba, nada que o FanPilot aplique fica abaixo da proteção: nem o editor, nem o Turbo, nem um perfil.</p>
+      <div class="row"><button class="btn" id="edMetaSave">Salvar nome e função</button></div>
+    </details>
     <div class="row" style="justify-content:space-between">
       <button class="btn" id="edRestore">Restaurar original</button>
       <button class="btn primary" id="edApply">Aplicar</button>

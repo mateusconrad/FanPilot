@@ -204,6 +204,7 @@ sealed class WebServer
             var parts = p.Substring("/api/fans/".Length).Split('/');
             int index;
             if (!int.TryParse(parts[0], out index)) throw new ArgumentException("Fan inválido.");
+            if (parts.Length > 1 && parts[1] == "meta") { WriteJson(r.Ctx, 200, _fans.SetMeta(index, ReadBody(r))); return true; }
             FanCurve result = parts.Length > 1 && parts[1] == "restore" ? _fans.Restore(index) : _fans.Apply(index, ReadBody(r));
             WriteJson(r.Ctx, 200, result.ToDictionary());
             return true;

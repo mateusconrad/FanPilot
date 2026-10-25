@@ -4,7 +4,7 @@
 #   python tools/ui-mock/mock.py            -> http://127.0.0.1:8799/__mock  (fixture switcher + panel in an iframe)
 #
 # The switcher stores the fixture in a cookie that the API endpoints read, so the panel code is untouched.
-import json, math, pathlib, sys, time, http.server
+import json, math, pathlib, re, sys, time, http.server
 from http.cookies import SimpleCookie
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -20,10 +20,16 @@ DEFAULT_CURVE = curve((0, 25), (35, 25), (45, 35), (55, 55), (62, 65), (68, 75),
 FULL = curve((0, 100), (20, 100), (30, 100), (40, 100), (50, 100), (60, 100), (70, 100), (75, 100))
 
 
-def fan(i, title, temp_input, points=DEFAULT_CURVE, mode="SmartFanMode", request=None, managed=None):
-    return {"index": i, "title": title, "tempInput": temp_input, "mode": mode, "deltaT": 1, "points": points,
-            "pointCount": len(points), "managed": bool(request) if managed is None else managed,
-            "request": request, "hasBackup": True}
+# Name and role (FanMeta in the backend): a header whose name says pump is a pump, protected at 100%.
+def meta(title, label=None):
+    pump = re.search(r"pump|bomba|(^|[^a-z])aio([^a-z]|$)", title, re.I)
+    return {"label": label, "role": "pump" if pump else "fan", "pumpPolicy": "full", "pumpMinPercent": 70}
+
+
+def fan(i, title, temp_input, points=DEFAULT_CURVE, mode="SmartFanMode", request=None, managed=None, label=None):
+    return dict({"index": i, "title": title, "tempInput": temp_input, "mode": mode, "deltaT": 1, "points": points,
+                 "pointCount": len(points), "managed": bool(request) if managed is None else managed,
+                 "request": request, "hasBackup": True}, **meta(title, label))
 
 
 def sensors(temps, fans_rpm, volts, power, clocks):
@@ -60,7 +66,7 @@ WORST = {
         fan(0, "CPU_FAN", 2, request={"mode": "fixed", "percent": 35}),
         fan(1, "CPU_OPT", 2, points=FULL, mode="StairStepMode"),
         fan(2, "SYS_FAN1", 4, request={"mode": "curve"}),
-        fan(3, "SYS_FAN2", 0),
+        fan(3, "SYS_FAN2", 0, label="Frente do gabinete, 3 fans"),
         fan(4, "SYS_FAN3", 3),
         fan(5, "SYS_FAN4", 7),
         fan(6, "SYS_FAN5_PUMP", 2, points=FULL),
@@ -96,8 +102,8 @@ TURBO = dict(DEMO, turbo=True)
 # asus: LibreHardwareMonitor path (Nuvoton NCT6798D, LHM's board names). FanPilot runs the curves; unmanaged
 # headers are on the BIOS (mode BiosDefault, no points).
 def bios_fan(i, title):
-    return {"index": i, "title": title, "tempInput": 0, "mode": "BiosDefault", "deltaT": 1, "points": [],
-            "pointCount": 8, "managed": False, "request": None, "hasBackup": True}
+    return dict({"index": i, "title": title, "tempInput": 0, "mode": "BiosDefault", "deltaT": 1, "points": [],
+                 "pointCount": 8, "managed": False, "request": None, "hasBackup": True}, **meta(title))
 
 ASUS = dict(DEMO,
     board="ASUSTeK COMPUTER INC. ROG STRIX B550-F GAMING (WI-FI)",

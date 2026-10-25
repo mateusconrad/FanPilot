@@ -62,7 +62,8 @@ um mesmo build (ou zip) atende as placas Gigabyte e as outras.
 
 O `--hardware-test` passa por velocidade fixa, uma curva vigiada pelo watchdog, Turbo, o fan da GPU e um "fechar e
 abrir de novo", e grava `data\hwtest-<data>.md`. Ele só mexe no fan escolhido (e em todos no Turbo, a 100%), nunca
-abaixo de 40%, recusa o fan da CPU e bombas, para se a CPU ou a GPU passarem de 80 °C e devolve tudo como estava,
+abaixo de 40%, recusa o fan da CPU e as bombas (pelo nome ou marcadas no painel), para se a CPU ou a GPU passarem
+de 80 °C e devolve tudo como estava,
 inclusive com Ctrl+C (fechar a janela no meio é a única saída que ele não intercepta). Código de saída: 0 passou,
 6 falhou, 7 interrompido, 8 não executado.
 
@@ -165,6 +166,12 @@ ele avisa no painel o que mudou e segue com o LibreHardwareMonitor (com `"gigaby
   Enquanto ligado, a edição individual fica bloqueada; ao desligar, cada fan volta exatamente ao que estava
   (curva/fixo do FanPilot ou curva original). O estado sobrevive a um reinício (`bin\data\turbo.json`).
 - Fan da GPU em modo fixo volta sozinho para automático se a GPU chegar a 83 °C ou quando o FanPilot fecha.
+- **Bomba do watercooler:** um header com "pump", "bomba" ou "AIO" no nome já aparece como bomba, e qualquer header
+  pode ser marcado assim no editor ("Nome e função"). Com a proteção **Sempre 100%** (o padrão), qualquer
+  configuração aplicada a ela vira 100%; com **Velocidade mínima**, nada fica abaixo do mínimo escolhido (50 a
+  100%). Vale para o editor, o Turbo e a reaplicação das curvas salvas. "Restaurar original" continua permitido.
+- **Nomes:** cada fan pode ter um nome seu (até 32 caracteres), que aparece no card e nos gráficos com o original ao
+  lado. Nomes e funções ficam em `bin\data\fan-meta.json`, pela identidade do fan, e sobrevivem a reordenações.
 
 ### Placas sem GCC: curvas executadas pelo FanPilot
 
@@ -248,8 +255,9 @@ Limites ajustáveis em `bin\data\config.json` (`minDutyPercent`, `fixedModeSafet
   placa-mãe), então o AIO não reporta nada por software. Hipóteses: a bomba do watercooler está num header
   System (bombas costumam girar ~2000–2800 RPM constantes, como o **System 1** a ~2350) ou alimentada direto
   pela fonte (SATA/Molex), sem fio de RPM; os fans do radiador provavelmente estão no **System 2** (~1680 RPM,
-  que usa o sensor CPU como referência). Confira fisicamente. **Se um header for a bomba, mantenha-o em 100%** —
-  bomba lenta reduz muito a refrigeração. O gráfico de RPM omite headers que leem 0.
+  que usa o sensor CPU como referência). Confira fisicamente. **Se um header for a bomba, marque-o como bomba** no
+  editor ("Nome e função"): bomba lenta reduz muito a refrigeração, e com a proteção "Sempre 100%" nada que o
+  FanPilot aplique a deixa mais lenta. O gráfico de RPM omite headers que leem 0.
 - Sensores de temperatura disponíveis para referência das curvas: System 1, PCH, CPU, PCIEX16, VRM MOS, System 2.
   A temperatura "CPU" é a do sensor da placa (socket), não a dos núcleos.
 
@@ -277,6 +285,7 @@ Não fazem parte do projeto: compile cada um com o `csc.exe` do .NET Framework, 
 | GET | `/api/info` | versão do FanPilot, backend e placa-mãe |
 | POST | `/api/fans/{i}` | `{"mode":"fixed","percent":40}` ou `{"mode":"curve","style":"SmartFanMode","points":[[0,30],…N pontos em %, N = pointCount do fan],"tempInput":2}` |
 | POST | `/api/fans/{i}/restore` | volta à curva original |
+| POST | `/api/fans/{i}/meta` | `{"label":"Frente","role":"pump","pumpPolicy":"min","pumpMinPercent":70}` nome (até 32 caracteres; vazio volta ao original) e função; `role` `fan` ou `pump`, `pumpPolicy` `full` (sempre 100%) ou `min` (piso de 50 a 100%) |
 | POST | `/api/fans/turbo` | `{"on":true}` todos os fans da placa-mãe em 100%; `{"on":false}` devolve cada fan ao estado anterior |
 | POST | `/api/gpu/fan` | `{"mode":"auto"}` ou `{"mode":"fixed","percent":50}` |
 
