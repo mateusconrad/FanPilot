@@ -6,17 +6,19 @@
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
   <meta name="color-scheme" content="light dark">
-  <title>FanPilot · bloqueado</title>
+  <title data-i18n-title="locked.pageTitle">FanPilot</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="stylesheet" href="/style.css">
 </head>
+<!-- Every word on the page comes from wwwroot/i18n: see js/i18n.mjs and locked.js. -->
 <body>
   <main class="locked">
-    <h1>🔒 Aparelho não pareado</h1>
-    <p>No PC, abra <strong>http://localhost:8787/pair</strong> (abre sozinho quando o FanPilot inicia) e escaneie o QR code com a câmera deste aparelho.</p>
-    <p class="hint">O código do QR vale por poucos minutos e só pode ser usado uma vez.</p>
+    <h1 data-i18n="locked.title"></h1>
+    <p id="how"></p>
+    <p class="hint" data-i18n="locked.hint"></p>
   </main>
+  <script type="module" src="/locked.js"></script>
 </body>
 </html>
