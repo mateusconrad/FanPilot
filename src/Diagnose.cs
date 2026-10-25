@@ -37,7 +37,7 @@ static class Diagnose
     {
         if (!File.Exists(Path.Combine(Program.GccLibDir, GigabyteApi.EngineDll))) return "não encontrado";
         var api = GigabyteApi.Load(Program.GccLibDir);
-        return Program.GccLibDir + ", versão " + api.Version + (api.Compatible ? ", compatível" : ", NÃO compatível: " + api.Problem);
+        return Program.GccLibDir + ", versão " + api.Version + (api.Compatible ? ", compatível" : ", NÃO compatível: " + api.Problem.Text);
     }
 
     // otherInstance: a FanPilot is running and may be driving the fans while this reads them. interactive: a person
@@ -65,7 +65,7 @@ static class Diagnose
         try
         {
             sb.AppendLine("== Como o FanPilot enxerga esta placa (LibreHardwareMonitor)");
-            sb.AppendLine("Aviso: " + (board.Notice ?? "nenhum"));
+            sb.AppendLine("Aviso: " + (board.Notice != null ? board.Notice.Text : "nenhum"));
             sb.AppendLine("Sensores de referência para as curvas:");
             var titles = board.TempInputTitles;
             System.Collections.Generic.List<float> temps, rpms;

@@ -13,7 +13,8 @@ interface IBoard
     // true when curves keep running in hardware after FanPilot exits.
     bool HardwareCurves { get; }
     // Why fan control or sensors are unavailable (driver missing, chip unsupported), or null.
-    string Notice { get; }
+    // Why the board can't do everything (no fan control, a missing driver), for the panel; null when all is well.
+    Msg Notice { get; }
     bool FanControlSupported { get; }
     string[] TempInputTitles { get; }
 
@@ -31,7 +32,7 @@ interface IBoard
     // What the board did for safety and is still doing right now (a header back on the BIOS because its reference
     // sensor stopped reading, every header back after repeated failures), one message each; empty when all is well.
     // The alerts (item 16) show them.
-    List<string> ControlProblems();
+    List<Msg> ControlProblems();
 }
 
 sealed class SensorReading
@@ -39,12 +40,14 @@ sealed class SensorReading
     public string Id;
     public string Type;
     public string Title;
+    // FanPilot's own name for the reading (CpuRoles), a dictionary key the panel translates; Title then has the English.
+    public string TitleKey;
     public double Value;
     public string Unit;
     // "cpu-main" or "cpu-socket" (CpuRoles), else null.
     public string Role;
     // A short note for the panel next to the reading (how to get a better one), else null.
-    public string Hint;
+    public Msg Hint;
 }
 
 sealed class FanCurve

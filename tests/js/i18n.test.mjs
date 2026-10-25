@@ -70,6 +70,25 @@ test('toda chave usada pelo painel existe nos dois idiomas', () => {
   }
 });
 
+// FanPilot.exe reads the same dictionaries (src/I18n.cs): every string in its code shaped like a key of a known
+// namespace ("err.curve.points", "alert.fanStopped.title") must be in both. File names are not keys.
+test('toda chave usada pelo FanPilot.exe existe nos dois idiomas', async () => {
+  const { readdirSync } = await import('node:fs');
+  const namespaces = new Set(Object.keys(dicts.en).map((k) => k.split('.')[0]));
+  const keys = new Set();
+  for (const file of readdirSync(new URL('../../src/', import.meta.url)).filter((f) => f.endsWith('.cs'))) {
+    for (const m of read('src/' + file).matchAll(/"([a-z]\w*(?:\.\w+)+)"/g)) {
+      if (/\.(json|log|dll|exe|md|ps1|bak|txt|html|m?js|css|png|svg)$/.test(m[1])) continue;
+      if (namespaces.has(m[1].split('.')[0])) keys.add(m[1]);
+    }
+  }
+  assert.ok(keys.size > 80, `só ${keys.size} chaves encontradas no C#: a busca falhou`);
+  for (const [lang, dict] of Object.entries(dicts)) {
+    const missing = [...keys].filter((k) => !has(dict, k));
+    assert.deepEqual(missing, [], `faltam em ${lang}.json`);
+  }
+});
+
 // What may stay in the HTML as it is: names, units and symbols, the same in any language.
 const FIXED = new Set(['FanPilot', 'CPU', 'GPU', 'CPU (°C)', 'GPU (°C)', '°C', '%', '−', '+', '50%', '&#x25C0;&#xFE0E;', '&#x25B6;&#xFE0E;']);
 

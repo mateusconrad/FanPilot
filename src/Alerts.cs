@@ -13,7 +13,8 @@ using System.Threading;
 
 sealed class Alert
 {
-    public string Id, Severity, Title, Detail; // Severity: "critical" or "warning"
+    public string Id, Severity; // Severity: "critical" or "warning"
+    public Msg Title, Detail;
     public DateTime Since;
     public DateTime? Resolved;
     public bool Acknowledged, Notified;
@@ -21,7 +22,7 @@ sealed class Alert
     public Dictionary<string, object> ToDictionary()
     {
         return new Dictionary<string, object> {
-            { "id", Id }, { "severity", Severity }, { "title", Title }, { "detail", Detail }, { "since", UnixMs(Since) },
+            { "id", Id }, { "severity", Severity }, { "title", Title.ToJson() }, { "detail", Detail.ToJson() }, { "since", UnixMs(Since) },
             { "resolved", Resolved.HasValue ? (object)UnixMs(Resolved.Value) : null }, { "acknowledged", Acknowledged }
         };
     }
@@ -44,7 +45,7 @@ sealed class AlertInput
     public List<FanReading> Fans = new List<FanReading>();
     public double? CpuTemp, GpuTemp;
     public bool BoardOk = true;
-    public List<string> ControlProblems = new List<string>();
+    public List<Msg> ControlProblems = new List<Msg>();
 }
 
 // The rules, with no clock or I/O of their own: the tests feed them sequences.
@@ -84,16 +85,15 @@ sealed class AlertRules
         {
             if (_boardDownSince == null) _boardDownSince = now;
             if (now - _boardDownSince >= BoardDownFor)
-                Raise("board-down", "warning", "Sensores da placa indisponíveis",
-                      "A placa-mãe não responde há mais de 1 minuto. Veja o serviço do fabricante e o log do FanPilot.", now, changes);
+                Raise("board-down", "warning", new Msg("alert.boardDown.title"), new Msg("alert.boardDown.detail"), now, changes);
         }
 
         var current = new HashSet<string>();
-        foreach (string problem in input.ControlProblems)
+        foreach (Msg problem in input.ControlProblems)
         {
-            string id = "control-" + ShortHash(problem);
+            string id = "control-" + ShortHash(problem.Text);
             current.Add(id);
-            Raise(id, "warning", "Controle devolvido à BIOS", problem, now, changes);
+            Raise(id, "warning", new Msg("alert.control.title"), problem, now, changes);
         }
         foreach (string id in _active.Keys.Where(k => k.StartsWith("control-") && !current.Contains(k)).ToList()) Resolve(id, now, changes);
         return changes;
@@ -117,8 +117,8 @@ sealed class AlertRules
         if (!(f.Rpm < StoppedRpm && f.Duty.HasValue && f.Duty.Value >= MinDutyForStop)) { s.LowSince = null; return; }
         if (s.LowSince == null) s.LowSince = now;
         if (s.Spun && now - s.LowSince >= StoppedFor)
-            Raise(id, f.IsPump ? "critical" : "warning", (f.IsPump ? "Bomba parada: " : "Fan parado: ") + f.Name,
-                  "Lê " + Math.Round(f.Rpm) + " RPM com " + Math.Round(f.Duty.Value) + "% comandado; antes girava.", now, changes);
+            Raise(id, f.IsPump ? "critical" : "warning", new Msg(f.IsPump ? "alert.pumpStopped.title" : "alert.fanStopped.title", "name", f.Name),
+                  new Msg("alert.stopped.detail", "rpm", (int)Math.Round(f.Rpm), "duty", (int)Math.Round(f.Duty.Value)), now, changes);
     }
 
     // Raised after 10 s at or above the limit; over only after 30 s at least 5 °C below it.
@@ -130,7 +130,7 @@ sealed class AlertRules
             s.CoolSince = null;
             if (s.HotSince == null) s.HotSince = now;
             if (now - s.HotSince >= HotFor)
-                Raise(id, "critical", what + " a " + Math.Round(t.Value) + " °C", "Acima do limite de " + limit + " °C há mais de 10 s.", now, changes);
+                Raise(id, "critical", new Msg("alert.temp.title", "what", what, "temp", (int)Math.Round(t.Value)), new Msg("alert.temp.detail", "limit", limit), now, changes);
             return;
         }
         s.HotSince = null;
@@ -139,7 +139,7 @@ sealed class AlertRules
         if (now - s.CoolSince >= CoolFor) Resolve(id, now, changes);
     }
 
-    void Raise(string id, string severity, string title, string detail, DateTime now, List<Alert> changes)
+    void Raise(string id, string severity, Msg title, Msg detail, DateTime now, List<Alert> changes)
     {
         if (_active.ContainsKey(id)) return;
         var a = new Alert { Id = id, Severity = severity, Title = title, Detail = detail, Since = now };
@@ -185,6 +185,9 @@ sealed class AlertSettings
 
     public int CpuTemp = 95, GpuTemp = 87;
     public string PcName = Environment.MachineName;
+    // What the messages that leave the PC are written in: the panel's language when the settings were saved, else
+    // Windows' (item 21).
+    public string Language = I18n.Windows;
     public string NtfyUrl, TelegramToken, TelegramChatId;
 
     public bool HasDestination { get { return NtfyUrl != null || (TelegramToken != null && TelegramChatId != null); } }
@@ -197,6 +200,7 @@ sealed class AlertSettings
         s.CpuTemp = Json.GetInt(d, "cpuTemp", s.CpuTemp);
         s.GpuTemp = Json.GetInt(d, "gpuTemp", s.GpuTemp);
         s.PcName = Json.GetString(d, "pcName", s.PcName);
+        s.Language = I18n.Of(Json.GetString(d, "language", s.Language));
         s.TelegramChatId = Json.GetString(d, "telegramChatId", null);
         try
         {
@@ -206,7 +210,7 @@ sealed class AlertSettings
         catch (CryptographicException)
         {
             s.NtfyUrl = s.TelegramToken = null;
-            AppNotices.Add("Os destinos dos alertas (alerts.json) foram gravados em outro PC e não podem ser lidos aqui: configure-os de novo.");
+            AppNotices.Add(new Msg("notice.alertsOtherPc"));
         }
         return s;
     }
@@ -214,7 +218,7 @@ sealed class AlertSettings
     public void Save(string path)
     {
         DataFile.WriteAtomic(path, new Dictionary<string, object> {
-            { "cpuTemp", CpuTemp }, { "gpuTemp", GpuTemp }, { "pcName", PcName },
+            { "cpuTemp", CpuTemp }, { "gpuTemp", GpuTemp }, { "pcName", PcName }, { "language", Language },
             { "ntfyUrl", Protect(NtfyUrl) }, { "telegramToken", Protect(TelegramToken) }, { "telegramChatId", TelegramChatId }
         });
     }
@@ -223,7 +227,7 @@ sealed class AlertSettings
     public Dictionary<string, object> Describe()
     {
         return new Dictionary<string, object> {
-            { "cpuTemp", CpuTemp }, { "gpuTemp", GpuTemp }, { "pcName", PcName },
+            { "cpuTemp", CpuTemp }, { "gpuTemp", GpuTemp }, { "pcName", PcName }, { "language", Language },
             { "ntfy", NtfyUrl == null ? null : Masked(NtfyUrl) },
             { "telegram", TelegramToken == null ? null : Masked(TelegramToken) }, { "telegramChatId", TelegramChatId }
         };
@@ -236,22 +240,23 @@ sealed class AlertSettings
         var s = (AlertSettings)MemberwiseClone();
         s.CpuTemp = Json.GetInt(body, "cpuTemp", CpuTemp);
         s.GpuTemp = Json.GetInt(body, "gpuTemp", GpuTemp);
-        if (s.CpuTemp < 60 || s.CpuTemp > 105) throw new ArgumentException("O limite da CPU vai de 60 a 105 °C.");
-        if (s.GpuTemp < 60 || s.GpuTemp > 100) throw new ArgumentException("O limite da GPU vai de 60 a 100 °C.");
+        if (s.CpuTemp < 60 || s.CpuTemp > 105) throw new UserError("err.alerts.cpu", "min", 60, "max", 105);
+        if (s.GpuTemp < 60 || s.GpuTemp > 100) throw new UserError("err.alerts.gpu", "min", 60, "max", 100);
+        s.Language = I18n.Of(Json.GetString(body, "language", Language));
         string name = Json.GetString(body, "pcName", PcName);
         if (name != null) name = name.Trim();
-        if (string.IsNullOrEmpty(name) || name.Length > 40 || name.Any(char.IsControl)) throw new ArgumentException("O nome do PC vai de 1 a 40 caracteres.");
+        if (string.IsNullOrEmpty(name) || name.Length > 40 || name.Any(char.IsControl)) throw new UserError("err.alerts.pcName", "max", 40);
         s.PcName = name;
         s.NtfyUrl = Secret(body, "ntfyUrl", NtfyUrl);
         if (s.NtfyUrl != null)
         {
             Uri u;
             if (!Uri.TryCreate(s.NtfyUrl, UriKind.Absolute, out u) || (u.Scheme != "https" && u.Scheme != "http") || u.AbsolutePath.Trim('/').Length == 0)
-                throw new ArgumentException("O endereço do ntfy é o do tópico, por exemplo https://ntfy.sh/fanpilot-abc123.");
+                throw new UserError("err.alerts.ntfy");
         }
         s.TelegramToken = Secret(body, "telegramToken", TelegramToken);
         s.TelegramChatId = Secret(body, "telegramChatId", TelegramChatId);
-        if ((s.TelegramToken == null) != (s.TelegramChatId == null)) throw new ArgumentException("O Telegram precisa do token do bot e do chat id.");
+        if ((s.TelegramToken == null) != (s.TelegramChatId == null)) throw new UserError("err.alerts.telegram");
         return s;
     }
 
@@ -284,19 +289,19 @@ static class AlertSender
     internal static string TelegramApi = "https://api.telegram.org";
 
     // Each configured destination, one after the other; returns what failed ("ntfy: …"), empty when all arrived.
-    public static List<string> Send(AlertSettings s, string title, string detail, bool critical)
+    public static List<string> Send(AlertSettings s, Msg title, Msg detail, bool critical)
     {
         var errors = new List<string>();
-        string heading = s.PcName + ": " + title;
+        string heading = s.PcName + ": " + title.In(s.Language), text = detail.In(s.Language);
         if (s.NtfyUrl != null)
         {
             string url = s.NtfyUrl + (s.NtfyUrl.Contains("?") ? "&" : "?") + "title=" + Uri.EscapeDataString(heading) +
                          "&priority=" + (critical ? "high" : "default") + "&tags=" + (critical ? "rotating_light" : "warning");
-            Try(errors, "ntfy", () => Post(url, "text/plain; charset=utf-8", detail));
+            Try(errors, "ntfy", () => Post(url, "text/plain; charset=utf-8", text));
         }
         if (s.TelegramToken != null && s.TelegramChatId != null)
         {
-            string json = Json.Serialize(new Dictionary<string, object> { { "chat_id", s.TelegramChatId }, { "text", heading + "\n" + detail } });
+            string json = Json.Serialize(new Dictionary<string, object> { { "chat_id", s.TelegramChatId }, { "text", heading + "\n" + text } });
             Try(errors, "Telegram", () => Post(TelegramApi + "/bot" + s.TelegramToken + "/sendMessage", "application/json; charset=utf-8", json));
         }
         return errors;
@@ -331,7 +336,7 @@ sealed class AlertMonitor
     readonly IBoard _board;
     readonly string _settingsPath;
     readonly Func<DateTime> _now;
-    readonly Action<AlertSettings, string, string, bool> _send;
+    readonly Action<AlertSettings, Msg, Msg, bool> _send;
     readonly AlertRules _rules = new AlertRules();
     readonly Dictionary<string, DateTime> _lastSent = new Dictionary<string, DateTime>();
     readonly object _sync = new object();
@@ -344,7 +349,7 @@ sealed class AlertMonitor
         : this(sampler, fans, board, dataDir, () => DateTime.Now, SendInBackground) { }
 
     // now and send: the tests move the clock and see what would have left the PC.
-    internal AlertMonitor(Sampler sampler, FanManager fans, IBoard board, string dataDir, Func<DateTime> now, Action<AlertSettings, string, string, bool> send)
+    internal AlertMonitor(Sampler sampler, FanManager fans, IBoard board, string dataDir, Func<DateTime> now, Action<AlertSettings, Msg, Msg, bool> send)
     {
         _sampler = sampler; _fans = fans; _board = board; _now = now; _send = send;
         _settingsPath = Path.Combine(dataDir, "alerts.json");
@@ -380,9 +385,9 @@ sealed class AlertMonitor
         }
         foreach (var a in changes)
         {
-            if (a.Resolved != null) Log.Info("Alerta resolvido: " + a.Title);
-            else if (a.Severity == "critical") Log.Error("Alerta: " + a.Title + ". " + a.Detail);
-            else Log.Warn("Alerta: " + a.Title + ". " + a.Detail);
+            if (a.Resolved != null) Log.Info("Alerta resolvido: " + a.Title.Text);
+            else if (a.Severity == "critical") Log.Error("Alerta: " + a.Title.Text + ". " + a.Detail.Text);
+            else Log.Warn("Alerta: " + a.Title.Text + ". " + a.Detail.Text);
         }
     }
 
@@ -401,12 +406,12 @@ sealed class AlertMonitor
                 a.Notified = true;
                 _send(s, a.Title, a.Detail, a.Severity == "critical");
             }
-            else if (a.Notified) _send(s, "Resolvido: " + a.Title, "Voltou ao normal.", false);
+            else if (a.Notified) _send(s, new Msg("alert.resolved.title", "title", a.Title), new Msg("alert.resolved.detail"), false);
         }
     }
 
     // Sending never holds up the rules: one thread per message, each with its own 10 s timeouts.
-    static void SendInBackground(AlertSettings s, string title, string detail, bool critical)
+    static void SendInBackground(AlertSettings s, Msg title, Msg detail, bool critical)
     {
         new Thread(() =>
         {
@@ -498,8 +503,8 @@ sealed class AlertMonitor
     {
         AlertSettings s;
         lock (_sync) s = _settings;
-        if (!s.HasDestination) throw new ArgumentException("Configure o ntfy ou o Telegram antes do teste.");
-        var errors = AlertSender.Send(s, "Teste de alerta", "Se você está lendo isto, os alertas do FanPilot chegam aqui.", false);
+        if (!s.HasDestination) throw new UserError("err.alerts.noDestination");
+        var errors = AlertSender.Send(s, new Msg("alert.test.title"), new Msg("alert.test.detail"), false);
         return new Dictionary<string, object> { { "ok", errors.Count == 0 }, { "errors", errors } };
     }
 }

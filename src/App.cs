@@ -117,15 +117,15 @@ sealed class LogWriter
 static class AppNotices
 {
     static readonly object Sync = new object();
-    static readonly List<string> Items = new List<string>();
+    static readonly List<Msg> Items = new List<Msg>();
 
-    public static void Add(string message)
+    public static void Add(Msg message)
     {
-        Log.Warn(message);
-        lock (Sync) if (!Items.Contains(message)) Items.Add(message);
+        Log.Warn(message.Text);
+        lock (Sync) if (!Items.Any(m => m.Text == message.Text)) Items.Add(message);
     }
 
-    public static List<string> All() { lock (Sync) return Items.ToList(); }
+    public static List<Msg> All() { lock (Sync) return Items.ToList(); }
 }
 
 static class App
@@ -243,13 +243,12 @@ static class Boards
         if (!gccInstalled)
         {
             if (backend == "gigabyte")
-                throw new InvalidOperationException("config.json pede \"backend\": \"gigabyte\", mas o Gigabyte Control Center não foi encontrado (procurado em " + Program.GccLibDir + ").");
+                throw new Unavailable("startup.gccMissing", "dir", Program.GccLibDir);
             return "lhm";
         }
         if (api.Compatible) return "gigabyte";
-        string problem = "O Gigabyte Control Center " + api.Version + " não é compatível com este FanPilot (" + api.Problem + ")";
-        if (backend == "gigabyte") throw new InvalidOperationException(problem + ".");
-        AppNotices.Add(problem + ": usando o LibreHardwareMonitor.");
+        if (backend == "gigabyte") throw new Unavailable("gcc.incompatible", "version", api.Version, "problem", api.Problem);
+        AppNotices.Add(new Msg("notice.gccFallback", "version", api.Version, "problem", api.Problem));
         return "lhm";
     }
 }
@@ -421,16 +420,17 @@ sealed class Sampler
         long t = (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
         var snap = new Dictionary<string, object> { { "t", t } };
         var service = new Dictionary<string, object> { { "ok", true }, { "backend", _bridge.BackendName } };
-        if (_bridge.Notice != null) service["notice"] = _bridge.Notice;
+        if (_bridge.Notice != null) service["notice"] = _bridge.Notice.ToJson();
         var notices = AppNotices.All();
-        if (notices.Count > 0) service["notices"] = notices;
+        if (notices.Count > 0) service["notices"] = notices.Select(m => m.ToJson()).ToList();
         try
         {
             snap["sensors"] = _bridge.ReadSensors().Select(s =>
             {
                 var d = new Dictionary<string, object> { { "id", s.Id }, { "type", s.Type }, { "title", s.Title }, { "value", s.Value }, { "unit", s.Unit } };
                 if (s.Role != null) d["role"] = s.Role;
-                if (s.Hint != null) d["hint"] = s.Hint;
+                if (s.TitleKey != null) d["titleKey"] = s.TitleKey;
+                if (s.Hint != null) { d["hint"] = s.Hint.Text; d["hintKey"] = s.Hint.Key; }
                 return d;
             }).ToList();
             if (_bridge.FanControlSupported)

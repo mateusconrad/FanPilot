@@ -47,7 +47,7 @@ sealed class LhmBoard : IBoard
 
     public string BackendName { get { return "LibreHardwareMonitor"; } }
     public bool HardwareCurves { get { return false; } }
-    public string Notice { get; private set; }
+    public Msg Notice { get; private set; }
     public bool FanControlSupported { get { lock (_sync) return _headers.Count > 0; } }
     public string[] TempInputTitles { get; private set; }
     public string BoardName { get; private set; }
@@ -61,7 +61,7 @@ sealed class LhmBoard : IBoard
         {
             // Monitoring of the GPU (NVML) and the panel keep working; the board just shows the reason.
             Log.Warn("LibreHardwareMonitor não iniciou: " + ex);
-            lock (_sync) Notice = "Falha ao iniciar o LibreHardwareMonitor: " + ex.Message;
+            lock (_sync) Notice = new Msg("board.lhmFailed", "detail", ex.Message);
             _pc = null;
         }
         _loop = new Thread(Loop) { IsBackground = true, Name = "lhm" };
@@ -112,12 +112,11 @@ sealed class LhmBoard : IBoard
             _headers = headers;
             TempInputTitles = titles.ToArray();
             if (!pawnIo)
-                Notice = "Falta o driver PawnIO para ler os sensores e controlar os fans da placa-mãe. Feche e abra o FanPilot para instalá-lo (ou baixe em https://pawnio.eu).";
+                Notice = new Msg("board.pawnioMissing");
             else if (superIo.Count == 0)
-                Notice = "O LibreHardwareMonitor não reconheceu o chip de sensores desta placa-mãe" + (BoardName.Length > 0 ? " (" + BoardName + ")" : "") +
-                         ". Em notebooks isso é comum: o fabricante controla os fans pelo próprio firmware.";
+                Notice = BoardName.Length > 0 ? new Msg("board.noSuperIo.named", "board", BoardName) : new Msg("board.noSuperIo");
             else if (headers.Count == 0)
-                Notice = "O chip " + string.Join(", ", superIo.Select(h => h.Name)) + " foi reconhecido, mas sem controle de fans pelo LibreHardwareMonitor.";
+                Notice = new Msg("board.noControl", "chips", string.Join(", ", superIo.Select(h => h.Name)));
             else
                 Notice = null;
             Refresh(); // so the first curve applied already sees real temperatures
@@ -239,13 +238,13 @@ sealed class LhmBoard : IBoard
         try { h.Control.Control.SetDefault(); } catch (Exception ex) { Log.Warn("Fan " + h.Title + ": SetDefault falhou: " + ex.Message); }
     }
 
-    public List<string> ControlProblems()
+    public List<Msg> ControlProblems()
     {
         lock (_sync)
         {
             var problems = _headers.Where(h => h.Curve != null && h.OnBiosFallback)
-                .Select(h => h.Title + ": sem leitura válida do sensor de referência; com a BIOS até ela voltar.").ToList();
-            if (_failures >= FailuresBeforeRelease) problems.Add("O LibreHardwareMonitor parou de responder: todos os fans estão com a BIOS até ele voltar.");
+                .Select(h => new Msg("board.problem.sensor", "fan", h.Title)).ToList();
+            if (_failures >= FailuresBeforeRelease) problems.Add(new Msg("board.problem.lhm"));
             return problems;
         }
     }
@@ -263,7 +262,7 @@ sealed class LhmBoard : IBoard
     {
         lock (_sync)
         {
-            if (index < 0 || index >= _headers.Count) throw new ArgumentException("Fan inexistente.");
+            if (index < 0 || index >= _headers.Count) throw new UserError("err.fanMissing");
             var h = _headers[index];
             if (h.Curve == null)
                 return new FanCurve { Index = index, Key = h.Key, Title = h.Title, Mode = FanCurve.BiosMode, TempInput = 0, DeltaT = 1 };
@@ -286,8 +285,8 @@ sealed class LhmBoard : IBoard
     {
         lock (_sync)
         {
-            if (_released) throw new InvalidOperationException("FanPilot está encerrando.");
-            if (curve.Index < 0 || curve.Index >= _headers.Count) throw new ArgumentException("Fan inexistente.");
+            if (_released) throw new Unavailable("board.closing");
+            if (curve.Index < 0 || curve.Index >= _headers.Count) throw new UserError("err.fanMissing");
             var h = _headers[curve.Index];
             _engine.Reset(curve.Index);
             if (curve.IsBios || curve.Points.Count == 0)
@@ -299,8 +298,8 @@ sealed class LhmBoard : IBoard
             else
             {
                 if (curve.Points.Count < 3 || Math.Round(curve.Points[curve.Points.Count - 1][1]) != 255)
-                    throw new ArgumentException("A curva precisa de >= 3 pontos e o último ponto em 255.");
-                if (curve.TempInput < 0 || curve.TempInput >= _temps.Count) throw new ArgumentException("Sensor de temperatura inválido.");
+                    throw new UserError("err.curve.shape");
+                if (curve.TempInput < 0 || curve.TempInput >= _temps.Count) throw new UserError("err.tempInput");
                 h.Curve = FanCurve.FromDictionary(curve.ToDictionary());
                 h.Curve.Index = curve.Index;
                 ApplyCurves(); // take effect now, not on the next tick

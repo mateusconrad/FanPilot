@@ -11,13 +11,13 @@ sealed class LhmGpu : GpuMonitor
     Computer _pc;
     IHardware _gpu;
     List<ISensor> _controls = new List<ISensor>();
-    string _error;
+    Msg _error;
 
     public bool Ok { get { return _gpu != null; } }
-    public string Error { get { return _error; } }
+    public Msg Error { get { return _error; } }
     public string Name { get { return _gpu != null ? _gpu.Name : ""; } }
 
-    public LhmGpu(int safetyTemp, string nvmlError) : base(safetyTemp)
+    public LhmGpu(int safetyTemp, Msg nvmlError) : base(safetyTemp)
     {
         try
         {
@@ -30,12 +30,12 @@ sealed class LhmGpu : GpuMonitor
             _gpu = gpus.OrderByDescending(g => g.Sensors.Count(IsFanControl))
                        .ThenByDescending(g => Value(Find(g, SensorType.SmallData, "GPU Memory Total", "D3D Dedicated Memory Total")) ?? 0)
                        .FirstOrDefault();
-            if (_gpu == null) throw new InvalidOperationException("nenhuma GPU encontrada" + (nvmlError != null ? " (NVML: " + nvmlError + ")" : ""));
+            if (_gpu == null) throw nvmlError != null ? new Unavailable("gpu.noneNvml", "nvml", nvmlError) : new Unavailable("gpu.none");
             _controls = _gpu.Sensors.Where(IsFanControl).OrderBy(s => s.Index).ToList();
         }
         catch (Exception ex)
         {
-            _error = ex.Message;
+            _error = Msg.Of(ex) ?? new Msg("gpu.error", "detail", ex.Message);
             _gpu = null;
             try { if (_pc != null) _pc.Close(); } catch { }
             _pc = null;
@@ -63,7 +63,7 @@ sealed class LhmGpu : GpuMonitor
         {
             var r = new Dictionary<string, object>();
             r["ok"] = Ok;
-            if (!Ok) { r["error"] = _error; return r; }
+            if (!Ok) { r["error"] = _error.ToJson(); return r; }
             _gpu.Update();
             r["name"] = _gpu.Name;
             var temp = Find(_gpu, SensorType.Temperature, "GPU Core") ?? _gpu.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Temperature && s.Value.HasValue);
@@ -94,14 +94,14 @@ sealed class LhmGpu : GpuMonitor
     {
         lock (Sync)
         {
-            if (!Ok) throw new InvalidOperationException("GPU indisponível: " + _error);
-            if (_controls.Count == 0) throw new InvalidOperationException("O LibreHardwareMonitor não consegue controlar o fan desta GPU.");
+            if (!Ok) throw new Unavailable("gpu.unavailableWhy", "error", _error);
+            if (_controls.Count == 0) throw new Unavailable("gpu.lhmNoControl");
             percent = AppConfig.Clamp(percent, (int)Math.Ceiling(_controls.Max(c => c.Control.MinSoftwareValue)), (int)Math.Floor(_controls.Min(c => c.Control.MaxSoftwareValue)));
             try { foreach (var c in _controls) c.Control.SetSoftware(percent); }
             catch (Exception ex)
             {
                 foreach (var c in _controls) TryDefault(c);
-                throw new InvalidOperationException("O driver recusou o controle manual do fan: " + ex.Message);
+                throw new Unavailable("gpu.refused", "detail", ex.Message);
             }
             ManualPercent = percent;
             SafetyNote = null;
@@ -132,7 +132,7 @@ sealed class LhmGpu : GpuMonitor
             try { if (_pc != null) _pc.Close(); } catch { }
             _pc = null;
             _gpu = null;
-            _error = "encerrado";
+            _error = new Msg("gpu.closed");
         }
     }
 }

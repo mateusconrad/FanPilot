@@ -44,7 +44,7 @@ public sealed class DataFileTests : IDisposable
         Assert.Equal(1, Json.GetInt(DataFile.Read(path), "n", 0));
         Assert.False(File.Exists(path));
         Assert.Single(Directory.GetFiles(_dir.Path, "desired-curves.json.corrompido-*"));
-        Assert.Contains(AppNotices.All(), n => n.StartsWith("desired-curves.json estava ilegível"));
+        Assert.Contains(AppNotices.All(), n => n.Key == "notice.fileUnreadable.previous" && n.In(I18n.Portuguese).StartsWith("desired-curves.json estava ilegível"));
 
         // The next write must not push the damaged content into the .bak.
         DataFile.WriteAtomic(path, Value(4));
@@ -99,7 +99,7 @@ public sealed class AppConfigTests : IDisposable
         var cfg = AppConfig.Load(path);
         Assert.Equal(8787, cfg.Port);
         Assert.Equal(content, File.ReadAllText(path));
-        Assert.Contains(AppNotices.All(), n => n.StartsWith("config.json inválido"));
+        Assert.Contains(AppNotices.All(), n => n.Key == "notice.configInvalid" && n.In(I18n.Portuguese).StartsWith("config.json inválido"));
     }
 
     [Fact]

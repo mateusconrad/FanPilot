@@ -42,7 +42,8 @@ public class AlertRulesTests
         var raised = Run(rules, ref t, 2, _ => Fan(0));
         var a = Assert.Single(raised);
         Assert.Equal("warning", a.Severity);
-        Assert.Equal("Fan parado: System 2", a.Title);
+        Assert.Equal("Fan parado: System 2", a.Title.In(I18n.Portuguese));
+        Assert.Equal("Fan stopped: System 2", a.Title.Text);
         Assert.Single(rules.Active);
         var resolved = Run(rules, ref t, 1, _ => Fan(1500));
         Assert.NotNull(Assert.Single(resolved).Resolved);
@@ -58,7 +59,7 @@ public class AlertRulesTests
         Run(rules, ref t, 40, _ => Fan(2400, 100, true, "Bomba"));
         var a = Assert.Single(Run(rules, ref t, 6, _ => Fan(0, 100, true, "Bomba")));
         Assert.Equal("critical", a.Severity);
-        Assert.Equal("Bomba parada: Bomba", a.Title);
+        Assert.Equal("Bomba parada: Bomba", a.Title.In(I18n.Portuguese));
     }
 
     [Fact]
@@ -98,7 +99,8 @@ public class AlertRulesTests
         Assert.Empty(Run(rules, ref t, 9, cpu(97)));
         var a = Assert.Single(Run(rules, ref t, 2, cpu(97)));
         Assert.Equal("critical", a.Severity);
-        Assert.Equal("CPU a 97 °C", a.Title);
+        Assert.Equal("CPU a 97 °C", a.Title.In(I18n.Portuguese));
+        Assert.Equal("Above the 95 °C limit for more than 10 s.", a.Detail.Text);
         Assert.Empty(Run(rules, ref t, 120, cpu(92))); // below the limit, not 5 °C below: still on
         Assert.Empty(Run(rules, ref t, 29, cpu(89)));
         Assert.NotNull(Assert.Single(Run(rules, ref t, 2, cpu(89))).Resolved);
@@ -118,7 +120,7 @@ public class AlertRulesTests
         var rules = new AlertRules();
         var t = T0;
         Assert.Empty(Run(rules, ref t, 59, _ => new AlertInput { BoardOk = false }));
-        Assert.Equal("Sensores da placa indisponíveis", Assert.Single(Run(rules, ref t, 2, _ => new AlertInput { BoardOk = false })).Title);
+        Assert.Equal("Sensores da placa indisponíveis", Assert.Single(Run(rules, ref t, 2, _ => new AlertInput { BoardOk = false })).Title.In(I18n.Portuguese));
         Assert.NotNull(Assert.Single(Run(rules, ref t, 1, _ => new AlertInput())).Resolved);
     }
 
@@ -127,9 +129,10 @@ public class AlertRulesTests
     {
         var rules = new AlertRules();
         var t = T0;
-        var problem = new List<string> { "System 2: sem leitura válida do sensor de referência; com a BIOS até ela voltar." };
+        var problem = new List<Msg> { new Msg("board.problem.sensor", "fan", "System 2") };
         var a = Assert.Single(Run(rules, ref t, 1, _ => new AlertInput { ControlProblems = problem }));
-        Assert.Equal(problem[0], a.Detail);
+        Assert.Same(problem[0], a.Detail);
+        Assert.Equal("System 2: sem leitura válida do sensor de referência; com a BIOS até ela voltar.", a.Detail.In(I18n.Portuguese));
         Assert.Empty(Run(rules, ref t, 10, _ => new AlertInput { ControlProblems = problem }));
         Assert.NotNull(Assert.Single(Run(rules, ref t, 1, _ => new AlertInput())).Resolved);
     }
@@ -159,7 +162,7 @@ public sealed class AlertMonitorTests : IDisposable
         var board = new FakeBoard(4);
         var fans = new FanManager(board, new AppConfig(), _dir.Path);
         return new AlertMonitor(new Sampler(board, new FakeGpu(83)), fans, board, _dir.Path, () => _now,
-                                (s, title, detail, critical) => _sent.Add(title));
+                                (s, title, detail, critical) => _sent.Add(title.In(I18n.Portuguese)));
     }
 
     void Tick(AlertMonitor m, int seconds, double cpu)
@@ -239,7 +242,7 @@ public sealed class AlertSettingsTests : IDisposable
     [InlineData("pcName", "")]
     public void InvalidSettingsAreRefused(string key, object value)
     {
-        Assert.Throws<ArgumentException>(() => new AlertSettings().With(new Dictionary<string, object> { { key, value } }));
+        Assert.Throws<UserError>(() => new AlertSettings().With(new Dictionary<string, object> { { key, value } }));
     }
 }
 
@@ -275,13 +278,14 @@ public sealed class AlertSenderTests
     {
         var r = Capture(port =>
         {
-            var s = new AlertSettings { PcName = "PC da sala", NtfyUrl = "http://localhost:" + port + "/fanpilot-teste" };
-            Assert.Empty(AlertSender.Send(s, "Bomba parada: SYS_FAN5_PUMP", "Lê 0 RPM com 100% comandado.", true));
+            // In the language saved with the settings (item 21).
+            var s = new AlertSettings { PcName = "PC da sala", NtfyUrl = "http://localhost:" + port + "/fanpilot-teste", Language = I18n.Portuguese };
+            Assert.Empty(AlertSender.Send(s, new Msg("alert.pumpStopped.title", "name", "SYS_FAN5_PUMP"), new Msg("alert.stopped.detail", "rpm", 0, "duty", 100), true));
         });
         Assert.StartsWith("/fanpilot-teste?title=", r.Url);
         Assert.Contains(Uri.EscapeDataString("PC da sala: Bomba parada: SYS_FAN5_PUMP"), r.Url);
         Assert.Contains("priority=high", r.Url);
-        Assert.Equal("Lê 0 RPM com 100% comandado.", r.Body);
+        Assert.Equal("Lê 0 RPM com 100% comandado; antes girava.", r.Body);
     }
 
     [Fact]
@@ -293,13 +297,13 @@ public sealed class AlertSenderTests
             var r = Capture(port =>
             {
                 AlertSender.TelegramApi = "http://localhost:" + port;
-                var s = new AlertSettings { PcName = "PC", TelegramToken = "123:abc", TelegramChatId = "42" };
-                Assert.Empty(AlertSender.Send(s, "CPU a 97 °C", "Acima do limite.", true));
+                var s = new AlertSettings { PcName = "PC", TelegramToken = "123:abc", TelegramChatId = "42", Language = I18n.English };
+                Assert.Empty(AlertSender.Send(s, new Msg("alert.temp.title", "what", "CPU", "temp", 97), new Msg("alert.temp.detail", "limit", 95), true));
             });
             Assert.Equal("/bot123:abc/sendMessage", r.Url);
             var json = Json.ParseObject(r.Body);
             Assert.Equal("42", Json.GetString(json, "chat_id", null));
-            Assert.Equal("PC: CPU a 97 °C\nAcima do limite.", Json.GetString(json, "text", null));
+            Assert.Equal("PC: CPU at 97 °C\nAbove the 95 °C limit for more than 10 s.", Json.GetString(json, "text", null));
         }
         finally { AlertSender.TelegramApi = api; }
     }
@@ -308,7 +312,7 @@ public sealed class AlertSenderTests
     public void AnUnreachableDestinationIsReportedNotThrown()
     {
         var s = new AlertSettings { NtfyUrl = "http://localhost:" + TestEnv.FreePort() + "/fanpilot-teste" };
-        var errors = AlertSender.Send(s, "Teste", "Teste", false);
+        var errors = AlertSender.Send(s, new Msg("alert.test.title"), new Msg("alert.test.detail"), false);
         Assert.StartsWith("ntfy: ", Assert.Single(errors));
     }
 }

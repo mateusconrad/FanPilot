@@ -55,8 +55,12 @@ export const language = () => current;
 export function t(key, params, fallback) {
   const template = lookup(dict, key, params, current);
   if (template === undefined) return fallback !== undefined ? fallback : key;
-  return fill(template, params, current);
+  return fill(template, params && translateNested(params), current);
 }
+
+// A parameter that is itself a message (an error inside an error) is translated too.
+const isMessage = (v) => v !== null && typeof v === 'object' && typeof v.code === 'string';
+const translateNested = (params) => Object.fromEntries(Object.entries(params).map(([k, v]) => [k, isMessage(v) ? msg(v) : v]));
 
 // A message from FanPilot ({code, params, text}): translated by its code, or its own (English) text.
 export const msg = (m) => (m && typeof m === 'object' ? t(m.code, m.params, m.text) : m == null ? '' : String(m));

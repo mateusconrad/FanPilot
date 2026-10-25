@@ -202,7 +202,7 @@ public sealed class ProfileTests : IDisposable
     public void AnUnknownModeIsRefused()
     {
         var (_, m, _) = Personal();
-        Assert.Throws<ArgumentException>(() => m.SetMode("profile:max"));
-        Assert.Throws<ArgumentException>(() => m.SetMode("silencioso"));
+        Assert.Throws<UserError>(() => m.SetMode("profile:max"));
+        Assert.Throws<UserError>(() => m.SetMode("silencioso"));
     }
 }

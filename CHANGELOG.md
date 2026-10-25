@@ -54,7 +54,8 @@ Primeira versão publicada (será a 0.1.0).
 - Releases no GitHub com o zip, o `SHA256SUMS.txt` e estas notas; CI compilando e testando cada push.
 - Texto secundário do painel com contraste de pelo menos 4,5:1 nos temas claro e escuro (conferido pelo axe-core).
 - Painel em inglês e em português: o idioma segue o do navegador e pode ser trocado no rodapé (a escolha fica no
-  aparelho); números e horas seguem o idioma.
+  aparelho); números e horas seguem o idioma. Erros, avisos e alertas do FanPilot também, e os alertas enviados ao ntfy
+  e ao Telegram saem no idioma do painel em que foram configurados.
 
 ### Segurança
 

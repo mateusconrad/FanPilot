@@ -58,5 +58,7 @@ test('um fan que para vira alerta no painel e no ntfy', async ({ page }) => {
   await expect(banner).toBeHidden();
   await expect(page.locator('#alertList')).toContainText('Fan parado: System 2');
   // A header without a tachometer (CPU, System 3) never alerts.
-  expect((await (await page.request.get(fp.url + '/api/alerts')).json()).active.map((a) => a.title)).toEqual(['Fan parado: System 2']);
+  // The API sends each alert's words as a message the panel translates (item 21).
+  expect((await (await page.request.get(fp.url + '/api/alerts')).json()).active.map((a) => a.title))
+    .toEqual([{ code: 'alert.fanStopped.title', params: { name: 'System 2' }, text: 'Fan stopped: System 2' }]);
 });

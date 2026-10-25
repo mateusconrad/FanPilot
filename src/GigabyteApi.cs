@@ -39,8 +39,8 @@ sealed class GigabyteApi
 
     public string Version { get; private set; }
     public bool Compatible { get { return _missing.Count == 0; } }
-    // What is missing, for the panel and the log: "falta SmartGuardian…Module.SetTemperatureInputSelection(Int32, Int32)".
-    public string Problem { get { return Compatible ? null : "falta " + string.Join(", ", _missing); } }
+    // What is missing, for the panel and the log: "missing SmartGuardian…Module.SetTemperatureInputSelection(Int32, Int32)".
+    public Msg Problem { get { return Compatible ? null : new Msg("gcc.missing", "members", string.Join(", ", _missing)); } }
 
     GigabyteApi() { }
 

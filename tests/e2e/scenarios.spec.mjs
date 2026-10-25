@@ -118,7 +118,7 @@ test.describe('serviço da placa fora do ar', () => {
     await expect(page.locator('#statusText')).toHaveText('sensores da placa indisponíveis');
     await expect(page.locator('#statusDot')).toHaveClass(/bad/);
     await expect(page.locator('#fans')).toHaveText('Fans indisponíveis: EasyTuneEngineService indisponível: Falha ao se conectar a uma porta de IPC');
-    await expect(page.locator('#gpuName')).toHaveText('GPU de teste');
+    await expect(page.locator('#gpuName')).toHaveText('Test GPU');
   });
 });
 

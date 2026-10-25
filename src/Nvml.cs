@@ -39,7 +39,7 @@ abstract class GpuMonitor
     protected readonly object Sync = new object();
     protected readonly int SafetyTemp;
     protected int? ManualPercent;
-    protected string SafetyNote;
+    protected Msg SafetyNote;
     volatile Dictionary<string, object> _latest;
     volatile bool _stopped;
 
@@ -79,7 +79,7 @@ abstract class GpuMonitor
         var nvml = new NvmlGpu(safetyTemp);
         if (nvml.Ok) return nvml;
         var lhm = new LhmGpu(safetyTemp, nvml.Error);
-        Log.Info(lhm.Ok ? "GPU via LibreHardwareMonitor: " + lhm.Name : "GPU indisponível: " + lhm.Error);
+        Log.Info(lhm.Ok ? "GPU via LibreHardwareMonitor: " + lhm.Name : "GPU unavailable: " + lhm.Error.Text);
         return lhm;
     }
 
@@ -94,7 +94,7 @@ abstract class GpuMonitor
         if (!ManualPercent.HasValue || tempObj == null) return false;
         if (Convert.ToInt32(tempObj) < SafetyTemp) return false;
         SetAuto();
-        lock (Sync) SafetyNote = "Fan voltou para automático: GPU atingiu " + tempObj + " °C (" + DateTime.Now.ToString("HH:mm:ss") + ")";
+        lock (Sync) SafetyNote = new Msg("gpu.safetyNote", "temp", Convert.ToInt32(tempObj), "time", DateTime.Now.ToString("HH:mm:ss"));
         Log.Info("GPU safety: reverted fan to auto at " + tempObj + " C");
         return true;
     }
@@ -104,7 +104,7 @@ abstract class GpuMonitor
         r["fanMode"] = ManualPercent.HasValue ? "fixed" : "auto";
         r["fanTarget"] = ManualPercent;
         r["safetyTemp"] = SafetyTemp;
-        r["safetyNote"] = SafetyNote;
+        r["safetyNote"] = SafetyNote == null ? null : SafetyNote.ToJson();
     }
 }
 
@@ -114,11 +114,11 @@ sealed class NvmlGpu : GpuMonitor
     uint _fanCount;
     bool _ok;
     string _name = "";
-    string _error;
+    Msg _error;
     uint _minFan = 0, _maxFan = 100;
 
     public bool Ok { get { return _ok; } }
-    public string Error { get { return _error; } }
+    public Msg Error { get { return _error; } }
 
     public NvmlGpu(int safetyTemp) : base(safetyTemp)
     {
@@ -127,7 +127,7 @@ sealed class NvmlGpu : GpuMonitor
             Check(NvmlNative.nvmlInit_v2(), "nvmlInit");
             uint count;
             Check(NvmlNative.nvmlDeviceGetCount_v2(out count), "GetCount");
-            if (count == 0) throw new InvalidOperationException("nenhuma GPU NVIDIA");
+            if (count == 0) throw new Unavailable("gpu.noNvidia");
             Check(NvmlNative.nvmlDeviceGetHandleByIndex_v2(0, out _device), "GetHandle");
             var sb = new StringBuilder(96);
             if (NvmlNative.nvmlDeviceGetName(_device, sb, (uint)sb.Capacity) == NvmlNative.Success) _name = sb.ToString();
@@ -136,12 +136,13 @@ sealed class NvmlGpu : GpuMonitor
             if (NvmlNative.nvmlDeviceGetMinMaxFanSpeed(_device, out min, out max) == NvmlNative.Success) { _minFan = min; _maxFan = max; }
             _ok = true;
         }
-        catch (Exception ex) { _error = ex.Message; _ok = false; }
+        catch (DllNotFoundException) { _error = new Msg("gpu.noNvml"); _ok = false; }
+        catch (Exception ex) { _error = Msg.Of(ex) ?? new Msg("gpu.error", "detail", ex.Message); _ok = false; }
     }
 
     static void Check(int rc, string what)
     {
-        if (rc != NvmlNative.Success) throw new InvalidOperationException(what + " falhou (NVML " + rc + ")");
+        if (rc != NvmlNative.Success) throw new Unavailable("gpu.nvmlFailed", "call", what, "code", rc);
     }
 
     public override Dictionary<string, object> Read()
@@ -150,7 +151,7 @@ sealed class NvmlGpu : GpuMonitor
         {
             var r = new Dictionary<string, object>();
             r["ok"] = _ok;
-            if (!_ok) { r["error"] = _error; return r; }
+            if (!_ok) { r["error"] = _error.ToJson(); return r; }
             r["name"] = _name;
             uint v;
             if (NvmlNative.nvmlDeviceGetTemperature(_device, 0, out v) == 0) r["temp"] = (int)v;
@@ -177,8 +178,8 @@ sealed class NvmlGpu : GpuMonitor
     {
         lock (Sync)
         {
-            if (!_ok) throw new InvalidOperationException("GPU indisponível: " + _error);
-            if (_fanCount == 0) throw new InvalidOperationException("A GPU não expõe fans controláveis.");
+            if (!_ok) throw new Unavailable("gpu.unavailableWhy", "error", _error);
+            if (_fanCount == 0) throw new Unavailable("gpu.noFans");
             percent = AppConfig.Clamp(percent, (int)_minFan, (int)_maxFan);
             for (uint i = 0; i < _fanCount; i++)
             {
@@ -186,7 +187,7 @@ sealed class NvmlGpu : GpuMonitor
                 if (rc != 0)
                 {
                     for (uint j = 0; j < _fanCount; j++) NvmlNative.nvmlDeviceSetDefaultFanSpeed_v2(_device, j);
-                    throw new InvalidOperationException("O driver recusou o controle manual do fan (NVML " + rc + ").");
+                    throw new Unavailable("gpu.refusedNvml", "code", rc);
                 }
             }
             ManualPercent = percent;

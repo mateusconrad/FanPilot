@@ -33,8 +33,15 @@ Painel e documentação em inglês e português, sem nenhuma regressão para que
   navegador (português para qualquer `pt-*`, inglês para o resto) e pode ser trocado no rodapé; a escolha fica no
   aparelho (`localStorage`) e vale também para o pareamento. No `app.js` a função se chama `tr`, porque `t` já é
   temperatura e tempo no arquivo inteiro.
-- **21b:** mensagens do backend com código e parâmetros (erros da API, avisos, alertas, títulos e dicas dos sensores que
-  o próprio FanPilot cria, nota de segurança da GPU) e as páginas geradas pelo servidor pelo `Accept-Language`.
+- **21b (feita):** `src/I18n.cs` lê os mesmos dicionários, embutidos no exe. Uma mensagem é uma `Msg` (chave e
+  parâmetros; `Text` é o inglês, que vai para o log); `UserError` (400) e `Unavailable` (503) carregam a sua. A API
+  responde `{"error": "<inglês>", "code": "err.curve.points", "params": {"n": 8}}`, e o painel traduz pelo código, com o
+  texto como reserva; uma mensagem pode ser parâmetro de outra ("GPU indisponível: {error}"). Avisos, alertas (título e
+  detalhe), o aviso da placa, os erros e a nota de segurança da GPU vão como `{code, params, text}`; as leituras que o
+  próprio FanPilot nomeia ("CPU · pacote") levam `titleKey` e `hintKey`. As páginas que o servidor escreve sozinho
+  (iniciando, código inválido, pareado) seguem o `Accept-Language`. Os alertas enviados ao ntfy e ao Telegram saem no
+  idioma do painel em que os avisos foram salvos (`language` no `alerts.json`; antes de salvar, o do Windows). A placa e
+  a GPU falsas ganharam nomes em inglês ("Test board", "Test GPU").
 - **21c:** console, `--diagnose` e `--hardware-test` no idioma do Windows, lendo os mesmos dicionários; logs em inglês.
 - **21d:** README em inglês com o `README.pt-BR.md`, formulários de issue em inglês com rótulos bilíngues.
 

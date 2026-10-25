@@ -6,9 +6,9 @@ sealed class FakeGpu : GpuMonitor
 {
     readonly DateTime _started = DateTime.UtcNow;
     public int Temp = 58;
-    public string Name = "GPU de teste";
+    public string Name = "Test GPU";
     // Set: no GPU FanPilot can read (no driver), reported as the real monitors do.
-    public string Error;
+    public Msg Error;
     // Temperature drifts with time (the --fake-board demo); the tests keep it fixed.
     public bool Animated;
 
@@ -20,7 +20,7 @@ sealed class FakeGpu : GpuMonitor
         switch (name)
         {
             case "worst": return new FakeGpu(safetyTemp) { Animated = true, Temp = 80, Name = "NVIDIA GeForce RTX 5090 D v2 Laptop GPU" };
-            case "unsupported": return new FakeGpu(safetyTemp) { Error = "NVML não encontrado (nvml.dll): instale o driver da NVIDIA." };
+            case "unsupported": return new FakeGpu(safetyTemp) { Error = new Msg("gpu.noNvml") };
             default: return new FakeGpu(safetyTemp) { Animated = true };
         }
     }
@@ -29,7 +29,7 @@ sealed class FakeGpu : GpuMonitor
     {
         lock (Sync)
         {
-            if (Error != null) return new Dictionary<string, object> { { "ok", false }, { "error", Error } };
+            if (Error != null) return new Dictionary<string, object> { { "ok", false }, { "error", Error.ToJson() } };
             int temp = Animated ? Temp + (int)Math.Round(5 * Math.Sin((DateTime.UtcNow - _started).TotalSeconds / 15)) : Temp;
             var r = new Dictionary<string, object> {
                 { "ok", true }, { "name", Name }, { "temp", temp }, { "fans", new List<int> { ManualPercent ?? 42 } },
@@ -45,7 +45,7 @@ sealed class FakeGpu : GpuMonitor
     {
         lock (Sync)
         {
-            if (Error != null) throw new InvalidOperationException("GPU indisponível: " + Error);
+            if (Error != null) throw new Unavailable("gpu.unavailableWhy", "error", Error);
             ManualPercent = AppConfig.Clamp(percent, 30, 100);
             SafetyNote = null;
         }

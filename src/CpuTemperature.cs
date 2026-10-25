@@ -21,21 +21,29 @@ static class CpuRoles
     // package: the cores' temperature, if a CPU monitor gives one. boardSensorIsSocket: the board's "CPU" sensor is the
     // socket's (a board that keeps its curves in the chip, Gigabyte) and not already the package (LibreHardwareMonitor).
     // hint: what the panel says when there is no package reading on such a board.
-    public static void Assign(List<SensorReading> readings, double? package, bool boardSensorIsSocket, string hint)
+    public static void Assign(List<SensorReading> readings, double? package, bool boardSensorIsSocket, Msg hint)
     {
         var board = readings.FirstOrDefault(r => r.Type == "Temperature" && r.Title == "CPU");
         if (package.HasValue)
         {
-            if (board != null) { board.Title = "CPU · socket"; board.Role = Socket; }
-            readings.Insert(0, new SensorReading {
-                Id = "temperature-cpu-package", Type = "Temperature", Title = "CPU · pacote", Value = Math.Round(package.Value, 1), Unit = "°C", Role = Main });
+            if (board != null) { Name(board, "cpu.socket"); board.Role = Socket; }
+            var main = new SensorReading { Id = "temperature-cpu-package", Type = "Temperature", Value = Math.Round(package.Value, 1), Unit = "°C", Role = Main };
+            Name(main, "cpu.package");
+            readings.Insert(0, main);
             return;
         }
         if (board == null) return;
         board.Role = Main;
         if (!boardSensorIsSocket) return;
-        board.Title = "CPU · socket";
+        Name(board, "cpu.socket");
         board.Hint = hint;
+    }
+
+    // "CPU · pacote" in the panel, "CPU · package" in the API and the log.
+    static void Name(SensorReading r, string key)
+    {
+        r.TitleKey = key;
+        r.Title = I18n.T(I18n.English, key);
     }
 }
 
@@ -47,17 +55,17 @@ sealed class CpuPackageMonitor
     Computer _pc;
     ISensor _sensor;
 
-    public string Hint { get; private set; }
+    public Msg Hint { get; private set; }
 
     // No reading, only the hint: the tests, which must not depend on the PC's drivers.
-    internal static CpuPackageMonitor Unavailable(string hint) { return new CpuPackageMonitor { Hint = hint }; }
+    internal static CpuPackageMonitor WithoutReading(Msg hint) { return new CpuPackageMonitor { Hint = hint }; }
 
     public static CpuPackageMonitor Open()
     {
         var m = new CpuPackageMonitor();
         if (!PawnIoSetup.IsInstalled)
         {
-            m.Hint = "Instale o PawnIO (pawnio.eu) para ver a temperatura dos núcleos.";
+            m.Hint = new Msg("cpu.hint.pawnio");
             return m;
         }
         try

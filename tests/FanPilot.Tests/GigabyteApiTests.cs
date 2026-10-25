@@ -14,14 +14,14 @@ public sealed class GigabyteApiTests : IDisposable
     public void ACompatibleGccIsAccepted()
     {
         var api = GigabyteApi.Load(GccStub.Build(_dir.Path));
-        Assert.True(api.Compatible, api.Problem);
+        Assert.True(api.Compatible, api.Problem == null ? null : api.Problem.Text);
         Assert.Equal("8.0.8.2", api.Version);
     }
 
     [Fact]
     public void TheBridgeWorksThroughReflection()
     {
-        var bridge = new GigabyteBridge(GigabyteApi.Load(GccStub.Build(_dir.Path)), CpuPackageMonitor.Unavailable("Instale o PawnIO."));
+        var bridge = new GigabyteBridge(GigabyteApi.Load(GccStub.Build(_dir.Path)), CpuPackageMonitor.WithoutReading(new Msg("cpu.hint.pawnio")));
         Assert.Equal(2, bridge.CountFans());
         Assert.Equal(new[] { "Temp 1", "Temp 2", "Temp 3" }, bridge.TempInputTitles);
 
@@ -30,7 +30,7 @@ public sealed class GigabyteApiTests : IDisposable
         // GCC's "CPU" is the socket's sensor (item 19); without a package reading it is still what the panel shows.
         Assert.Equal("CPU · socket", cpu.Title);
         Assert.Equal(CpuRoles.Main, cpu.Role);
-        Assert.Equal("Instale o PawnIO.", cpu.Hint);
+        Assert.Equal("cpu.hint.pawnio", cpu.Hint.Key);
         Assert.Equal("°C", cpu.Unit);
         Assert.Equal(52.5, cpu.Value);
         Assert.Equal("MHz", sensors.Single(s => s.Type == "Frequency").Unit);
@@ -74,7 +74,7 @@ public sealed class GigabyteApiTests : IDisposable
     {
         var api = GigabyteApi.Load(GccStub.Build(_dir.Path, "public bool SetTemperatureInputSelection=public bool SetTemperatureInput"));
         Assert.False(api.Compatible);
-        Assert.Contains("SetTemperatureInputSelection(Int32, Int32)", api.Problem);
+        Assert.Contains("SetTemperatureInputSelection(Int32, Int32)", api.Problem.Text);
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public sealed class GigabyteApiTests : IDisposable
     {
         var api = GigabyteApi.Load(_dir.Path);
         Assert.False(api.Compatible);
-        Assert.Contains(GigabyteApi.CommonDll, api.Problem);
+        Assert.Contains(GigabyteApi.CommonDll, api.Problem.Text);
     }
 
     [Fact]
@@ -90,8 +90,8 @@ public sealed class GigabyteApiTests : IDisposable
     {
         var broken = GigabyteApi.Load(GccStub.Build(_dir.Path, "public bool IsSupported=public bool Supported"));
         Assert.Equal("lhm", Boards.Choose("auto", true, broken));
-        Assert.Contains(AppNotices.All(), n => n.Contains("não é compatível") && n.Contains("IsSupported"));
-        var ex = Assert.Throws<InvalidOperationException>(() => Boards.Choose("gigabyte", true, broken));
+        Assert.Contains(AppNotices.All(), n => n.Key == "notice.gccFallback" && n.In(I18n.Portuguese).Contains("não é compatível") && n.Text.Contains("IsSupported"));
+        var ex = Assert.Throws<Unavailable>(() => Boards.Choose("gigabyte", true, broken));
         Assert.Contains("IsSupported", ex.Message);
     }
 
@@ -102,6 +102,6 @@ public sealed class GigabyteApiTests : IDisposable
         Assert.Equal("gigabyte", Boards.Choose("auto", true, api));
         Assert.Equal("lhm", Boards.Choose("lhm", true, api));
         Assert.Equal("lhm", Boards.Choose("auto", false, null));
-        Assert.Throws<InvalidOperationException>(() => Boards.Choose("gigabyte", false, null));
+        Assert.Throws<Unavailable>(() => Boards.Choose("gigabyte", false, null));
     }
 }

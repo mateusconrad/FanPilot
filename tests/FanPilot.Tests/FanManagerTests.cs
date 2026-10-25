@@ -70,8 +70,10 @@ public sealed class FanManagerTests : IDisposable
     [Fact]
     public void CurveNeedsTheBoardsPointCount()
     {
-        var ex = Assert.Throws<ArgumentException>(() => Manager().Apply(1, Curve(0, 30, 40, 50, 90, 100)));
-        Assert.Contains("exatamente 8 pontos", ex.Message);
+        var ex = Assert.Throws<UserError>(() => Manager().Apply(1, Curve(0, 30, 40, 50, 90, 100)));
+        Assert.Equal("err.curve.points", ex.Msg.Key);
+        Assert.Contains("exatamente 8 pontos", ex.Msg.In(I18n.Portuguese));
+        Assert.Contains("exactly 8 points", ex.Message);
     }
 
     [Fact]
@@ -89,7 +91,7 @@ public sealed class FanManagerTests : IDisposable
     {
         var points = (int[])Standard.Clone();
         points[6] = points[4]; // third point at the same temperature as the second
-        Assert.Throws<ArgumentException>(() => Manager().Apply(1, Curve(points)));
+        Assert.Throws<UserError>(() => Manager().Apply(1, Curve(points)));
     }
 
     [Fact]
@@ -97,7 +99,7 @@ public sealed class FanManagerTests : IDisposable
     {
         var points = (int[])Standard.Clone();
         points[14] = 95;
-        var ex = Assert.Throws<ArgumentException>(() => Manager().Apply(1, Curve(points)));
+        var ex = Assert.Throws<UserError>(() => Manager().Apply(1, Curve(points)));
         Assert.Contains("90", ex.Message);
     }
 
@@ -127,7 +129,7 @@ public sealed class FanManagerTests : IDisposable
     {
         var request = Fixed(40);
         request["tempInput"] = 9;
-        Assert.Throws<ArgumentException>(() => Manager().Apply(1, request));
+        Assert.Throws<UserError>(() => Manager().Apply(1, request));
     }
 
     [Fact]
@@ -171,7 +173,7 @@ public sealed class FanManagerTests : IDisposable
         var m = Manager();
         m.SetTurbo(true);
         for (int i = 0; i < 4; i++) Assert.All(Pwms(i), pwm => Assert.Equal(255, pwm));
-        var ex = Assert.Throws<ArgumentException>(() => m.Apply(1, Fixed(40)));
+        var ex = Assert.Throws<UserError>(() => m.Apply(1, Fixed(40)));
         Assert.Contains("Turbo", ex.Message);
     }
 
@@ -208,7 +210,7 @@ public sealed class FanManagerTests : IDisposable
     public void TurboNeedsFans()
     {
         var m = new FanManager(new FakeBoard(0), _cfg, _dir.Path);
-        Assert.Throws<ArgumentException>(() => m.SetTurbo(true));
+        Assert.Throws<UserError>(() => m.SetTurbo(true));
     }
 
     [Fact]
@@ -288,7 +290,7 @@ public sealed class FanManagerTests : IDisposable
         var fans = (List<object>)m.Describe()["fans"];
         Assert.False((bool)((Dictionary<string, object>)fans[1])["hasBackup"]);
         Assert.True((bool)((Dictionary<string, object>)fans[2])["hasBackup"]);
-        Assert.Throws<ArgumentException>(() => m.Restore(1));
+        Assert.Throws<UserError>(() => m.Restore(1));
     }
 
     [Fact]
@@ -341,8 +343,8 @@ public sealed class FanManagerTests : IDisposable
     {
         var bad = Curve(Standard);
         bad["response"] = "turbo";
-        var ex = Assert.Throws<ArgumentException>(() => Manager().Apply(1, bad));
-        Assert.Contains("Resposta", ex.Message);
+        var ex = Assert.Throws<UserError>(() => Manager().Apply(1, bad));
+        Assert.Equal("err.response", ex.Msg.Key);
     }
 
     [Fact]

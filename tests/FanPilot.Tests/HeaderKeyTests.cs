@@ -78,7 +78,7 @@ public sealed class HeaderKeyTests : IDisposable
         Manager(board).Apply(2, Fixed(40));
         board.Headers.RemoveAt(2);
         var m = Manager(board);
-        Assert.Throws<ArgumentException>(() => m.DiscardOrphan("fake/1"));
+        Assert.Throws<UserError>(() => m.DiscardOrphan("fake/1"));
         m.DiscardOrphan("fake/2");
         Assert.Empty(Orphans(m));
         Assert.Empty(Orphans(Manager(board))); // and it stays discarded

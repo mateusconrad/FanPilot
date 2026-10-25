@@ -68,7 +68,7 @@ public sealed class WebServerTests : IDisposable
         var r = RawHttp.Send(_port, "GET", "/api/info");
         Assert.Equal(200, r.Status);
         Assert.Contains("\"version\":\"" + AppVersion.Text + "\"", r.Body);
-        Assert.Contains("\"backend\":\"Placa de teste\"", r.Body);
+        Assert.Contains("\"backend\":\"Test board\"", r.Body);
     }
 
     // Item 19: the CPU chart's series, whichever reading is "the CPU" on this board.
@@ -123,7 +123,9 @@ public sealed class WebServerTests : IDisposable
     {
         var r = RawHttp.Send(_port, "POST", "/api/fans/1", json: "{\"mode\":\"turbo\"}", headers: new[] { "X-FanPilot: 1" });
         Assert.Equal(400, r.Status);
-        Assert.Contains("Modo", r.Body);
+        // With the code the panel translates (item 21), and the English text.
+        Assert.Contains("\"code\":\"err.mode\"", r.Body);
+        Assert.Contains("\"error\":\"Invalid mode.\"", r.Body);
     }
 
     [Fact]
@@ -180,9 +182,12 @@ public sealed class WebServerTests : IDisposable
         {
             var api = RawHttp.Send(port, "GET", "/api/fans");
             Assert.Equal(503, api.Status);
-            Assert.Contains("iniciando", api.Body);
+            Assert.Contains("\"code\":\"server.starting\"", api.Body);
             Assert.Contains("Retry-After: 2", api.Head);
             Assert.Equal(503, RawHttp.Send(port, "GET", "/").Status);
+            // A page the server writes itself follows the browser's language.
+            Assert.Contains("is starting", RawHttp.Send(port, "GET", "/").Body);
+            Assert.Contains("está iniciando", RawHttp.Send(port, "GET", "/", headers: new[] { "Accept-Language: pt-BR,pt;q=0.9,en;q=0.8" }).Body);
         }
         finally { starting.Stop(); }
     }

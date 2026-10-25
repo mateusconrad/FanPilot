@@ -18,12 +18,15 @@ public class CpuRolesTests
     public void WithThePackageTheCardShowsTheCoresAndTheTableBoth()
     {
         var r = Board();
-        CpuRoles.Assign(r, 66.04, true, "dica");
+        CpuRoles.Assign(r, 66.04, true, new Msg("cpu.hint.pawnio"));
         var main = CpuRoles.MainOf(r);
-        Assert.Equal("CPU · pacote", main.Title);
+        // The panel translates the key (item 21); the API and the log get the English.
+        Assert.Equal("cpu.package", main.TitleKey);
+        Assert.Equal("CPU · package", main.Title);
         Assert.Equal(66.0, main.Value);
         var socket = r.Single(s => s.Id == "temperature-514");
         Assert.Equal("CPU · socket", socket.Title);
+        Assert.Equal("cpu.socket", socket.TitleKey);
         Assert.Equal(CpuRoles.Socket, socket.Role);
         Assert.Null(socket.Hint);
         Assert.Equal("CPU", r.Single(s => s.Type == "Frequency").Title); // only the temperature is renamed
@@ -33,18 +36,19 @@ public class CpuRolesTests
     public void WithoutThePackageAGigabyteBoardShowsTheSocketAndSaysHowToGetTheCores()
     {
         var r = Board();
-        CpuRoles.Assign(r, null, true, "Instale o PawnIO.");
+        var hint = new Msg("cpu.hint.pawnio");
+        CpuRoles.Assign(r, null, true, hint);
         var main = CpuRoles.MainOf(r);
         Assert.Equal("temperature-514", main.Id);
         Assert.Equal("CPU · socket", main.Title);
-        Assert.Equal("Instale o PawnIO.", main.Hint);
+        Assert.Same(hint, main.Hint);
     }
 
     [Fact]
     public void OnLibreHardwareMonitorNothingVisibleChanges()
     {
         var r = Board();
-        CpuRoles.Assign(r, null, false, "nunca mostrada");
+        CpuRoles.Assign(r, null, false, new Msg("cpu.hint.pawnio"));
         var main = CpuRoles.MainOf(r);
         Assert.Equal("CPU", main.Title);
         Assert.Equal(CpuRoles.Main, main.Role);
@@ -71,7 +75,7 @@ public sealed class CpuSnapshotTests
         var worst = FakeBoard.Scenario("worst");
         var main = CpuRoles.MainOf(worst.ReadSensors());
         Assert.Equal("CPU · socket", main.Title);
-        Assert.Contains("PawnIO", main.Hint);
+        Assert.Contains("PawnIO", main.Hint.Text);
 
         var lhm = FakeBoard.Scenario("lhm");
         Assert.Equal("CPU", CpuRoles.MainOf(lhm.ReadSensors()).Title);
