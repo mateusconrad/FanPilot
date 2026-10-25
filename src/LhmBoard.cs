@@ -3,7 +3,8 @@
 //
 // LibreHardwareMonitor can only set a fixed duty cycle on a header (IControl.SetSoftware) or hand it back to the
 // BIOS (SetDefault); the chip keeps no curve. So this class runs the curves: one thread owns the library, and once
-// a second it refreshes the sensors, computes each managed header's duty from its curve and writes it.
+// a second it refreshes the sensors, asks SoftwareCurveEngine for each managed header's duty (smoothed by the curve's
+// response) and writes it.
 // Safety, in order of what can go wrong:
 //  - reference temperature missing or implausible -> that header goes back to the BIOS until it reads again;
 //  - the control loop throws repeatedly -> every header goes back to the BIOS;
@@ -17,8 +18,6 @@ using LibreHardwareMonitor.Hardware;
 
 sealed class LhmBoard : IBoard
 {
-    // Readings outside this range come from open thermistor inputs (Nuvoton/ITE report 127, -128, 255...).
-    const double MinPlausibleTemp = -40, MaxPlausibleTemp = 125;
     const int FailuresBeforeRelease = 5;
 
     sealed class Header
@@ -33,6 +32,10 @@ sealed class LhmBoard : IBoard
 
     readonly object _sync = new object();
     readonly ManualResetEvent _stop = new ManualResetEvent(false);
+    readonly SoftwareCurveEngine _engine = new SoftwareCurveEngine();
+    // When the curves were last applied: the engine's averages and ramps advance by the time that really passed.
+    readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
+    double _lastApply;
     Computer _pc;
     List<ISensor> _temps = new List<ISensor>();
     List<Header> _headers = new List<Header>();
@@ -205,11 +208,15 @@ sealed class LhmBoard : IBoard
     // Re-asserted every second, which also undoes a BIOS/vendor-tool takeover (e.g. after sleep).
     void ApplyCurves()
     {
-        foreach (var h in _headers)
+        double now = _clock.Elapsed.TotalSeconds, dt = now - _lastApply;
+        _lastApply = now;
+        for (int i = 0; i < _headers.Count; i++)
         {
+            var h = _headers[i];
             if (h.Curve == null) continue;
             double t = h.Curve.TempInput < _tempValues.Count ? _tempValues[h.Curve.TempInput] : double.NaN;
-            if (double.IsNaN(t) || t < MinPlausibleTemp || t > MaxPlausibleTemp)
+            double? duty = _engine.Next(i, h.Curve, t, dt);
+            if (duty == null)
             {
                 if (!h.OnBiosFallback) Log.Warn("Fan " + h.Title + ": sem leitura válida do sensor de referência; devolvido à BIOS até voltar.");
                 h.OnBiosFallback = true;
@@ -218,7 +225,7 @@ sealed class LhmBoard : IBoard
             }
             if (h.OnBiosFallback) Log.Info("Fan " + h.Title + ": sensor de referência voltou; curva do FanPilot reaplicada.");
             h.OnBiosFallback = false;
-            float percent = (float)Math.Max(h.Control.Control.MinSoftwareValue, Math.Min(h.Control.Control.MaxSoftwareValue, h.Curve.PwmAt(t) / 2.55));
+            float percent = (float)Math.Max(h.Control.Control.MinSoftwareValue, Math.Min(h.Control.Control.MaxSoftwareValue, duty.Value));
             h.Control.Control.SetSoftware(percent);
         }
     }
@@ -267,6 +274,7 @@ sealed class LhmBoard : IBoard
             if (_released) throw new InvalidOperationException("FanPilot está encerrando.");
             if (curve.Index < 0 || curve.Index >= _headers.Count) throw new ArgumentException("Fan inexistente.");
             var h = _headers[curve.Index];
+            _engine.Reset(curve.Index);
             if (curve.IsBios || curve.Points.Count == 0)
             {
                 h.Curve = null;

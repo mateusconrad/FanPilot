@@ -84,11 +84,19 @@ test.describe('LibreHardwareMonitor: curvas executadas pelo FanPilot', () => {
     await page.locator('#fans .fan').nth(1).click();
     await expect(page.locator('#edRestore')).toHaveText('Devolver à BIOS');
     await expect(page.locator('#edRestore')).toBeDisabled();
+    // The response exists only where FanPilot runs the curve (item 15); "Equilibrada" is the default.
+    await expect(page.locator('#edResponse')).toBeVisible();
+    await expect(page.locator('#edResponse')).toHaveValue('balanced');
+    await page.locator('#edResponse').selectOption('smooth');
+    await expect(page.locator('#edResponseHint')).toContainText('Suave: ignora picos');
+    const sent = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/api/fans/1'));
     await page.locator('#edApply').click();
+    expect((await sent).postDataJSON()).toMatchObject({ mode: 'curve', response: 'smooth' });
     await expect(page.locator('#toast')).toHaveText('Aplicado: o FanPilot está controlando este fan');
-    await expect(page.locator('#fans .fan').nth(1).locator('.desc')).toContainText('Curva personalizada');
+    await expect(page.locator('#fans .fan').nth(1).locator('.desc')).toContainText('Curva personalizada, resposta suave');
 
     await page.locator('#fans .fan').nth(1).click();
+    await expect(page.locator('#edResponse')).toHaveValue('smooth');
     await expect(page.locator('#edRestore')).toBeEnabled();
     await page.locator('#edRestore').click();
     await expect(page.locator('#toast')).toHaveText('Fan devolvido ao controle da BIOS');

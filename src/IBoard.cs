@@ -54,6 +54,9 @@ sealed class FanCurve
     public int DeltaT;
     // [temperature C, pwm 0..255]
     public List<double[]> Points = new List<double[]>();
+    // How a curve FanPilot runs itself follows the temperature: a SoftwareCurveEngine.Responses key, or null to
+    // follow it as it is (fixed speed, Turbo). Boards that keep the curve in the chip ignore it.
+    public string Response;
 
     public bool IsBios { get { return Mode == BiosMode; } }
 
@@ -80,7 +83,7 @@ sealed class FanCurve
     {
         return new Dictionary<string, object> {
             { "index", Index }, { "key", Key }, { "title", Title }, { "tempInput", TempInput }, { "mode", Mode },
-            { "deltaT", DeltaT }, { "points", Points.Select(p => new[] { p[0], p[1] }).ToList() }
+            { "deltaT", DeltaT }, { "points", Points.Select(p => new[] { p[0], p[1] }).ToList() }, { "response", Response }
         };
     }
 
@@ -93,6 +96,7 @@ sealed class FanCurve
         c.TempInput = Json.GetInt(d, "tempInput", 0);
         c.Mode = Json.GetString(d, "mode", "SmartFanMode");
         c.DeltaT = Json.GetInt(d, "deltaT", 1);
+        c.Response = Json.GetString(d, "response", null);
         foreach (object p in Json.ToList(Json.Get(d, "points")))
         {
             var xy = Json.ToList(p);

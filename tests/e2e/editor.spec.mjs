@@ -46,6 +46,8 @@ async function openFan(page, i) {
 test('arrastar um ponto respeita as regras da curva', async ({ page }) => {
   await openFan(page, 1);
   await expect(page.locator('#edTitle')).toHaveText('Fan · System 1');
+  // The curve runs in the chip: no response to choose (that is for curves FanPilot runs itself).
+  await expect(page.locator('#edResponseBox')).toBeHidden();
   expect(await editorPoints(page)).toEqual([[0, 25], [35, 25], [45, 35], [55, 55], [62, 65], [68, 75], [74, 85], [82, 100]]);
 
   // Up and to the left: never before the previous point, never above the next one.

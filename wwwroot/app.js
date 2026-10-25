@@ -283,12 +283,19 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
   const BIOS = 'BiosDefault';
   // false on those boards: closing FanPilot hands every fan back to the BIOS, and the panel says so.
   const hardwareCurves = () => !state.fans || state.fans.hardwareCurves !== false;
+  // How a curve FanPilot runs follows the temperature (SoftwareCurveEngine.Responses); a chip curve has none.
+  const RESPONSES = {
+    fast: ['Rápida', 'segue a temperatura quase na hora e desacelera depois de esfriar 1 °C.'],
+    balanced: ['Equilibrada', 'ignora picos de poucos segundos e só desacelera depois de esfriar 2 °C.'],
+    smooth: ['Suave', 'ignora picos de uns 10 s, muda de velocidade devagar e só desacelera depois de esfriar 4 °C.'],
+  };
 
   function fanDescription(f, snap) {
     const req = f.request;
     let mode;
     if (state.fans.turbo) mode = 'Turbo 100%';
     else if (f.managed && req && req.mode === 'fixed') mode = `Fixo ${req.percent}%`;
+    else if (f.managed && !hardwareCurves()) mode = 'Curva personalizada, resposta ' + RESPONSES[(req && req.response) || 'balanced'][0].toLowerCase();
     else if (f.managed) mode = 'Curva personalizada';
     else if (f.mode === BIOS) mode = 'Controle da BIOS';
     else if (f.points.every((p) => p[1] >= 255)) mode = 'Velocidade máxima (perfil do GCC)';
@@ -434,6 +441,7 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
       tempInput: f.tempInput,
       pointCount: f.pointCount,
       points: toEditorPoints(f.points, limits, f.pointCount),
+      response: (req && RESPONSES[req.response] && req.response) || 'balanced',
     };
     $('edTitle').textContent = 'Fan · ' + f.title;
     const sel = $('edTempInput');
@@ -451,6 +459,8 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     $('edLimits').textContent = `Mínimo ${limits.minDutyPercent}% em qualquer ponto; 100% no máximo a ${limits.maxFullSpeedTemp} °C. ` + (hw
       ? 'A curva roda no chip da placa-mãe (continua valendo mesmo se o PC/FanPilot fechar).'
       : 'A curva é executada pelo FanPilot a cada segundo. Se ele fechar, ou o sensor de referência parar de responder, o fan volta ao controle da BIOS.');
+    $('edResponseBox').hidden = hw;
+    $('edResponse').value = state.editor.response;
     $('edRestore').textContent = hw ? 'Restaurar original' : 'Devolver à BIOS';
     $('edRestore').disabled = !f.hasBackup || (!hw && !f.managed);
     show($('sheet'));
@@ -474,6 +484,7 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     $('edCurveBox').hidden = e.mode !== 'curve';
     $('edFixedBox').hidden = e.mode !== 'fixed';
     $('edFixedValue').textContent = e.percent + '%';
+    $('edResponseHint').textContent = `${RESPONSES[e.response][0]}: ${RESPONSES[e.response][1]} Em qualquer resposta, no último ponto da curva o fan vai a 100% na hora.`;
 
     const svg = $('edSvg');
     svg.innerHTML = '';
@@ -594,6 +605,7 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     const body = e.mode === 'fixed'
       ? { mode: 'fixed', percent: e.percent, tempInput: e.tempInput }
       : { mode: 'curve', style: e.style, points: e.points, tempInput: e.tempInput };
+    if (e.mode === 'curve' && !hardwareCurves()) body.response = e.response;
     $('edApply').disabled = true;
     try {
       await api('/api/fans/' + e.index, body);
@@ -622,6 +634,7 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     $('edModeCurve').onclick = () => { state.editor.mode = 'curve'; renderEditor(); };
     $('edModeFixed').onclick = () => { state.editor.mode = 'fixed'; renderEditor(); };
     $('edStyle').onchange = (ev) => { state.editor.style = ev.target.value; renderEditor(); };
+    $('edResponse').onchange = (ev) => { state.editor.response = ev.target.value; renderEditor(); };
     $('edTempInput').onchange = (ev) => { state.editor.tempInput = Number(ev.target.value); renderEditor(); };
     $('edFixedSlider').oninput = (ev) => { state.editor.percent = Number(ev.target.value); renderEditor(); };
     $('edApply').onclick = applyEditor;

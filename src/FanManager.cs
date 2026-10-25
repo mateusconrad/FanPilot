@@ -275,7 +275,8 @@ sealed class FanManager
         };
     }
 
-    // request: { mode: "fixed", percent, tempInput? } | { mode: "curve", style: "SmartFanMode"|"StairStepMode", points: [[t,%]...], tempInput }
+    // request: { mode: "fixed", percent, tempInput? }
+    //        | { mode: "curve", style: "SmartFanMode"|"StairStepMode", points: [[t,%]...], tempInput, response? }
     public FanCurve Apply(int index, Dictionary<string, object> request)
     {
         lock (_opLock)
@@ -340,6 +341,8 @@ sealed class FanManager
         if (mode != "curve") throw new ArgumentException("Modo inválido.");
 
         curve.Mode = Json.GetString(request, "style", "SmartFanMode") == "StairStepMode" ? "StairStepMode" : "SmartFanMode";
+        curve.Response = Json.GetString(request, "response", SoftwareCurveEngine.DefaultResponse);
+        if (!SoftwareCurveEngine.Responses.ContainsKey(curve.Response)) throw new ArgumentException("Resposta inválida: use fast, balanced ou smooth.");
         var raw = Json.ToList(Json.Get(request, "points"));
         if (raw.Count != pointCount) throw new ArgumentException("A curva deste fan precisa de exatamente " + pointCount + " pontos.");
         double prevT = -1, prevPwm = 0;
@@ -411,7 +414,11 @@ sealed class FanManager
 
     static FanCurve SavedCurve(Dictionary<string, object> desired, int index)
     {
-        return At(FanCurve.FromDictionary((Dictionary<string, object>)Json.Get(desired, "curve")), index);
+        var curve = At(FanCurve.FromDictionary((Dictionary<string, object>)Json.Get(desired, "curve")), index);
+        // Saved before responses existed: a curve gets the default one, a fixed speed stays as it is.
+        if (curve.Response == null && Json.GetString(Json.Get(desired, "request") as Dictionary<string, object>, "mode", "") == "curve")
+            curve.Response = SoftwareCurveEngine.DefaultResponse;
+        return curve;
     }
 
     void SaveDesired() { DataFile.WriteAtomic(_desiredPath, Versioned(_desired.ToDictionary(kv => kv.Key, kv => (object)kv.Value))); }
