@@ -57,6 +57,8 @@ sealed class FanManager
 
     public bool TurboActive { get { lock (_sync) return _turbo; } }
 
+    public string BackendName { get { return _bridge.BackendName; } }
+
     // The first call that needs the board reads its headers, then the state files (migrating version 1 ones), and
     // saves the original curve of every header seen for the first time. Throws while the board does not answer;
     // the next call tries again.

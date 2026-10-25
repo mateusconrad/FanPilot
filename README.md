@@ -46,7 +46,8 @@ node --test "tests/js/*.test.mjs"  # testes do painel (Node 22+)
 .\bin\FanPilot.exe              # pede UAC, abre http://localhost:8787/pair
 .\scripts\firewall.ps1          # (admin, uma vez) libera a porta 8787 no perfil de rede Privado
 .\scripts\autostart.ps1         # (admin, opcional) inicia elevado no logon, sem UAC
-.\scripts\package.ps1           # gera dist\FanPilot-<data>-<commit>.zip para distribuir (sem data\)
+.\scripts\package.ps1           # gera dist\FanPilot-<versão>-win-x64.zip para distribuir (sem data\)
+.\bin\FanPilot.exe --version    # versão e commit, ex.: FanPilot 0.1.0+1a2b3c4
 .\bin\FanPilot.exe --diagnose   # relatório só de leitura da placa (para placas ainda não testadas)
 .\bin\FanPilot.exe --hardware-test [--fan N]   # (FanPilot fechado) roteiro de verificação na placa real, ~2 min
 ```
@@ -70,6 +71,22 @@ Administrador, use o `tools/ui-mock`.
 No celular (mesma rede Wi-Fi): escaneie o QR da página `/pair`. O código vale ~3 min e é de uso único;
 o aparelho fica pareado por 30 dias de inatividade. A página `/pair` (só acessível no próprio PC) lista e
 despareia aparelhos.
+
+## Versões e releases
+
+- **Baixar:** cada versão sai na página [Releases](https://github.com/mateusconrad/FanPilot/releases) como
+  `FanPilot-<versão>-win-x64.zip`, com um `SHA256SUMS.txt` para conferir o download
+  (`Get-FileHash .\FanPilot-0.1.0-win-x64.zip` deve dar o mesmo hash). Versões `0.x` saem como pre-release.
+- **Qual versão está rodando:** no rodapé do painel, na primeira linha do log, no `--diagnose` e em
+  `FanPilot.exe --version` (num terminal como Administrador: o exe pede elevação e, fora dele, a janela fecha antes de
+  dar para ler). O número vem do `Directory.Build.props` e o sufixo é o commit do build.
+- **O que mudou:** [CHANGELOG.md](CHANGELOG.md).
+- **CI:** cada push na `main` compila, roda os testes e guarda o zip como artefato da execução
+  ([Actions](https://github.com/mateusconrad/FanPilot/actions)).
+- **Lançar uma versão:** ajuste `VersionPrefix` no `Directory.Build.props`, troque `## [Não lançado]` no
+  `CHANGELOG.md` por `## [<versão>] - <data>`, faça o commit e crie a tag: `git tag v0.1.0; git push origin v0.1.0`.
+  O workflow `Release` confere que a tag bate com a versão, compila, testa e publica a release. Para ensaiar sem
+  publicar nada: `gh workflow run release.yml` (os arquivos ficam como artefato da execução).
 
 ## Segurança
 
@@ -217,6 +234,7 @@ Não fazem parte do projeto: compile cada um com o `csc.exe` do .NET Framework, 
 | GET | `/api/stream` | Server-Sent Events, 1 snapshot/s |
 | GET | `/api/history` | últimos 10 min (temperaturas, potência, rpm) |
 | GET | `/api/fans` | curvas atuais, sensores de referência, limites |
+| GET | `/api/info` | versão do FanPilot, backend e placa-mãe |
 | POST | `/api/fans/{i}` | `{"mode":"fixed","percent":40}` ou `{"mode":"curve","style":"SmartFanMode","points":[[0,30],…N pontos em %, N = pointCount do fan],"tempInput":2}` |
 | POST | `/api/fans/{i}/restore` | volta à curva original |
 | POST | `/api/fans/turbo` | `{"on":true}` todos os fans da placa-mãe em 100%; `{"on":false}` devolve cada fan ao estado anterior |
@@ -231,7 +249,8 @@ tests/      testes automatizados (xUnit; rodar com dotnet test)
 wwwroot/    painel (index.html/app.js), pareamento (pair.html/pair.js), qrcode-generator (MIT)
 tools/      probes usados na engenharia reversa
 assets/     identidade visual: SVGs-fonte, ícone do .exe, banners (regenerar: python assets/brand/build.py)
-scripts/    firewall, auto-início e empacotamento da release
+scripts/    firewall, auto-início, empacotamento da release, notas da release e checagem de encoding
+.github/    CI, release por tag e Dependabot
 docs/       relatório da engenharia reversa, guia para testar outras placas, roadmap e specs
 ```
 

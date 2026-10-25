@@ -128,12 +128,18 @@ static class App
     public static int Run(string[] args)
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
+        if (args.Contains("--version"))
+        {
+            Console.WriteLine("FanPilot " + AppVersion.Text);
+            return 0;
+        }
         bool fake = FakeBoardRequested(args);
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
         // The fake board writes its own curves, backup and pairings: never into the real board's data\.
         string dataDir = Path.Combine(baseDir, fake ? "data-fake" : "data");
         Directory.CreateDirectory(dataDir);
         Log.FilePath = Path.Combine(dataDir, "fanpilot.log");
+        Log.Info("FanPilot " + AppVersion.Text + (fake ? " (placa de teste)" : ""));
 
         if (!new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
         {

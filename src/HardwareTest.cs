@@ -409,7 +409,7 @@ sealed class HardwareTest
         sb.AppendLine("# FanPilot · teste em hardware");
         sb.AppendLine();
         sb.AppendLine("- Quando: " + started.ToString("yyyy-MM-dd HH:mm:ss") + " (" + (int)took.TotalMinutes + " min " + took.Seconds + " s)");
-        sb.AppendLine("- FanPilot: " + typeof(HardwareTest).Assembly.GetName().Version);
+        sb.AppendLine("- FanPilot: " + AppVersion.Text);
         sb.AppendLine("- Placa: " + Cell(MachineData.Board) + " · " + _board.BackendName + GccVersion());
         sb.AppendLine("- Fan testado: [" + index + "] " + Cell(title));
         sb.AppendLine("- Resultado: **" + (outcome == Passed ? "passou" : outcome == Failed ? "falhou" : "interrompido") + "**");

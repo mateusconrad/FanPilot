@@ -1,0 +1,13 @@
+# Weekly pull requests for the NuGet packages (packages.lock.json included) and the GitHub Actions; the CI runs on
+# each one. A LibreHardwareMonitorLib update is only merged after the hardware checklist (docs/ROADMAP.md): a
+# new version can change how a board's headers are seen.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
