@@ -310,7 +310,11 @@ sealed class WebServer
             object sensors;
             if (s.TryGetValue("sensors", out sensors))
                 foreach (var d in (List<Dictionary<string, object>>)sensors)
+                {
                     if ((string)d["type"] == "Temperature" || (string)d["type"] == "Power") Put(series, (string)d["id"], i, d["value"]);
+                    // The CPU chart's series, whichever reading it is on this board (item 19).
+                    if (Json.GetString(d, "role", null) == CpuRoles.Main) Put(series, CpuRoles.Main, i, d["value"]);
+                }
             var gpu = (Dictionary<string, object>)s["gpu"];
             object v;
             if (gpu.TryGetValue("temp", out v)) Put(series, "gpu-temp", i, v);

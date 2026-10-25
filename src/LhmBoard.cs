@@ -127,14 +127,14 @@ sealed class LhmBoard : IBoard
                  temps.Count + " sensores de temperatura" + (pawnIo ? "" : "; PawnIO NÃO instalado"));
     }
 
-    static void Collect(IHardware hw, List<IHardware> into)
+    internal static void Collect(IHardware hw, List<IHardware> into)
     {
         into.Add(hw);
         foreach (var sub in hw.SubHardware) Collect(sub, into);
     }
 
     // Intel: "CPU Package"; AMD: "Core (Tctl/Tdie)" or "Core (Tctl)"; otherwise the first temperature the CPU has.
-    static ISensor CpuTemperature(List<IHardware> all)
+    internal static ISensor CpuTemperature(List<IHardware> all)
     {
         var temps = all.Where(h => h.HardwareType == HardwareType.Cpu).SelectMany(h => h.Sensors).Where(s => s.SensorType == SensorType.Temperature).ToList();
         return temps.FirstOrDefault(s => s.Name == "CPU Package")
@@ -198,6 +198,7 @@ sealed class LhmBoard : IBoard
                 }
             }
         }
+        CpuRoles.Assign(readings, null, false, null); // the "CPU" reading here is already the package
         _readings = readings;
         _tempValues = _temps.Select(s => s.Value.HasValue ? s.Value.Value : float.NaN).ToList();
         _rpmValues = _headers.Select(h => h.Tach != null && h.Tach.Value.HasValue ? h.Tach.Value.Value : 0f).ToList();

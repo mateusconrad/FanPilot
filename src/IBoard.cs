@@ -41,6 +41,10 @@ sealed class SensorReading
     public string Title;
     public double Value;
     public string Unit;
+    // "cpu-main" or "cpu-socket" (CpuRoles), else null.
+    public string Role;
+    // A short note for the panel next to the reading (how to get a better one), else null.
+    public string Hint;
 }
 
 sealed class FanCurve

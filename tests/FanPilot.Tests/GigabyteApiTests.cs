@@ -21,13 +21,16 @@ public sealed class GigabyteApiTests : IDisposable
     [Fact]
     public void TheBridgeWorksThroughReflection()
     {
-        var bridge = new GigabyteBridge(GigabyteApi.Load(GccStub.Build(_dir.Path)));
+        var bridge = new GigabyteBridge(GigabyteApi.Load(GccStub.Build(_dir.Path)), CpuPackageMonitor.Unavailable("Instale o PawnIO."));
         Assert.Equal(2, bridge.CountFans());
         Assert.Equal(new[] { "Temp 1", "Temp 2", "Temp 3" }, bridge.TempInputTitles);
 
         var sensors = bridge.ReadSensors();
         var cpu = sensors.Single(s => s.Id == "temperature-514");
-        Assert.Equal("CPU", cpu.Title);
+        // GCC's "CPU" is the socket's sensor (item 19); without a package reading it is still what the panel shows.
+        Assert.Equal("CPU · socket", cpu.Title);
+        Assert.Equal(CpuRoles.Main, cpu.Role);
+        Assert.Equal("Instale o PawnIO.", cpu.Hint);
         Assert.Equal("°C", cpu.Unit);
         Assert.Equal(52.5, cpu.Value);
         Assert.Equal("MHz", sensors.Single(s => s.Type == "Frequency").Unit);

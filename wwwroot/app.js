@@ -1,5 +1,6 @@
 // FanPilot dashboard: live data over SSE (/api/stream), fan curve editor, GPU fan control.
 import { curveAt, resample, normalize } from './js/curve.mjs';
+import { cpuMain } from './js/sensors.mjs';
 
 (function () {
   'use strict';
@@ -79,16 +80,18 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     if (!snap || !snap.sensors) return null;
     return snap.sensors.find((s) => s.type === type && s.title === title) || null;
   }
-  const cpuTempOf = (snap) => { const s = sensor(snap, 'Temperature', 'CPU'); return s ? s.value : null; };
+  const cpuTempOf = (snap) => { const s = cpuMain(snap && snap.sensors); return s ? s.value : null; };
 
   // ---------- tiles ----------
   function renderTiles(snap) {
     const gpu = snap.gpu || {};
-    const cpuT = cpuTempOf(snap);
+    const cpu = cpuMain(snap.sensors);
+    const cpuT = cpu ? cpu.value : null;
     const pkg = sensor(snap, 'Power', 'CPU Package');
     const clk = sensor(snap, 'Frequency', 'CPU');
     const tiles = [
-      { label: 'CPU', value: fmt(cpuT), unit: '°C', status: tempStatus(cpuT), meta: clk ? fmt(clk.value / 1000, 2) + ' GHz' : '' },
+      // The label says which reading it is ("CPU · pacote", "CPU · socket"); the hint, how to get the cores' one.
+      { label: esc(cpu ? cpu.title : 'CPU'), value: fmt(cpuT), unit: '°C', status: tempStatus(cpuT), meta: clk ? fmt(clk.value / 1000, 2) + ' GHz' : '', hint: cpu && cpu.hint },
       { label: gpu.name ? 'GPU' : 'GPU (indisponível)', value: fmt(gpu.temp), unit: '°C', status: tempStatus(gpu.temp), meta: gpu.util !== undefined ? gpu.util + '% uso' : '' },
       { label: 'CPU · potência', value: fmt(pkg && pkg.value, 0), unit: 'W', meta: 'pacote' },
       { label: 'GPU · potência', value: fmt(gpu.power, 0), unit: 'W', meta: gpu.powerLimit ? 'limite ' + gpu.powerLimit + ' W' : '' },
@@ -96,7 +99,8 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     $('tiles').innerHTML = tiles.map((t) =>
       `<div class="tile"><div class="label">${t.label}</div>` +
       `<div class="value">${t.value}<small>${t.unit}</small></div>` +
-      `<div class="meta">${t.status ? `<span class="badge ${t.status.cls}">${t.status.label}</span>` : ''}${t.meta ? '<span>' + t.meta + '</span>' : ''}</div></div>`
+      `<div class="meta">${t.status ? `<span class="badge ${t.status.cls}">${t.status.label}</span>` : ''}${t.meta ? '<span>' + t.meta + '</span>' : ''}</div>` +
+      (t.hint ? `<div class="tile-hint">${esc(t.hint)}</div>` : '') + '</div>'
     ).join('');
   }
 
@@ -117,11 +121,11 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
   }
 
   function seedHistory(hist) {
-    const cpuId = state.snap && state.snap.sensors && (state.snap.sensors.find((s) => s.type === 'Temperature' && s.title === 'CPU') || {}).id;
+    const cpuId = state.snap && (cpuMain(state.snap.sensors) || {}).id;
     const n = hist.t.length;
     const take = (src) => { const a = (src || []).slice(0, n); while (a.length < n) a.push(null); return a; };
     const series = {
-      cpu: take((cpuId && hist.series[cpuId]) || hist.series['temperature-514']),
+      cpu: take(hist.series['cpu-main'] || (cpuId && hist.series[cpuId]) || hist.series['temperature-514']),
       gpu: take(hist.series['gpu-temp']),
     };
     Object.keys(hist.series).filter((k) => k.startsWith('fan-')).forEach((k) => { series[k] = take(hist.series[k]); });
@@ -501,6 +505,9 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
       : 'A curva é executada pelo FanPilot a cada segundo. Se ele fechar, ou o sensor de referência parar de responder, o fan volta ao controle da BIOS.');
     $('edResponseBox').hidden = hw;
     $('edResponse').value = state.editor.response;
+    if (hw && state.snap && (state.snap.sensors || []).some((s) => s.role === 'cpu-socket')) {
+      $('edLimits').textContent += ' A curva segue o sensor da placa (o "CPU" dela é o do socket); o card da CPU mostra a temperatura dos núcleos.';
+    }
     $('edRestore').textContent = hw ? 'Restaurar original' : 'Devolver à BIOS';
     $('edRestore').disabled = !f.hasBackup || (!hw && !f.managed);
     show($('sheet'));

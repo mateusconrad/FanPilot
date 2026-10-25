@@ -426,8 +426,13 @@ sealed class Sampler
         if (notices.Count > 0) service["notices"] = notices;
         try
         {
-            snap["sensors"] = _bridge.ReadSensors().Select(s => new Dictionary<string, object> {
-                { "id", s.Id }, { "type", s.Type }, { "title", s.Title }, { "value", s.Value }, { "unit", s.Unit } }).ToList();
+            snap["sensors"] = _bridge.ReadSensors().Select(s =>
+            {
+                var d = new Dictionary<string, object> { { "id", s.Id }, { "type", s.Type }, { "title", s.Title }, { "value", s.Value }, { "unit", s.Unit } };
+                if (s.Role != null) d["role"] = s.Role;
+                if (s.Hint != null) d["hint"] = s.Hint;
+                return d;
+            }).ToList();
             if (_bridge.FanControlSupported)
             {
                 List<float> temps, rpms;
