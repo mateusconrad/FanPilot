@@ -46,7 +46,7 @@ sealed class AppConfig
             {
                 // Edited by hand: the user's file stays exactly as it is, and FanPilot starts with the defaults.
                 cfg = new AppConfig();
-                AppNotices.Add("config.json inválido, usando os valores padrão até ele ser corrigido: " + ex.Message);
+                AppNotices.Add(new Msg("notice.configInvalid", "detail", ex.Message));
             }
         }
         else
@@ -55,7 +55,7 @@ sealed class AppConfig
         }
         if (cfg.Port < 1 || cfg.Port > 65535)
         {
-            AppNotices.Add("config.json: porta " + cfg.Port + " inválida, usando 8787.");
+            AppNotices.Add(new Msg("notice.configPort", "port", cfg.Port));
             cfg.Port = 8787;
         }
         cfg.MinDutyPercent = Clamp(cfg.MinDutyPercent, 0, 100);

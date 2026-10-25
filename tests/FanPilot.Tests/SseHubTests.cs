@@ -104,7 +104,9 @@ public sealed class GpuSafetyTests : IDisposable
         gpu.Tick();
         Assert.Null(gpu.Manual);
         Assert.Equal("auto", gpu.Latest["fanMode"]);
-        Assert.Contains("84", (string)gpu.Latest["safetyNote"]);
+        var note = (System.Collections.Generic.Dictionary<string, object>)gpu.Latest["safetyNote"];
+        Assert.Equal("gpu.safetyNote", note["code"]);
+        Assert.Contains("84", (string)note["text"]);
     }
 
     // The motherboard read (Gigabyte's IPC) hangs for 10 s per sample: the GPU rule still acts within its own second.

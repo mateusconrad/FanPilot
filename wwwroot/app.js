@@ -2,7 +2,7 @@
 import { curveAt, resample, normalize, movePoint } from './js/curve.mjs';
 import { cpuMain } from './js/sensors.mjs';
 // tr, not t: t is a temperature or a time all over this file.
-import { t as tr, msg, num, time, loadLanguage, translatePage, wireLanguageSelect } from './js/i18n.mjs';
+import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLanguageSelect } from './js/i18n.mjs';
 
 (function () {
   'use strict';
@@ -990,9 +990,9 @@ import { t as tr, msg, num, time, loadLanguage, translatePage, wireLanguageSelec
   // ---------- alerts (item 16) ----------
   const hhmm = (ms) => time(ms, { hour: '2-digit', minute: '2-digit' });
 
-  // An alert's words: by its code when FanPilot sends one (<code>.title and <code>.detail), else its own text.
-  const alertTitle = (a) => (a.code ? tr(a.code + '.title', a.params, a.title) : a.title);
-  const alertDetail = (a) => (a.code ? tr(a.code + '.detail', a.params, a.detail) : a.detail);
+  // An alert's title and detail are messages ({code, params, text}), translated here.
+  const alertTitle = (a) => msg(a.title);
+  const alertDetail = (a) => msg(a.detail);
 
   function alertItem(a, onAck) {
     const row = document.createElement('div');
@@ -1062,7 +1062,8 @@ import { t as tr, msg, num, time, loadLanguage, translatePage, wireLanguageSelec
 
   // Secrets go only when typed: an empty field keeps what is saved. clear: removes both destinations.
   async function saveAlertSettings(clear) {
-    const body = { cpuTemp: Number($('alCpu').value), gpuTemp: Number($('alGpu').value), pcName: $('alPcName').value };
+    // The messages that leave the PC go out in this panel's language.
+    const body = { cpuTemp: Number($('alCpu').value), gpuTemp: Number($('alGpu').value), pcName: $('alPcName').value, language: language() };
     if (clear) Object.assign(body, { ntfyUrl: '', telegramToken: '', telegramChatId: '' });
     else {
       if ($('alNtfy').value.trim()) body.ntfyUrl = $('alNtfy').value.trim();

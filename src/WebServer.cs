@@ -112,9 +112,9 @@ sealed class WebServer
         {
             try
             {
-                const string starting = "O FanPilot está iniciando. Tente de novo em alguns segundos.";
                 ctx.Response.Headers["Retry-After"] = "2";
-                if (url.AbsolutePath.StartsWith("/api/")) WriteJson(ctx, 503, Error(starting)); else Text(ctx, 503, starting);
+                if (url.AbsolutePath.StartsWith("/api/")) WriteJson(ctx, 503, Error("server.starting"));
+                else Text(ctx, 503, I18n.T(LanguageOf(ctx), "server.starting"));
                 ctx.Response.Close();
             }
             catch { }
@@ -136,14 +136,33 @@ sealed class WebServer
         {
             if (!Route(r)) return; // response kept open (SSE)
         }
-        catch (ArgumentException ex) { SafeJson(ctx, 400, Error(ex.Message)); }
-        catch (FormatException ex) { SafeJson(ctx, 400, Error("Requisição inválida: " + ex.Message)); }
-        catch (InvalidOperationException ex) { SafeJson(ctx, 503, Error(ex.Message)); }
-        catch (Exception ex) { Log.Warn(r.Method + " " + r.Path + ": " + ex); SafeJson(ctx, 500, Error("Erro interno.")); }
+        catch (ArgumentException ex) { SafeJson(ctx, 400, Error(ex)); }
+        catch (FormatException ex) { SafeJson(ctx, 400, Error("err.badRequest", "detail", ex.Message)); }
+        catch (InvalidOperationException ex) { SafeJson(ctx, 503, Error(ex)); }
+        catch (Exception ex) { Log.Warn(r.Method + " " + r.Path + ": " + ex); SafeJson(ctx, 500, Error("err.internal")); }
         try { ctx.Response.Close(); } catch { }
     }
 
-    static Dictionary<string, object> Error(string msg) { return new Dictionary<string, object> { { "error", msg } }; }
+    // {"error": English text, "code": key, "params": {…}}: the panel translates by the code (item 21).
+    static Dictionary<string, object> Error(Msg m)
+    {
+        var d = new Dictionary<string, object> { { "error", m.Text }, { "code", m.Key } };
+        object args;
+        if (m.ToJson().TryGetValue("params", out args)) d["params"] = args;
+        return d;
+    }
+
+    static Dictionary<string, object> Error(string key, params object[] nameValuePairs) { return Error(new Msg(key, nameValuePairs)); }
+
+    // Ours carry their message; anything else (.NET's own) only has its text.
+    static Dictionary<string, object> Error(Exception ex)
+    {
+        var m = Msg.Of(ex);
+        return m != null ? Error(m) : new Dictionary<string, object> { { "error", ex.Message } };
+    }
+
+    // The pages the server writes itself (text, not the panel) follow the browser's language.
+    static string LanguageOf(HttpListenerContext ctx) { return I18n.FromAcceptLanguage(ctx.Request.Headers["Accept-Language"]); }
 
     // Returns false when the handler keeps the response open.
     bool Route(Req r)
@@ -154,7 +173,7 @@ sealed class WebServer
             if (p == "/auth") { Redeem(r); return true; }
             if (p == "/pair" || p == "/pair.html")
             {
-                if (!r.Loopback) { Text(r.Ctx, 403, "O pareamento só pode ser aberto no próprio PC."); return true; }
+                if (!r.Loopback) { Text(r.Ctx, 403, I18n.T(LanguageOf(r.Ctx), "server.pairLocalOnly")); return true; }
                 return ServeFile(r.Ctx, "pair.html");
             }
             if (p == "/" || p == "/index.html") return ServeFile(r.Ctx, r.Authenticated ? "index.html" : "locked.html");
@@ -164,11 +183,11 @@ sealed class WebServer
         if (!p.StartsWith("/api/")) { Text(r.Ctx, 404, "Not found"); return true; }
         if (p.StartsWith("/api/pair/"))
         {
-            if (!r.Loopback) { WriteJson(r.Ctx, 403, Error("Somente no PC.")); return true; }
+            if (!r.Loopback) { WriteJson(r.Ctx, 403, Error("err.localOnly")); return true; }
             return PairApi(r);
         }
-        if (!r.Authenticated) { WriteJson(r.Ctx, 401, Error("Não pareado.")); return true; }
-        if (r.Method == "POST" && !SameOriginPost(r)) { WriteJson(r.Ctx, 403, Error("Origem inválida.")); return true; }
+        if (!r.Authenticated) { WriteJson(r.Ctx, 401, Error("err.unpaired")); return true; }
+        if (r.Method == "POST" && !SameOriginPost(r)) { WriteJson(r.Ctx, 403, Error("err.origin")); return true; }
 
         if (r.Method == "GET" && p == "/api/state") { RawJson(r.Ctx, 200, _sampler.LatestJson); return true; }
         if (r.Method == "GET" && p == "/api/stream") return Stream(r);
@@ -189,7 +208,7 @@ sealed class WebServer
             if (r.Method == "POST" && p == "/api/alerts/ack")
             {
                 bool found = _alerts.Acknowledge(Json.GetString(ReadBody(r), "id", ""));
-                WriteJson(r.Ctx, found ? 200 : 404, found ? new Dictionary<string, object> { { "ok", true } } : Error("Alerta não encontrado (já resolvido?)."));
+                WriteJson(r.Ctx, found ? 200 : 404, found ? new Dictionary<string, object> { { "ok", true } } : Error("err.alertNotFound"));
                 return true;
             }
         }
@@ -224,7 +243,7 @@ sealed class WebServer
         {
             var parts = p.Substring("/api/fans/".Length).Split('/');
             int index;
-            if (!int.TryParse(parts[0], out index)) throw new ArgumentException("Fan inválido.");
+            if (!int.TryParse(parts[0], out index)) throw new UserError("err.fanIndex");
             if (parts.Length > 1 && parts[1] == "meta") { WriteJson(r.Ctx, 200, _fans.SetMeta(index, ReadBody(r))); return true; }
             FanCurve result = parts.Length > 1 && parts[1] == "restore" ? _fans.Restore(index) : _fans.Apply(index, ReadBody(r));
             WriteJson(r.Ctx, 200, result.ToDictionary());
@@ -239,7 +258,7 @@ sealed class WebServer
             WriteJson(r.Ctx, 200, _gpu.Read());
             return true;
         }
-        WriteJson(r.Ctx, 404, Error("Rota inexistente."));
+        WriteJson(r.Ctx, 404, Error("err.route"));
         return true;
     }
 
@@ -257,18 +276,19 @@ sealed class WebServer
 
     void Redeem(Req r)
     {
-        if (_auth.IsBlocked(r.Ip)) { Text(r.Ctx, 429, "Muitas tentativas. Aguarde um minuto."); return; }
+        string lang = LanguageOf(r.Ctx);
+        if (_auth.IsBlocked(r.Ip)) { Text(r.Ctx, 429, I18n.T(lang, "server.tooManyAttempts")); return; }
         string token = _auth.Redeem(r.Ctx.Request.QueryString["c"], r.Ip, r.Ctx.Request.UserAgent);
         if (token == null)
         {
-            Html(r.Ctx, 403, "Código inválido ou expirado. Escaneie o QR code novamente.");
+            Html(r.Ctx, 403, lang, I18n.T(lang, "server.codeInvalid"));
             return;
         }
         int maxAge = _cfg.SessionDays * 86400;
         r.Ctx.Response.Headers.Add("Set-Cookie", AuthManager.CookieName + "=" + token + "; Path=/; Max-Age=" + maxAge + "; HttpOnly; SameSite=Strict");
         // Not a 302: after a cross-site navigation (camera app) browsers would omit the Strict cookie on the
         // redirected request. A same-origin refresh is a same-site navigation, so the cookie is sent.
-        Html(r.Ctx, 200, "Pareado! Abrindo o painel…", "<meta http-equiv=refresh content='1;url=/'>");
+        Html(r.Ctx, 200, lang, I18n.T(lang, "server.paired"), "<meta http-equiv=refresh content='1;url=/'>");
     }
 
     bool PairApi(Req r)
@@ -287,14 +307,14 @@ sealed class WebServer
         }
         if (r.Method == "POST" && r.Path == "/api/pair/revoke")
         {
-            if (!SameOriginPost(r)) { WriteJson(r.Ctx, 403, Error("Origem inválida.")); return true; }
+            if (!SameOriginPost(r)) { WriteJson(r.Ctx, 403, Error("err.origin")); return true; }
             var body = ReadBody(r);
             string id = Json.GetString(body, "id", null);
             if (id == "*") _auth.RevokeAll(); else _auth.RevokeById(id);
             WriteJson(r.Ctx, 200, new Dictionary<string, object> { { "ok", true } });
             return true;
         }
-        WriteJson(r.Ctx, 404, Error("Rota inexistente."));
+        WriteJson(r.Ctx, 404, Error("err.route"));
         return true;
     }
 
@@ -352,7 +372,7 @@ sealed class WebServer
         // Nothing has been written yet, so the status can still change.
         resp.SendChunked = false;
         resp.Headers["Retry-After"] = "10";
-        WriteJson(r.Ctx, 503, Error("Conexões demais com o painel ao mesmo tempo: feche alguma aba ou aparelho."));
+        WriteJson(r.Ctx, 503, Error("err.tooManyStreams"));
         return true;
     }
 
@@ -360,7 +380,7 @@ sealed class WebServer
 
     Dictionary<string, object> ReadBody(Req r)
     {
-        if (r.Ctx.Request.ContentLength64 > 64 * 1024) throw new ArgumentException("Corpo grande demais.");
+        if (r.Ctx.Request.ContentLength64 > 64 * 1024) throw new UserError("err.bodyTooLarge");
         using (var reader = new StreamReader(r.Ctx.Request.InputStream, Encoding.UTF8))
             return Json.ParseObject(reader.ReadToEnd());
     }
@@ -406,9 +426,9 @@ sealed class WebServer
         ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
     }
 
-    static void Html(HttpListenerContext ctx, int status, string message, string head = "")
+    static void Html(HttpListenerContext ctx, int status, string lang, string message, string head = "")
     {
-        string html = "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>" + head +
+        string html = "<!doctype html><html lang=" + lang + "><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>" + head +
             "<link rel=stylesheet href=/style.css><main class=locked><h1>FanPilot</h1><p>" + WebUtility.HtmlEncode(message) + "</p></main>";
         var bytes = Encoding.UTF8.GetBytes(html);
         ctx.Response.StatusCode = status;

@@ -29,18 +29,18 @@ sealed class FanMeta
     public static FanMeta Parse(Dictionary<string, object> d, string title)
     {
         string label = (Json.GetString(d, "label", null) ?? "").Trim();
-        if (label.Length > MaxLabelLength) throw new ArgumentException("O nome pode ter até " + MaxLabelLength + " caracteres.");
-        if (label.Any(char.IsControl)) throw new ArgumentException("O nome não pode ter quebras de linha nem tabulações.");
+        if (label.Length > MaxLabelLength) throw new UserError("err.meta.labelLength", "n", MaxLabelLength);
+        if (label.Any(char.IsControl)) throw new UserError("err.meta.labelControl");
         var m = new FanMeta {
             Label = label.Length == 0 ? null : label,
             Role = Json.GetString(d, "role", Default(title).Role),
             PumpPolicy = Json.GetString(d, "pumpPolicy", "full"),
             PumpMinPercent = Json.GetInt(d, "pumpMinPercent", DefaultPumpMinPercent)
         };
-        if (m.Role != "fan" && m.Role != "pump") throw new ArgumentException("Função inválida: use fan ou pump.");
-        if (m.PumpPolicy != "full" && m.PumpPolicy != "min") throw new ArgumentException("Proteção da bomba inválida: use full ou min.");
+        if (m.Role != "fan" && m.Role != "pump") throw new UserError("err.meta.role");
+        if (m.PumpPolicy != "full" && m.PumpPolicy != "min") throw new UserError("err.meta.pumpPolicy");
         if (m.PumpMinPercent < LowestPumpMinPercent || m.PumpMinPercent > 100)
-            throw new ArgumentException("O mínimo da bomba vai de " + LowestPumpMinPercent + "% a 100%.");
+            throw new UserError("err.meta.pumpMin", "min", LowestPumpMinPercent);
         return m;
     }
 

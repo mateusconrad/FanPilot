@@ -67,7 +67,8 @@ sealed class FakeBoard : IBoard
             case "worst": return Worst();
             // Monitoring only: no header FanPilot can control.
             case "unsupported": return new FakeBoard(0) { Animated = true };
-            case "down": return new FakeBoard(4) { DownReason = "EasyTuneEngineService indisponível: Falha ao se conectar a uma porta de IPC" };
+            // What Windows says when the GCC's service is down (in the PC's language), wrapped as GigabyteBridge does.
+            case "down": return new FakeBoard(4) { DownReason = "Falha ao se conectar a uma porta de IPC" };
             // LibreHardwareMonitor: FanPilot runs the curves, and every header starts on the BIOS.
             case "lhm": return new FakeBoard(4, hardwareCurves: false) { Animated = true };
             // The demo board taking 4 s to open, as the Gigabyte service can: a panel meets FanPilot still starting.
@@ -134,13 +135,13 @@ sealed class FakeBoard : IBoard
     }
 
     // What ControlProblems() reports; the tests set it.
-    public readonly List<string> Problems = new List<string>();
+    public readonly List<Msg> Problems = new List<Msg>();
 
-    public List<string> ControlProblems() { lock (_sync) return Problems.ToList(); }
+    public List<Msg> ControlProblems() { lock (_sync) return Problems.ToList(); }
 
-    public string BackendName { get { return "Placa de teste"; } }
+    public string BackendName { get { return "Test board"; } }
     public bool HardwareCurves { get; private set; }
-    public string Notice { get; set; }
+    public Msg Notice { get; set; }
     public bool FanControlSupported { get { lock (_sync) return Headers.Count > 0; } }
     public string[] TempInputTitles { get; set; }
 
@@ -165,7 +166,7 @@ sealed class FakeBoard : IBoard
             list.Add(new SensorReading { Id = "voltage-fake-0", Type = "Voltage", Title = "VCore", Value = 1.104, Unit = "V" });
             int cpu = Array.IndexOf(TempInputTitles, "CPU");
             double? package = PackageAbove.HasValue && cpu >= 0 ? Math.Round(temps[cpu] + PackageAbove.Value, 1) : (double?)null;
-            CpuRoles.Assign(list, package, HardwareCurves, "Instale o PawnIO (pawnio.eu) para ver a temperatura dos núcleos.");
+            CpuRoles.Assign(list, package, HardwareCurves, new Msg("cpu.hint.pawnio"));
             return list;
         }
     }
@@ -258,7 +259,7 @@ sealed class FakeBoard : IBoard
 
     void Fail()
     {
-        if (DownReason != null) throw new InvalidOperationException(DownReason);
+        if (DownReason != null) throw new Unavailable(new Msg("board.serviceDown", "service", "EasyTuneEngineService", "detail", DownReason), null);
         if (NextFailure == null) return;
         var ex = NextFailure;
         NextFailure = null;

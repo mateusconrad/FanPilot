@@ -171,8 +171,7 @@ sealed class FanManager
             Log.Info("Saved original fan curves to " + _backupPath);
         }
         if (missing.Count > 0)
-            AppNotices.Add("Sem a curva original de " + string.Join(", ", missing) + ": o backup se perdeu enquanto o FanPilot controlava " +
-                           (missing.Count > 1 ? "esses fans" : "esse fan") + ". \"Restaurar original\" fica indisponível para " + (missing.Count > 1 ? "eles." : "ele."));
+            AppNotices.Add(new Msg("notice.backupLost", "fans", string.Join(", ", missing), "count", missing.Count));
     }
 
     static string KeyOf(FanCurve c) { return c.Key ?? "index:" + c.Index; }
@@ -186,7 +185,7 @@ sealed class FanManager
     string KeyAt(int index)
     {
         EnsureLoaded();
-        if (index < 0 || index >= _keys.Length) throw new ArgumentException("Fan inexistente.");
+        if (index < 0 || index >= _keys.Length) throw new UserError("err.fanMissing");
         return _keys[index];
     }
 
@@ -200,7 +199,7 @@ sealed class FanManager
         if (on == TurboActive) return;
         EnsureLoaded();
         int n = _keys.Length;
-        if (on && n == 0) throw new ArgumentException("Esta placa-mãe não oferece controle de fans pelo FanPilot.");
+        if (on && n == 0) throw new UserError("err.noFanControl");
         if (on)
         {
             lock (_sync)
@@ -229,9 +228,9 @@ sealed class FanManager
     {
         lock (_opLock)
         {
-            if (mode != "custom" && !FanPresets.IsProfile(mode)) throw new ArgumentException("Modo inválido: use custom ou profile:quiet, profile:standard, profile:performance.");
+            if (mode != "custom" && !FanPresets.IsProfile(mode)) throw new UserError("err.globalMode");
             EnsureLoaded();
-            if (_keys.Length == 0) throw new ArgumentException("Esta placa-mãe não oferece controle de fans pelo FanPilot.");
+            if (_keys.Length == 0) throw new UserError("err.noFanControl");
             bool turbo;
             lock (_sync)
             {
@@ -319,7 +318,7 @@ sealed class FanManager
 
     static void EnsureNotTurbo(bool turbo)
     {
-        if (turbo) throw new ArgumentException("Desligue o Turbo para ajustar um fan individualmente.");
+        if (turbo) throw new UserError("err.turboOn");
     }
 
     public void Start()
@@ -362,7 +361,7 @@ sealed class FanManager
             { "backend", _bridge.BackendName },
             // false: FanPilot runs the curves; the panel explains that closing it hands the fans to the BIOS.
             { "hardwareCurves", _bridge.HardwareCurves },
-            { "notice", _bridge.Notice },
+            { "notice", _bridge.Notice == null ? null : _bridge.Notice.ToJson() },
             { "board", MachineData.Board },
             { "fans", fans },
             // Saved for a header this board no longer has: the panel offers to discard them.
@@ -427,7 +426,7 @@ sealed class FanManager
         int pointCount = PointCountFor(key, current);
         string mode = Json.GetString(request, "mode", "");
         int tempInput = Json.GetInt(request, "tempInput", current.TempInput);
-        if (tempInput < 0 || tempInput >= _bridge.TempInputTitles.Length) throw new ArgumentException("Sensor de temperatura inválido.");
+        if (tempInput < 0 || tempInput >= _bridge.TempInputTitles.Length) throw new UserError("err.tempInput");
         // A pump's protection holds for every request (editor, Turbo, profiles, re-applying): "full" is 100% whatever
         // was asked, "min" raises the floor.
         FanMeta meta;
@@ -451,13 +450,13 @@ sealed class FanManager
             curve.Points.Add(new[] { (double)_cfg.FixedModeSafetyTemp, 255.0 });
             return curve;
         }
-        if (mode != "curve") throw new ArgumentException("Modo inválido.");
+        if (mode != "curve") throw new UserError("err.mode");
 
         curve.Mode = Json.GetString(request, "style", "SmartFanMode") == "StairStepMode" ? "StairStepMode" : "SmartFanMode";
         curve.Response = Json.GetString(request, "response", SoftwareCurveEngine.DefaultResponse);
-        if (!SoftwareCurveEngine.Responses.ContainsKey(curve.Response)) throw new ArgumentException("Resposta inválida: use fast, balanced ou smooth.");
+        if (!SoftwareCurveEngine.Responses.ContainsKey(curve.Response)) throw new UserError("err.response");
         var raw = Json.ToList(Json.Get(request, "points"));
-        if (raw.Count != pointCount) throw new ArgumentException("A curva deste fan precisa de exatamente " + pointCount + " pontos.");
+        if (raw.Count != pointCount) throw new UserError("err.curve.points", "n", pointCount);
         double prevT = -1, prevPwm = 0;
         for (int i = 0; i < raw.Count; i++)
         {
@@ -465,8 +464,8 @@ sealed class FanManager
             double t = Math.Round(Json.ToDouble(xy[0]));
             double pct = Json.ToDouble(xy[1]);
             if (i == 0) t = 0;                                  // never let the chip switch the fan off
-            if (t <= prevT) throw new ArgumentException("As temperaturas da curva precisam ser crescentes.");
-            if (t > _cfg.MaxFullSpeedTemp) throw new ArgumentException("Temperatura máxima permitida na curva: " + _cfg.MaxFullSpeedTemp + " °C.");
+            if (t <= prevT) throw new UserError("err.curve.increasing");
+            if (t > _cfg.MaxFullSpeedTemp) throw new UserError("err.curve.maxTemp", "max", _cfg.MaxFullSpeedTemp);
             double pwm = i == raw.Count - 1 ? 255 : Math.Round(Math.Max(0, Math.Min(100, pct)) * 2.55);
             pwm = Math.Max(pwm, Math.Max(minPwm, prevPwm));    // floor + monotonic: hotter never means slower
             curve.Points.Add(new[] { t, pwm });
@@ -492,7 +491,7 @@ sealed class FanManager
         FanCurve original;
         lock (_sync)
         {
-            if (!_backup.TryGetValue(key, out original)) throw new ArgumentException("Sem backup para este fan.");
+            if (!_backup.TryGetValue(key, out original)) throw new UserError("err.noBackup");
         }
         var result = _bridge.SetCurve(At(original, index));
         lock (_sync) { _desired.Remove(key); SaveDesired(); }
@@ -514,7 +513,7 @@ sealed class FanManager
             lock (_sync)
             {
                 before = MetaFor(key, title);
-                if (!meta.SameProtection(before) && _turbo) throw new ArgumentException("Desligue o Turbo para mudar a função ou a proteção da bomba.");
+                if (!meta.SameProtection(before) && _turbo) throw new UserError("err.turboPump");
                 _meta[key] = meta.ToDictionary();
                 SaveMeta();
                 _desired.TryGetValue(key, out desired);
@@ -538,8 +537,8 @@ sealed class FanManager
             EnsureLoaded();
             lock (_sync)
             {
-                if (Array.IndexOf(_keys, key) >= 0) throw new ArgumentException("Esse fan existe nesta placa: use \"Restaurar original\" nele.");
-                if (!_desired.Remove(key)) throw new ArgumentException("Configuração não encontrada.");
+                if (Array.IndexOf(_keys, key) >= 0) throw new UserError("err.orphan.exists");
+                if (!_desired.Remove(key)) throw new UserError("err.orphan.missing");
                 _personal.Remove(key);
                 SaveDesired();
                 SaveMode();

@@ -35,6 +35,8 @@
 
   <ItemGroup>
     <Content Include="..\wwwroot\**" LinkBase="wwwroot" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The panel's dictionaries are also the exe's (I18n.cs): inside it, so the console and the reports never miss them. -->
+    <EmbeddedResource Include="..\wwwroot\i18n\*.json" LogicalName="i18n.%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- MSBuild only redirects the version conflicts it sees at build time. Gigabyte's assemblies are loaded at runtime

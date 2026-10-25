@@ -36,10 +36,10 @@ sealed class GigabyteBridge : IBoard
 
     public string BackendName { get { return "Gigabyte Control Center"; } }
     public bool HardwareCurves { get { return true; } }
-    public string Notice { get { return FanControlSupported ? null : "Esta placa-mãe não expõe o controle de fans de 3ª geração do GCC."; } }
+    public Msg Notice { get { return FanControlSupported ? null : new Msg("board.noGen3"); } }
 
     // The curves run in the chip: there is nothing FanPilot hands back on its own.
-    public List<string> ControlProblems() { return new List<string>(); }
+    public List<Msg> ControlProblems() { return new List<Msg>(); }
     // Curves live in the chip, nothing to hand back.
     public void Shutdown() { _cpu.Close(); }
 
@@ -67,7 +67,7 @@ sealed class GigabyteBridge : IBoard
                 }
             }
             LastError = last.Message;
-            throw new InvalidOperationException("EasyTuneEngineService indisponível: " + last.Message, last);
+            throw new Unavailable(new Msg("board.serviceDown", "service", "EasyTuneEngineService", "detail", last.Message), last);
         }
     }
 
@@ -174,13 +174,13 @@ sealed class GigabyteBridge : IBoard
     public FanCurve SetCurve(FanCurve curve)
     {
         if (curve.Points.Count < 3 || Math.Round(curve.Points[curve.Points.Count - 1][1]) != 255)
-            throw new ArgumentException("A curva precisa de >= 3 pontos e o último ponto em 255.");
+            throw new UserError("err.curve.shape");
         string mode = curve.Mode == "StairStepMode" ? "StairStepMode" : "SmartFanMode";
 
         Invoke(() =>
         {
             if (_api.GetTemperatureInput(_fan, curve.Index) != curve.TempInput && !_api.SetTemperatureInput(_fan, curve.Index, curve.TempInput))
-                throw new InvalidOperationException("O serviço recusou a troca do sensor de temperatura.");
+                throw new Unavailable("board.tempInputRefused");
             _api.SetCurve(_fan, curve.Index, mode, curve.DeltaT, curve.Points);
             return 0;
         });

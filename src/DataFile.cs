@@ -40,8 +40,8 @@ static class DataFile
         string aside = MoveAside(path);
         string ignored;
         var previous = File.Exists(path + ".bak") ? TryParse(path + ".bak", out ignored) : null;
-        AppNotices.Add(Path.GetFileName(path) + " estava ilegível (" + problem + ") e foi guardado como " + aside + "; " +
-                       (previous != null ? "usando a versão anterior." : "o FanPilot começou sem ele."));
+        AppNotices.Add(new Msg(previous != null ? "notice.fileUnreadable.previous" : "notice.fileUnreadable.fresh",
+                               "file", Path.GetFileName(path), "problem", problem, "aside", aside));
         return previous;
     }
 

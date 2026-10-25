@@ -60,7 +60,7 @@ sealed class FanPilotHost
             return 3;
         }
         Log.Info("Placa-mãe via " + bridge.BackendName + (bridge.HardwareCurves ? " (curvas no chip)" : " (curvas executadas pelo FanPilot)"));
-        if (bridge.Notice != null) Log.Warn(bridge.Notice);
+        if (bridge.Notice != null) Log.Warn(bridge.Notice.Text);
 
         var gpu = _openGpu();
         var fans = new FanManager(bridge, _cfg, _dataDir);

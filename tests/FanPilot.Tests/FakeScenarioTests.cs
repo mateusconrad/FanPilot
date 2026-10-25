@@ -43,17 +43,18 @@ public class FakeScenarioTests
         Assert.NotEmpty(b.ReadSensors());
         var gpu = FakeGpu.Scenario("unsupported", 83);
         Assert.Equal(false, gpu.Read()["ok"]);
-        Assert.Throws<InvalidOperationException>(() => gpu.SetFixed(50));
+        Assert.Equal("gpu.unavailableWhy", Assert.Throws<Unavailable>(() => gpu.SetFixed(50)).Msg.Key);
     }
 
     [Fact]
     public void DownBoardFailsEveryCallLikeTheStoppedService()
     {
         var b = FakeBoard.Scenario("down");
-        var ex = Assert.Throws<InvalidOperationException>(() => b.ReadSensors());
-        Assert.StartsWith("EasyTuneEngineService indisponível", ex.Message);
+        var ex = Assert.Throws<Unavailable>(() => b.ReadSensors());
+        Assert.StartsWith("EasyTuneEngineService indisponível", ex.Msg.In(I18n.Portuguese));
+        Assert.StartsWith("EasyTuneEngineService unavailable", ex.Message);
         // Not a one-off failure: the next call fails the same way.
-        Assert.Throws<InvalidOperationException>(() => b.GetCurves());
+        Assert.Throws<Unavailable>(() => b.GetCurves());
     }
 
     [Fact]

@@ -24,14 +24,14 @@ test('mostra temperaturas, fans, gráficos e sensores', async ({ page }) => {
   await expect(page.locator('#chart path.series')).toHaveCount(2);
   await expect(page.locator('#rpmChart path.series')).toHaveCount(2);
   await expect(page.locator('#rpmNote')).toHaveText('Sem leitura de RPM (0): CPU, System 3 — não aparecem no gráfico.');
-  await expect(page.locator('#gpuName')).toHaveText('GPU de teste');
+  await expect(page.locator('#gpuName')).toHaveText('Test GPU');
 
   await page.locator('summary', { hasText: 'Todos os sensores' }).click();
   await expect(page.locator('#sensorTable tr.group')).toHaveText(['Temperaturas', 'Fans', 'Tensões', 'Clocks', 'Potência']);
   await expect(page.locator('#sensorTable')).toContainText('VCore');
   await expect(page.locator('#sensorTable')).toContainText('CPU · pacote');
   await expect(page.locator('#sensorTable')).toContainText('CPU · socket');
-  await expect(page.locator('#appVersion')).toHaveText(/^FanPilot \d+\.\d+\.\d+(\+[0-9a-f]{7})? · Placa de teste$/);
+  await expect(page.locator('#appVersion')).toHaveText(/^FanPilot \d+\.\d+\.\d+(\+[0-9a-f]{7})? · Test board$/);
 });
 
 test('Turbo põe todos os fans em 100% e desligar devolve o que estava', async ({ page }) => {

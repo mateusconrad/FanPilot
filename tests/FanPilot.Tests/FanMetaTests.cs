@@ -168,7 +168,7 @@ public sealed class FanMetaTests : IDisposable
     public void InvalidMetaIsRefused(string label, string role, string policy, int? min)
     {
         var m = Manager(Worst());
-        Assert.Throws<ArgumentException>(() => m.SetMeta(2, Meta(label, role, policy, min)));
+        Assert.Throws<UserError>(() => m.SetMeta(2, Meta(label, role, policy, min)));
     }
 
     [Fact]
@@ -176,7 +176,7 @@ public sealed class FanMetaTests : IDisposable
     {
         var m = Manager(Worst());
         m.SetTurbo(true);
-        var ex = Assert.Throws<ArgumentException>(() => m.SetMeta(2, Meta(role: "pump")));
+        var ex = Assert.Throws<UserError>(() => m.SetMeta(2, Meta(role: "pump")));
         Assert.Contains("Turbo", ex.Message);
         m.SetMeta(2, Meta(label: "Frente")); // a name is fine
     }

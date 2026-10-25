@@ -8,15 +8,17 @@ static class FanPresets
 {
     sealed class Preset
     {
-        public string Name;
+        public string Key;
         public int[][] Points;
+        // The name in English; the panel translates "preset.<key>".
+        public string Name { get { return I18n.T(I18n.English, "preset." + Key); } }
     }
 
     static readonly Dictionary<string, Preset> All = new Dictionary<string, Preset> {
-        { "quiet", new Preset { Name = "Silencioso", Points = new[] { new[] { 0, 25 }, new[] { 40, 25 }, new[] { 50, 30 }, new[] { 60, 40 }, new[] { 65, 50 }, new[] { 70, 65 }, new[] { 75, 80 }, new[] { 85, 100 } } } },
-        { "standard", new Preset { Name = "Padrão", Points = new[] { new[] { 0, 30 }, new[] { 35, 30 }, new[] { 45, 40 }, new[] { 55, 55 }, new[] { 62, 65 }, new[] { 68, 75 }, new[] { 74, 85 }, new[] { 82, 100 } } } },
-        { "performance", new Preset { Name = "Performance", Points = new[] { new[] { 0, 45 }, new[] { 30, 45 }, new[] { 40, 55 }, new[] { 50, 70 }, new[] { 58, 80 }, new[] { 64, 90 }, new[] { 70, 95 }, new[] { 78, 100 } } } },
-        { "max", new Preset { Name = "Máximo", Points = new[] { new[] { 0, 100 }, new[] { 20, 100 }, new[] { 30, 100 }, new[] { 40, 100 }, new[] { 50, 100 }, new[] { 60, 100 }, new[] { 70, 100 }, new[] { 80, 100 } } } },
+        { "quiet", new Preset { Key = "quiet", Points = new[] { new[] { 0, 25 }, new[] { 40, 25 }, new[] { 50, 30 }, new[] { 60, 40 }, new[] { 65, 50 }, new[] { 70, 65 }, new[] { 75, 80 }, new[] { 85, 100 } } } },
+        { "standard", new Preset { Key = "standard", Points = new[] { new[] { 0, 30 }, new[] { 35, 30 }, new[] { 45, 40 }, new[] { 55, 55 }, new[] { 62, 65 }, new[] { 68, 75 }, new[] { 74, 85 }, new[] { 82, 100 } } } },
+        { "performance", new Preset { Key = "performance", Points = new[] { new[] { 0, 45 }, new[] { 30, 45 }, new[] { 40, 55 }, new[] { 50, 70 }, new[] { 58, 80 }, new[] { 64, 90 }, new[] { 70, 95 }, new[] { 78, 100 } } } },
+        { "max", new Preset { Key = "max", Points = new[] { new[] { 0, 100 }, new[] { 20, 100 }, new[] { 30, 100 }, new[] { 40, 100 }, new[] { 50, 100 }, new[] { 60, 100 }, new[] { 70, 100 }, new[] { 80, 100 } } } },
     };
 
     // The global modes that are profiles ("Máximo" is the Turbo's job).
@@ -29,7 +31,7 @@ static class FanPresets
 
     public static string NameOf(string preset) { return All[preset].Name; }
 
-    // For /api/fans: { "quiet": { "name": "Silencioso", "points": [[0,25], ...] }, ... }, in the panel's order.
+    // For /api/fans: { "quiet": { "name": "Quiet", "points": [[0,25], ...] }, ... }, in the panel's order.
     public static Dictionary<string, object> Describe()
     {
         return All.ToDictionary(kv => kv.Key, kv => (object)new Dictionary<string, object> {
