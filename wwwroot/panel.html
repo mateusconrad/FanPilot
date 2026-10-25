@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d0d0d">
+  <meta name="color-scheme" content="dark light">
+  <title data-i18n-title="panel.pageTitle">FanPilot</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/panel.css">
+</head>
+<!-- Panel mode (item 22): read only, full screen. Every word comes from wwwroot/i18n: see js/i18n.mjs. -->
+<body class="dash">
+  <main class="dash-main" id="dash">
+    <section class="dash-tile" id="cpuTile">
+      <div class="dash-label" id="cpuLabel">CPU</div>
+      <div class="dash-value"><span id="cpuTemp">–</span><small>°C</small></div>
+      <div class="dash-sub" id="cpuSub"></div>
+    </section>
+    <section class="dash-tile" id="gpuTile">
+      <div class="dash-label" id="gpuLabel">GPU</div>
+      <div class="dash-value"><span id="gpuTemp">–</span><small>°C</small></div>
+      <div class="dash-sub" id="gpuSub"></div>
+    </section>
+    <section class="dash-chart">
+      <div class="dash-legend"><span class="cpu">CPU</span><span class="gpu">GPU</span></div>
+      <svg id="dashChart" viewBox="0 0 600 200" preserveAspectRatio="none" role="img" data-i18n-attr="aria-label:chart.temp.aria">
+        <path class="cpu" id="cpuLine"></path>
+        <path class="gpu" id="gpuLine"></path>
+      </svg>
+      <span class="dash-axis hi" id="axisTop"></span>
+      <span class="dash-axis lo" id="axisBottom"></span>
+    </section>
+    <section class="dash-fans" id="dashFans" aria-live="off"></section>
+  </main>
+  <span class="dash-status" id="dashStatus" role="status"><span class="dot" id="statusDot"></span><span class="sr-only" id="statusText" data-i18n="status.connecting"></span></span>
+  <nav class="dash-bar" id="dashBar" data-i18n-attr="aria-label:panel.bar.aria">
+    <button class="btn" id="fullBtn" data-i18n="panel.fullscreen"></button>
+    <button class="btn" id="awakeBtn" aria-pressed="false" data-i18n="panel.keepAwake"></button>
+    <a class="btn" href="/" data-i18n="panel.back"></a>
+    <span class="dash-hint" id="awakeHint" role="status"></span>
+  </nav>
+  <script type="module" src="/panel.js"></script>
+</body>
+</html>

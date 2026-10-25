@@ -94,6 +94,15 @@ No celular (mesma rede Wi-Fi): escaneie o QR da página `/pair`. O código vale 
 o aparelho fica pareado por 30 dias de inatividade. A página `/pair` (só acessível no próprio PC) lista e
 despareia aparelhos.
 
+**Modo painel** (`/panel` ou `/painel`, o link "Modo painel" no rodapé do painel): uma tela só de leitura, em tela
+cheia, para um celular ou tablet velho ao lado do monitor ou uma telinha dentro do gabinete — as temperaturas de CPU e
+GPU em letras grandes, potências, o uso da GPU, o RPM de cada fan e um minigráfico, com um layout para cada formato de
+tela (inclusive as telas de gabinete de 800×480 e 1280×400). Nada nela mexe em fan. Os botões aparecem por alguns
+segundos depois de um toque: tela cheia e "Manter a tela ligada" (a Wake Lock API quando o navegador oferece; senão,
+um vídeo mudo em loop, que é o que funciona no HTTP sem criptografia da rede local). Para telas fixas:
+`/painel?escala=1.3&tema=claro` (`tema=auto` segue o aparelho; o padrão é escuro). Em telas OLED, tudo se desloca alguns
+pixels a cada 3 minutos.
+
 ## Versões e releases
 
 - **Baixar:** cada versão sai na página [Releases](https://github.com/mateusconrad/FanPilot/releases) como

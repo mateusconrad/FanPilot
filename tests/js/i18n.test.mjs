@@ -48,12 +48,12 @@ test('parâmetros, números e plurais', () => {
 function usedKeys() {
   const namespaces = new Set(Object.keys(dicts.en).map((k) => k.split('.')[0]));
   const keys = new Set();
-  for (const file of ['wwwroot/app.js', 'wwwroot/pair.js', 'wwwroot/locked.js']) {
+  for (const file of ['wwwroot/app.js', 'wwwroot/pair.js', 'wwwroot/locked.js', 'wwwroot/panel.js']) {
     const src = read(file);
     for (const m of src.matchAll(/\b(?:t|tr)\(\s*'([\w.]+)'/g)) keys.add(m[1]);
     for (const m of src.matchAll(/'([a-z]\w*(?:\.\w+)+)'/g)) if (namespaces.has(m[1].split('.')[0])) keys.add(m[1]);
   }
-  for (const file of ['wwwroot/index.html', 'wwwroot/pair.html', 'wwwroot/locked.html']) {
+  for (const file of ['wwwroot/index.html', 'wwwroot/pair.html', 'wwwroot/locked.html', 'wwwroot/panel.html']) {
     const html = read(file);
     for (const m of html.matchAll(/data-i18n(?:-title)?="([\w.]+)"/g)) keys.add(m[1]);
     for (const m of html.matchAll(/data-i18n-attr="([^"]+)"/g)) for (const pair of m[1].split(';')) keys.add(pair.split(':')[1].trim());
@@ -90,10 +90,10 @@ test('toda chave usada pelo FanPilot.exe existe nos dois idiomas', async () => {
 });
 
 // What may stay in the HTML as it is: names, units and symbols, the same in any language.
-const FIXED = new Set(['FanPilot', 'CPU', 'GPU', 'CPU (°C)', 'GPU (°C)', '°C', '%', '−', '+', '50%', '&#x25C0;&#xFE0E;', '&#x25B6;&#xFE0E;']);
+const FIXED = new Set(['FanPilot', 'CPU', 'GPU', 'CPU (°C)', 'GPU (°C)', '°C', '%', '−', '+', '–', '50%', '&#x25C0;&#xFE0E;', '&#x25B6;&#xFE0E;']);
 
 test('nenhum texto visível fixo no HTML das páginas', () => {
-  for (const file of ['wwwroot/index.html', 'wwwroot/pair.html', 'wwwroot/locked.html']) {
+  for (const file of ['wwwroot/index.html', 'wwwroot/pair.html', 'wwwroot/locked.html', 'wwwroot/panel.html']) {
     const html = read(file).replace(/<!--[\s\S]*?-->/g, '').replace(/<(script|style)[\s\S]*?<\/\1>/g, '');
     const texts = html.split(/<[^>]*>/).map((s) => s.trim()).filter(Boolean);
     assert.deepEqual(texts.filter((s) => !FIXED.has(s)), [], `texto fixo em ${file}`);

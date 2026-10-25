@@ -199,6 +199,17 @@
   "sensors.group.Frequency": "Clocks",
   "sensors.group.Power": "Potência",
 
+  "panel.pageTitle": "FanPilot · modo painel",
+  "panel.link": "Modo painel",
+  "panel.bar.aria": "Opções do modo painel",
+  "panel.fullscreen": "Tela cheia",
+  "panel.exitFullscreen": "Sair da tela cheia",
+  "panel.keepAwake": "Manter a tela ligada",
+  "panel.awake.on": "A tela não vai apagar enquanto esta página estiver aberta.",
+  "panel.awake.video": "Tela mantida ligada por um vídeo mudo: sem HTTPS, o navegador não oferece outro jeito. Se apagar mesmo assim, configure o aparelho para não apagar a tela.",
+  "panel.awake.failed": "O navegador não deixou manter a tela ligada: configure o aparelho para não apagar a tela.",
+  "panel.back": "Voltar ao painel",
+
   "pair.pageTitle": "FanPilot · parear",
   "pair.title": "Parear celular",
   "pair.openPanel": "Abrir painel aqui",

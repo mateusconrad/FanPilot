@@ -229,5 +229,7 @@ public sealed class WebServerTests : IDisposable
         Assert.Equal(401, RawHttp.Send(_port, "GET", "/api/fans", host: lan + ":" + _port).Status);
         // The locked page (locked.html), not the panel: its words come from the dictionaries, so look for its script.
         Assert.Contains("/locked.js", RawHttp.Send(_port, "GET", "/", host: lan + ":" + _port).Body);
+        // Panel mode too (item 22): read only, but the readings are still behind the pairing.
+        Assert.Contains("/locked.js", RawHttp.Send(_port, "GET", "/panel", host: lan + ":" + _port).Body);
     }
 }
