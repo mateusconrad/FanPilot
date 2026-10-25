@@ -51,6 +51,9 @@ dotnet build src\FanPilot.csproj -c Debug; cd tests\e2e; npm ci; npx playwright 
 .\bin\FanPilot.exe --version    # versão e commit, ex.: FanPilot 0.1.0+1a2b3c4
 .\bin\FanPilot.exe --diagnose   # relatório só de leitura da placa (para placas ainda não testadas)
 .\bin\FanPilot.exe --hardware-test [--fan N]   # (FanPilot fechado) roteiro de verificação na placa real, ~2 min
+.\bin\FanPilot.exe --data <pasta>              # dados em outra pasta (padrão: data\ ao lado do exe)
+.\bin\FanPilot.exe --service --data <pasta>    # modo serviço do Windows; o instalador (em preparação) o registra
+.\bin\FanPilot.exe --import-data <pasta antiga> --data <pasta>   # (FanPilot fechado) traz curvas, pareamentos e nomes
 ```
 
 Compilar exige o [.NET SDK 8](https://dotnet.microsoft.com/download/dotnet/8.0): o `global.json` fixa a versão, para

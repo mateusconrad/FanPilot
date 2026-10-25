@@ -27,6 +27,11 @@ Primeira versão publicada (será a 0.1.0).
 - `FanPilot.exe --diagnose`: relatório só de leitura para placas ainda não testadas, com a versão do GCC e se ela é
   compatível. Sai sem números de série nem UUIDs, pronto para anexar numa issue, e começa com o link do formulário
   de relato já preenchido.
+- Modo serviço do Windows (`--service`), com os dados em outra pasta (`--data`) e a importação de uma instalação
+  portátil (`--import-data`): a base do instalador. Como serviço, a pasta de dados fica só para o sistema e os
+  Administradores, e avisos e erros vão também para o log de eventos.
+- Nas placas em que o FanPilot executa as curvas, a partida devolve todos os fans à BIOS antes de reaplicar as curvas
+  salvas: um FanPilot que caiu não deixa uma velocidade velha para trás.
 - Um nome seu para cada fan, mostrado no painel e nos gráficos com o original ao lado.
 - Bombas de watercooler reconhecidas pelo nome (ou marcadas no editor) e protegidas: sempre 100% ou uma velocidade
   mínima, valendo para o editor, o Turbo e as curvas salvas.
