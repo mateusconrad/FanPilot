@@ -1,54 +1,56 @@
-name: Problema
-description: Algo no FanPilot não funciona como deveria.
+name: Problem (problema)
+description: Something in FanPilot doesn't work as it should. / Algo no FanPilot não funciona como deveria.
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Se for a primeira vez numa placa que não é a B760M GAMING X AX, use o **relato de compatibilidade**: ele já pede o que ajuda a entender a placa.
-        Antes de anexar o log, confira se ele não tem nada que você prefira não publicar.
+        If it's the first time on a board other than the B760M GAMING X AX, use the **compatibility report**: it already asks for what helps to understand the board.
+        Before attaching the log, check that it has nothing you'd rather not publish.
+
+        Pode responder em português.
   - type: textarea
     id: problema
     attributes:
-      label: O que aconteceu
-      description: E o que você esperava que acontecesse.
+      label: What happened (o que aconteceu)
+      description: And what you expected to happen.
     validations:
       required: true
   - type: textarea
     id: passos
     attributes:
-      label: Como reproduzir
+      label: How to reproduce (como reproduzir)
       placeholder: |
-        1. Abri o painel no celular
-        2. Toquei em System 1 › Fixo › 40% › Aplicar
+        1. Opened the panel on the phone
+        2. Tapped System 1 › Fixed › 40% › Apply
         3. …
   - type: input
     id: versao
     attributes:
-      label: Versão do FanPilot
-      description: Rodapé do painel, primeira linha do log ou `FanPilot.exe --version`.
+      label: FanPilot version (versão do FanPilot)
+      description: The panel's footer, the first line of the log or `FanPilot.exe --version`.
       placeholder: 0.1.0+1a2b3c4
     validations:
       required: true
   - type: input
     id: placa
     attributes:
-      label: Placa-mãe
+      label: Motherboard (placa-mãe)
       placeholder: Gigabyte Technology Co., Ltd. B760M GAMING X AX
     validations:
       required: true
   - type: dropdown
     id: caminho
     attributes:
-      label: Caminho usado pelo FanPilot
-      description: Aparece no rodapé do painel e no log ("Placa-mãe via …").
+      label: Path FanPilot used (caminho usado pelo FanPilot)
+      description: In the panel's footer and in the log ("Motherboard via …").
       options:
         - Gigabyte Control Center
         - LibreHardwareMonitor
-        - Não sei
+        - I don't know (não sei)
   - type: textarea
     id: log
     attributes:
       label: Log
-      description: Arraste aqui o `data\fanpilot.log`, ou cole as linhas em volta do problema.
+      description: Drag here `data\fanpilot.log`, or paste the lines around the problem.
       render: text

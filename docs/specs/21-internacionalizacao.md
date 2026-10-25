@@ -48,16 +48,33 @@ Painel e documentação em inglês e português, sem nenhuma regressão para que
   console soltas (já está rodando, opções inválidas, importação) e os relatórios do `--diagnose` (inclusive o marcador
   "(omitido)") e do `--hardware-test` seguem o idioma do Windows; os testes passam o idioma, já que o deste PC e o da CI
   são diferentes. Os nomes de arquivos e pastas em disco (`.corrompido-`, `outra-maquina-`, `diagnostico-`) não mudam.
-- **21d:** README em inglês com o `README.pt-BR.md`, formulários de issue em inglês com rótulos bilíngues.
+- **21d (feita):** `README.md` em inglês, com o `README.pt-BR.md` e a troca de idioma no topo de cada um; o guia de
+  teste também nos dois idiomas (`docs/TESTING-OTHER-BOARDS.md` e `docs/TESTANDO-OUTRAS-PLACAS.md`). A lista de
+  placas virou uma só, `docs/COMPATIBILITY.md` (a tabela é quase só dados), com um resumo em português. Os formulários
+  de issue estão em inglês com os rótulos em português entre parênteses; os nomes dos arquivos, os ids dos campos (o
+  link do `--diagnose` os preenche) e os labels do repositório não mudaram, e o título preenchido virou
+  "[Compatibility] <placa>".
+
+Ficaram em português, de propósito: o `CHANGELOG.md` (de onde saem as notas da release; decidir antes da `v0.1.0`),
+o `docs/REVERSE_ENGINEERING.md`, o roadmap e as specs (o planejamento do dono), e os nomes de arquivos e pastas em
+disco.
 
 ## Critérios de aceite
 
-- [ ] Navegador em inglês → painel inteiro em inglês. Em português → como hoje.
-- [ ] Nenhum texto visível fixo no `app.js`, no `index.html`, nos arquivos `pair.*` nem no `locked.html`.
-- [ ] Erros do backend aparecem traduzidos pelo código.
+- [x] Navegador em inglês → painel inteiro em inglês. Em português → como hoje (a suíte de ponta a ponta, toda em
+  português, passa sem mudar o que confere).
+- [x] Nenhum texto visível fixo no `app.js`, no `index.html`, nos arquivos `pair.*` nem no `locked.html` (o teste JS
+  confere o HTML; os nomes de idioma no seletor ficam cada um na própria língua).
+- [x] Erros do backend aparecem traduzidos pelo código.
 
 ## Testes
 
-- Automatizados: as duas línguas têm exatamente as mesmas chaves (teste JS), e todo código de erro do backend tem tradução.
-- Ponta a ponta (item 26): os fluxos principais nos dois idiomas.
-- Manuais: `tools/ui-mock` nos dois idiomas, em 320 px (os textos em inglês têm outro comprimento).
+- Automatizados: as duas línguas têm exatamente as mesmas chaves e os mesmos parâmetros, toda chave usada pelo painel e
+  pelo C# existe nas duas, e o HTML não tem texto fixo (`tests/js/i18n.test.mjs`); `I18nTests` (C#) cobre o
+  `Accept-Language`, parâmetros, plurais, mensagens dentro de mensagens e o formato da API; os testes que olhavam
+  textos agora conferem a chave e o texto nos dois idiomas, passando o idioma (o Windows deste PC e o da CI diferem).
+- Ponta a ponta (`tests/e2e/i18n.spec.mjs`): o painel, o editor, o pareamento e a página de bloqueio com o navegador em
+  inglês, sem nenhuma letra acentuada do português na tela; erros da API, um alerta de verdade, a dica do PawnIO e a
+  GPU indisponível em inglês; a troca manual guardada no aparelho. Screenshots em inglês a 320 px nas placas `demo` e
+  `worst`, sem nada mais largo que a tela.
+- Manuais: nenhum além do que já está no roteiro de hardware.

@@ -47,7 +47,7 @@ Primeira versão publicada (será a 0.1.0).
 - Bombas de watercooler reconhecidas pelo nome (ou marcadas no editor) e protegidas: sempre 100% ou uma velocidade
   mínima, valendo para o editor, o Turbo e as curvas salvas.
 - Formulários de relato de compatibilidade e de problemas no GitHub, e a lista das placas testadas
-  ([docs/COMPATIBILIDADE.md](docs/COMPATIBILIDADE.md)).
+  ([docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)).
 - `FanPilot.exe --hardware-test [--fan N]`: roteiro automático de verificação na placa real, que grava
   `data\hwtest-<data>.md` e devolve tudo como estava.
 - `FanPilot.exe --version`; a versão também aparece na primeira linha do log, no `--diagnose` e no rodapé do painel.
@@ -56,7 +56,8 @@ Primeira versão publicada (será a 0.1.0).
 - Painel em inglês e em português: o idioma segue o do navegador e pode ser trocado no rodapé (a escolha fica no
   aparelho); números e horas seguem o idioma. Erros, avisos e alertas do FanPilot também, e os alertas enviados ao ntfy
   e ao Telegram saem no idioma do painel em que foram configurados. O console, o `--diagnose` e o `--hardware-test`
-  seguem o idioma do Windows, e o log é sempre em inglês, para buscar uma mensagem em qualquer issue.
+  seguem o idioma do Windows, e o log é sempre em inglês, para buscar uma mensagem em qualquer issue. README e guia de
+  teste em inglês e em português, e formulários de issue em inglês com os rótulos em português.
 
 ### Segurança
 

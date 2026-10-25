@@ -12,7 +12,7 @@ Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
 if (Test-Path (Join-Path $work 'data')) { Remove-Item -Recurse -Force (Join-Path $work 'data') }
 New-Item -ItemType Directory -Force (Join-Path $work 'scripts') | Out-Null
 Copy-Item (Join-Path $root 'scripts\firewall.ps1'), (Join-Path $root 'scripts\autostart.ps1') (Join-Path $work 'scripts')
-Copy-Item (Join-Path $root 'LICENSE'), (Join-Path $root 'THIRD_PARTY_NOTICES.md'), (Join-Path $root 'README.md'), (Join-Path $root 'CHANGELOG.md') $work
+Copy-Item (Join-Path $root 'LICENSE'), (Join-Path $root 'THIRD_PARTY_NOTICES.md'), (Join-Path $root 'README.md'), (Join-Path $root 'README.pt-BR.md'), (Join-Path $root 'CHANGELOG.md') $work
 
 # ProductVersion is "0.1.0+<commit>": the zip takes the version alone.
 $version = ((Get-Item (Join-Path $work 'FanPilot.exe')).VersionInfo.ProductVersion -split '\+')[0]

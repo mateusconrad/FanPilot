@@ -13,10 +13,11 @@ static class Diagnose
 {
     const string NewIssueUrl = "https://github.com/mateusconrad/FanPilot/issues/new";
 
-    // The compatibility form (.github/ISSUE_TEMPLATE/compatibilidade.yml) with the board and the version filled in.
+    // The compatibility form (.github/ISSUE_TEMPLATE/compatibilidade.yml, in English with Portuguese labels) with the
+    // board and the version filled in.
     internal static string ReportUrl(string board)
     {
-        string title = "[Compatibilidade] " + (string.IsNullOrEmpty(board) ? "placa desconhecida" : board);
+        string title = "[Compatibility] " + (string.IsNullOrEmpty(board) ? "unknown board" : board);
         return NewIssueUrl + "?template=compatibilidade.yml&title=" + Uri.EscapeDataString(title) +
                "&placa=" + Uri.EscapeDataString(board ?? "") + "&versao=" + Uri.EscapeDataString(AppVersion.Text);
     }

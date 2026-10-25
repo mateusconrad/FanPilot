@@ -8,7 +8,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 - **Testes:** testes automatizados do item: `a fazer` · `ok` (commitados com o item; rodam na [CI](https://github.com/mateusconrad/FanPilot/actions) a cada push)
 - **Esforço**, em dias de trabalho focado: P ≈ 1 · P–M ≈ 2 · M ≈ 3 · G ≈ 10
 
-**Concluídos: 20 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 14a, 15, 16, 17, 18, 19, 20, 27 (veja a seção própria)
+**Concluídos: 21 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 14a, 15, 16, 17, 18, 19, 20, 27 (veja a seção própria)
 
 ## Andamento
 
@@ -34,7 +34,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 | 18 | [Perfis globais](specs/18-perfis.md) | 3 | P–M | 07, 17 | concluído | ok | [#18](https://github.com/mateusconrad/FanPilot/issues/18) | modo global com o Turbo por cima, predefinições no backend; o menu da bandeja vem com a 14b; falta conferir na B760M |
 | 19 | [Temperatura dos núcleos na Gigabyte](specs/19-temperatura-cpu-gigabyte.md) | 3 | P–M | — | concluído | ok | [#19](https://github.com/mateusconrad/FanPilot/issues/19) | papel `cpu-main` nas leituras; LibreHardwareMonitor só com a CPU ao lado do GCC; falta conferir na B760M com o PawnIO |
 | 20 | [Editor acessível e com ajuste fino](specs/20-acessibilidade-editor.md) | 3 | P | — | concluído | ok | [#20](https://github.com/mateusconrad/FanPilot/issues/20) | pontos como sliders, barra de ajuste fino, folha com foco, Esc, `inert` e Tab em volta, alvos de 44 px (`movePoint` compartilhada); falta TalkBack e VoiceOver num celular |
-| 21 | [Inglês e internacionalização](specs/21-internacionalizacao.md) | 4 | M | — | em andamento | parcial | [#21](https://github.com/mateusconrad/FanPilot/issues/21) | 21a a 21c feitas: painel, mensagens do backend, console e relatórios nos dois idiomas, logs em inglês; falta o README em inglês e os formulários de issue (21d) |
+| 21 | [Inglês e internacionalização](specs/21-internacionalizacao.md) | 4 | M | — | concluído | ok | [#21](https://github.com/mateusconrad/FanPilot/issues/21) | painel, mensagens do backend (por código), console e relatórios nos dois idiomas; log em inglês; README principal em inglês com o `README.pt-BR.md`; CHANGELOG ainda em português (decidir antes da `v0.1.0`) |
 | 22 | [Modo painel](specs/22-modo-painel.md) | 4 | P–M | — | a fazer | a fazer | [#22](https://github.com/mateusconrad/FanPilot/issues/22) | |
 | 23 | [Integrações (Prometheus, Home Assistant)](specs/23-integracoes.md) | 4 | M | 01, 09 | a fazer | a fazer | [#23](https://github.com/mateusconrad/FanPilot/issues/23) | |
 | 24 | [Histórico persistente](specs/24-historico.md) | 4 | M | — | a fazer | a fazer | [#24](https://github.com/mateusconrad/FanPilot/issues/24) | |

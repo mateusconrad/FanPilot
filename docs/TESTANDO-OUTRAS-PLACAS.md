@@ -1,7 +1,9 @@
 # Testando o FanPilot numa placa que não é Gigabyte (ASUS, MSI, ASRock…)
 
+[English](TESTING-OTHER-BOARDS.md) · **Português**
+
 Nessas placas o FanPilot usa o [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor)
-e executa as curvas ele mesmo (veja "Placas sem GCC" no [README](../README.md#placas-sem-gcc-curvas-executadas-pelo-fanpilot)).
+e executa as curvas ele mesmo (veja "Placas sem GCC" no [README](../README.pt-BR.md#placas-sem-gcc-curvas-executadas-pelo-fanpilot)).
 Ainda não há placa confirmada, por isso o teste vai em etapas, da mais segura para a menos segura. **Pare na
 primeira etapa que der algo estranho** e mande o que tiver.
 
@@ -26,6 +28,7 @@ Abra um terminal na pasta e rode:
 O diagnóstico não instala nada: se o PawnIO faltar, abra o `FanPilot.exe` uma vez antes (etapa 0). Ele pede
 Administrador, salva `data\diagnostico-<data>.txt` e abre o arquivo no Bloco de Notas. O arquivo sai sem números de
 série nem UUIDs (são do seu PC, não do modelo da placa) e começa com o link do formulário de relato já preenchido.
+No Windows em português o arquivo sai em português.
 Confira nele:
 
 - `PawnIO: instalado` — se aparecer "NÃO instalado", volte à etapa 0.
@@ -66,7 +69,7 @@ direto). Ele já vem com o modelo da placa e a versão do FanPilot e pede:
 - o que funcionou em cada etapa (o RPM mudou? voltou ao fechar?) e o resultado;
 - o arquivo `diagnostico-….txt` e o `data\fanpilot.log`, arrastados para o formulário.
 
-As placas já relatadas ficam em [COMPATIBILIDADE.md](COMPATIBILIDADE.md).
+As placas já relatadas ficam em [COMPATIBILITY.md](COMPATIBILITY.md).
 
 ## Se algo der errado
 

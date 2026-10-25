@@ -53,9 +53,9 @@ public class DiagnoseTests
         Assert.Equal("https://github.com/mateusconrad/FanPilot/issues/new", uri.GetLeftPart(UriPartial.Path));
         var query = uri.Query.TrimStart('?').Split('&').Select(p => p.Split('=')).ToDictionary(p => p[0], p => Uri.UnescapeDataString(p[1]));
         Assert.Equal("compatibilidade.yml", query["template"]);
-        Assert.Equal("[Compatibilidade] " + board, query["title"]);
+        Assert.Equal("[Compatibility] " + board, query["title"]);
         Assert.Equal(board, query["placa"]);
         Assert.Equal(AppVersion.Text, query["versao"]);
-        Assert.Contains("placa%20desconhecida", Diagnose.ReportUrl(""));
+        Assert.Contains("unknown%20board", Diagnose.ReportUrl(""));
     }
 }
