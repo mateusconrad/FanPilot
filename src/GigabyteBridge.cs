@@ -1,21 +1,17 @@
-// Client for EasyTuneEngineService (ipc://GigabyteEngine/EnvironmentControl/...), using GCC's own client modules.
+// Client for EasyTuneEngineService (ipc://GigabyteEngine/EnvironmentControl/...), using GCC's own client modules,
+// reached by reflection through GigabyteApi (FanPilot is built without them):
 //  - HardwareMonitor                       -> all motherboard sensors (temps, fans, voltages, clocks, CPU power)
 //  - SmartGuardianFanControlCoordinateSystem -> fan curves executed by the ITE IT86xx Super I/O ("3rd generation" path)
 // The service's IPC port only admits Administrators.
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Gigabyte.EnvironmentControl.Common.HardwareMonitor;
-using Gigabyte.EnvironmentControl.Common.CoolingDevice.Fan;
-using Gigabyte.EnvironmentControl.Common.CoolingDevice.Fan.CoordinateSystem;
-using Gigabyte.Engine.EnvironmentControl.HardwareMonitor;
-using Gigabyte.Engine.EnvironmentControl.CoolingDevice.Fan;
 
 sealed class GigabyteBridge : IBoard
 {
+    readonly GigabyteApi _api;
     readonly object _sync = new object();
-    HardwareMonitorControlModule _hw;
-    SmartGuardianFanControlCoordinateSystemModule _fan;
+    object _hw, _fan;
     bool _supportLogged;
 
     public int FanControlCount { get; private set; }
@@ -24,8 +20,9 @@ sealed class GigabyteBridge : IBoard
     public string LastError { get; private set; }
     public bool FanControlSupported { get; private set; }
 
-    public GigabyteBridge()
+    public GigabyteBridge(GigabyteApi api)
     {
+        _api = api;
         ControlTitles = new string[0];
         TempInputTitles = new string[0];
     }
@@ -67,11 +64,11 @@ sealed class GigabyteBridge : IBoard
     void EnsureConnected()
     {
         if (_hw != null) return;
-        _hw = new HardwareMonitorControlModule();
-        _fan = new SmartGuardianFanControlCoordinateSystemModule();
-        try { var warmup = _fan.IsSupported; } catch (System.Runtime.Remoting.RemotingException) { }
+        _hw = _api.NewHardwareMonitor();
+        _fan = _api.NewFanModule();
+        try { var warmup = _api.IsSupported(_fan); } catch (System.Runtime.Remoting.RemotingException) { }
 
-        FanControlSupported = _fan.IsSupported;
+        FanControlSupported = _api.IsSupported(_fan);
         if (!FanControlSupported)
         {
             FanControlCount = 0;
@@ -79,50 +76,40 @@ sealed class GigabyteBridge : IBoard
             _supportLogged = true;
             return;
         }
-        var info = _fan.HardwareInfo;
-        FanControlCount = info.FanControlCount;
-        var controls = new string[info.FanControlCount];
-        for (int i = 0; i < controls.Length; i++) { string t; _fan.GetSensorTitle(SensorTypes.Control, i, out t); controls[i] = t; }
-        var temps = new string[info.TemperatureInputCount];
-        for (int i = 0; i < temps.Length; i++) { string t; _fan.GetSensorTitle(SensorTypes.Temperature, i, out t); temps[i] = t; }
-        ControlTitles = controls;
-        TempInputTitles = temps;
+        FanControlCount = _api.FanControlCount(_fan);
+        ControlTitles = Enumerable.Range(0, FanControlCount).Select(i => _api.SensorTitle(_fan, "Control", i)).ToArray();
+        TempInputTitles = Enumerable.Range(0, _api.TemperatureInputCount(_fan)).Select(i => _api.SensorTitle(_fan, "Temperature", i)).ToArray();
     }
 
     void Reset()
     {
-        try { if (_hw != null) _hw.Dispose(); } catch { }
-        try { if (_fan != null) _fan.Dispose(); } catch { }
+        try { _api.Dispose(_hw); } catch { }
+        try { _api.Dispose(_fan); } catch { }
         _hw = null;
         _fan = null;
     }
 
     public List<SensorReading> ReadSensors()
     {
-        return Invoke(() =>
+        return Invoke(() => _api.ReadMonitoredData(_hw).Select(d => new SensorReading
         {
-            var data = new HardwareMonitoredDataCollection();
-            _hw.GetCurrentMonitoredData(ref data);
-            return data.Select(d => new SensorReading
-            {
-                Id = d.Type.ToString().ToLowerInvariant() + "-" + d.DeviceUUID,
-                Type = d.Type.ToString(),
-                Title = d.Title,
-                Value = Math.Round(d.Value, 3),
-                Unit = UnitFor(d)
-            }).ToList();
-        });
+            Id = d.Type.ToLowerInvariant() + "-" + d.DeviceUuid,
+            Type = d.Type,
+            Title = d.Title,
+            Value = Math.Round(d.Value, 3),
+            Unit = UnitFor(d)
+        }).ToList());
     }
 
-    static string UnitFor(HardwareMonitoredData d)
+    static string UnitFor(GigabyteApi.Reading d)
     {
         switch (d.Type)
         {
-            case SensorTypes.Temperature: return "°C";
-            case SensorTypes.Fan: return "RPM";
-            case SensorTypes.Voltage: return "V";
-            case SensorTypes.Power: return "W";
-            case SensorTypes.Frequency: return string.IsNullOrEmpty(d.Unit) ? "" : "MHz";
+            case "Temperature": return "°C";
+            case "Fan": return "RPM";
+            case "Voltage": return "V";
+            case "Power": return "W";
+            case "Frequency": return string.IsNullOrEmpty(d.Unit) ? "" : "MHz";
             default: return d.Unit ?? "";
         }
     }
@@ -130,9 +117,8 @@ sealed class GigabyteBridge : IBoard
     // Index-aligned with fan controls / temperature inputs.
     public void ReadFanTach(out List<float> temps, out List<float> rpms)
     {
-        var t = new List<float>();
-        var f = new List<float>();
-        Invoke(() => { _fan.GetHardwareMonitorDatas(ref t, ref f); return 0; });
+        List<float> t = null, f = null;
+        Invoke(() => { _api.ReadHardwareMonitorDatas(_fan, out t, out f); return 0; });
         temps = t;
         rpms = f;
     }
@@ -141,10 +127,7 @@ sealed class GigabyteBridge : IBoard
     {
         return Invoke(() =>
         {
-            var set = new SmartFanDataPointSet();
-            _fan.Get(index, ref set);
-            int tempInput;
-            _fan.GetTemperatureInputSelection(index, out tempInput);
+            var set = _api.GetCurve(_fan, index);
             string title = index < ControlTitles.Length ? ControlTitles[index] : "Fan " + index;
             var c = new FanCurve
             {
@@ -153,12 +136,11 @@ sealed class GigabyteBridge : IBoard
                 // headers makes the saved configuration an orphan instead of landing on another fan.
                 Key = "gcc:" + index + ":" + title,
                 Title = title,
-                TempInput = tempInput,
-                Mode = set.Mode.ToString(),
-                DeltaT = set.DeltaTemperature
+                TempInput = _api.GetTemperatureInput(_fan, index),
+                Mode = set.Mode,
+                DeltaT = set.DeltaT
             };
-            if (set.DataPoints != null)
-                foreach (var p in set.DataPoints) c.Points.Add(new[] { p.X, p.Y });
+            c.Points.AddRange(set.Points);
             return c;
         });
     }
@@ -181,24 +163,13 @@ sealed class GigabyteBridge : IBoard
     {
         if (curve.Points.Count < 3 || Math.Round(curve.Points[curve.Points.Count - 1][1]) != 255)
             throw new ArgumentException("A curva precisa de >= 3 pontos e o último ponto em 255.");
-        FanConfigMode mode;
-        if (!Enum.TryParse(curve.Mode, out mode) || (mode != FanConfigMode.SmartFanMode && mode != FanConfigMode.StairStepMode))
-            mode = FanConfigMode.SmartFanMode;
+        string mode = curve.Mode == "StairStepMode" ? "StairStepMode" : "SmartFanMode";
 
         Invoke(() =>
         {
-            int currentInput;
-            _fan.GetTemperatureInputSelection(curve.Index, out currentInput);
-            if (currentInput != curve.TempInput && !_fan.SetTemperatureInputSelection(curve.Index, curve.TempInput))
+            if (_api.GetTemperatureInput(_fan, curve.Index) != curve.TempInput && !_api.SetTemperatureInput(_fan, curve.Index, curve.TempInput))
                 throw new InvalidOperationException("O serviço recusou a troca do sensor de temperatura.");
-            var set = new SmartFanDataPointSet
-            {
-                Mode = mode,
-                DeltaTemperature = curve.DeltaT,
-                FanSpeed = 0,
-                DataPoints = curve.Points.Select(p => new SmartFanDataPoint { X = p[0], Y = p[1] }).ToList()
-            };
-            _fan.Set(curve.Index, set);
+            _api.SetCurve(_fan, curve.Index, mode, curve.DeltaT, curve.Points);
             return 0;
         });
         return GetCurve(curve.Index);

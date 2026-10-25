@@ -6,7 +6,6 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Threading;
@@ -228,32 +227,34 @@ static class Boards
     // interactive: a person is at the console, so a missing PawnIO driver can be installed right away.
     public static IBoard Create(AppConfig cfg, bool interactive)
     {
-        bool gcc = Directory.Exists(Program.GccLibDir);
-        if (cfg.Backend == "gigabyte" && !gcc)
-            throw new InvalidOperationException("config.json pede \"backend\": \"gigabyte\", mas o Gigabyte Control Center não foi encontrado (procurado em " + Program.GccLibDir + ").");
-        if (cfg.Backend == "gigabyte" || (cfg.Backend == "auto" && gcc)) return CreateGigabyte(interactive);
-        return CreateLhm(interactive);
-    }
-
-    static IBoard CreateLhm(bool interactive)
-    {
+        bool gcc = File.Exists(Path.Combine(Program.GccLibDir, GigabyteApi.EngineDll));
+        var api = gcc && cfg.Backend != "lhm" ? GigabyteApi.Load(Program.GccLibDir) : null;
+        if (Choose(cfg.Backend, gcc, api) == "gigabyte")
+        {
+            Log.Info("Gigabyte Control Center " + api.Version + " em " + Program.GccLibDir);
+            return new GigabyteBridge(api);
+        }
         PawnIoSetup.OfferInstall(interactive);
         return new LhmBoard();
     }
 
-#if NO_GIGABYTE
-    // Built without Gigabyte Control Center installed (build.ps1 warns): only LibreHardwareMonitor is available.
-    static IBoard CreateGigabyte(bool interactive)
+    // "gigabyte" or "lhm". An installed but incompatible GCC (an update changed what FanPilot uses) falls back to
+    // LibreHardwareMonitor with a notice in "auto", and stops with the reason when config.json insists on "gigabyte".
+    internal static string Choose(string backend, bool gccInstalled, GigabyteApi api)
     {
-        Log.Warn("Este FanPilot foi compilado sem suporte ao Gigabyte Control Center; usando o LibreHardwareMonitor.");
-        return CreateLhm(interactive);
+        if (backend == "lhm") return "lhm";
+        if (!gccInstalled)
+        {
+            if (backend == "gigabyte")
+                throw new InvalidOperationException("config.json pede \"backend\": \"gigabyte\", mas o Gigabyte Control Center não foi encontrado (procurado em " + Program.GccLibDir + ").");
+            return "lhm";
+        }
+        if (api.Compatible) return "gigabyte";
+        string problem = "O Gigabyte Control Center " + api.Version + " não é compatível com este FanPilot (" + api.Problem + ")";
+        if (backend == "gigabyte") throw new InvalidOperationException(problem + ".");
+        AppNotices.Add(problem + ": usando o LibreHardwareMonitor.");
+        return "lhm";
     }
-#else
-    // Separate and never inlined: Gigabyte's assemblies only exist where GCC is installed, so nothing that touches
-    // their types may be compiled on the LibreHardwareMonitor path.
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    static IBoard CreateGigabyte(bool interactive) { return new GigabyteBridge(); }
-#endif
 }
 
 // One FanPilot per PC: a second one would fight the first over the fans (and fail on the port anyway).

@@ -14,8 +14,8 @@ static class Program
 
     static int Main(string[] args)
     {
-        // Gigabyte's client assemblies are loaded from the GCC install instead of being redistributed.
-        // This must be registered before any method touching Gigabyte types is JIT-compiled.
+        // Gigabyte's client assemblies are loaded from the GCC install instead of being redistributed. GigabyteApi
+        // loads the two it uses explicitly; this resolves the Gigabyte assemblies those depend on.
         AppDomain.CurrentDomain.AssemblyResolve += ResolveGigabyteAssembly;
         return App.Run(args);
     }
