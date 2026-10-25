@@ -312,7 +312,8 @@ sealed class FanManager
         var points = FanPresets.Points(preset, PointCountFor(_keys[index], current), _cfg.MaxFullSpeedTemp, _cfg.MinDutyPercent);
         return new Dictionary<string, object> {
             { "mode", "curve" }, { "style", "SmartFanMode" }, { "points", points.Select(p => (object)new object[] { p[0], p[1] }).ToList() },
-            { "tempInput", tempInput }, { "response", Json.GetString(now, "response", SoftwareCurveEngine.DefaultResponse) }, { "profile", preset }
+            { "tempInput", tempInput }, { "response", Json.GetString(now, "response", SoftwareCurveEngine.DefaultResponse) },
+            { "source", Json.GetString(now, "source", SoftwareCurveEngine.SensorSource) }, { "profile", preset }
         };
     }
 
@@ -377,7 +378,8 @@ sealed class FanManager
     }
 
     // request: { mode: "fixed", percent, tempInput? }
-    //        | { mode: "curve", style: "SmartFanMode"|"StairStepMode", points: [[t,%]...], tempInput, response? }
+    //        | { mode: "curve", style: "SmartFanMode"|"StairStepMode", points: [[t,%]...], tempInput, response?,
+    //            source?: "sensor" (default) | "gpu" | "max" }
     public FanCurve Apply(int index, Dictionary<string, object> request)
     {
         lock (_opLock)
@@ -455,6 +457,12 @@ sealed class FanManager
         curve.Mode = Json.GetString(request, "style", "SmartFanMode") == "StairStepMode" ? "StairStepMode" : "SmartFanMode";
         curve.Response = Json.GetString(request, "response", SoftwareCurveEngine.DefaultResponse);
         if (!SoftwareCurveEngine.Responses.ContainsKey(curve.Response)) throw new UserError("err.response");
+        // The GPU as the reference (item 25): only where FanPilot runs the curve; the chip only reads its own sensors.
+        string source = Json.GetString(request, "source", SoftwareCurveEngine.SensorSource);
+        if (source != SoftwareCurveEngine.SensorSource && source != SoftwareCurveEngine.GpuSource && source != SoftwareCurveEngine.MaxSource)
+            throw new UserError("err.source");
+        if (source != SoftwareCurveEngine.SensorSource && _bridge.HardwareCurves) throw new UserError("err.source.chip");
+        curve.Source = source == SoftwareCurveEngine.SensorSource ? null : source;
         var raw = Json.ToList(Json.Get(request, "points"));
         if (raw.Count != pointCount) throw new UserError("err.curve.points", "n", pointCount);
         double prevT = -1, prevPwm = 0;

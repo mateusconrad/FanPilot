@@ -8,3 +8,17 @@ export function cpuMain(sensors) {
     || sensors.find((s) => s.type === 'Temperature' && s.title === 'CPU')
     || null;
 }
+
+// The temperature a curve follows now (item 25), as SoftwareCurveEngine.SourceTemp computes it: its board sensor, the
+// GPU, or the higher of the two that read. null when there is none (the backend then hands the fan to the BIOS).
+export function referenceTemp(source, tempInput, snap) {
+  const board = snap && snap.tempInputs ? snap.tempInputs[tempInput] : null;
+  const gpu = snap && snap.gpu && snap.gpu.ok ? snap.gpu.temp : null;
+  const reads = (v) => typeof v === 'number' && v >= -40 && v <= 125;
+  if (source === 'gpu') return reads(gpu) ? gpu : null;
+  if (source === 'max') {
+    const both = [board, gpu].filter(reads);
+    return both.length ? Math.max(...both) : null;
+  }
+  return board === undefined ? null : board;
+}

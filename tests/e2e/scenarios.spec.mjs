@@ -156,4 +156,32 @@ test.describe('LibreHardwareMonitor: curvas executadas pelo FanPilot', () => {
     await expect(page.locator('#toast')).toHaveText('Fan devolvido ao controle da BIOS');
     await expect(page.locator('#fans .fan').nth(1).locator('.desc')).toContainText('Controle da BIOS');
   });
+
+  // Item 25: a case fan can follow the GPU, or the higher of the CPU and the GPU.
+  test('a curva pode seguir a maior entre CPU e GPU', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto(fp().url + '/');
+    await expect(page.locator('#statusText')).toHaveText('ao vivo');
+    await page.locator('#fans .fan').nth(2).click();
+    const source = page.locator('#edTempInput');
+    await expect(source.locator('option')).toHaveText(['System 1', 'PCH', 'CPU', 'PCIEX16', 'VRM MOS', 'System 2', 'GPU', 'Maior entre CPU e GPU']);
+    await expect(page.locator('#edSourceHint')).toBeHidden();
+    await source.selectOption('max');
+    await expect(page.locator('#edSourceHint')).toContainText('segue o sensor');
+    const sent = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/api/fans/2'));
+    await page.locator('#edApply').click();
+    expect((await sent).postDataJSON()).toMatchObject({ mode: 'curve', source: 'max', tempInput: 2 });
+    await expect(page.locator('#fans .fan').nth(2).locator('.desc')).toContainText('Maior entre CPU e GPU');
+    const fan = (await (await page.request.get(fp().url + '/api/fans')).json()).fans[2];
+    expect(fan.source).toBe('max');
+
+    await page.locator('#fans .fan').nth(2).click();
+    await expect(source).toHaveValue('max');
+    await source.selectOption('gpu');
+    await page.locator('#edApply').click();
+    await expect(page.locator('#fans .fan').nth(2).locator('.desc')).toContainText('· GPU');
+    await page.locator('#fans .fan').nth(2).click();
+    await page.locator('#edRestore').click();
+    await expect(page.locator('#fans .fan').nth(2).locator('.desc')).toContainText('Controle da BIOS');
+  });
 });

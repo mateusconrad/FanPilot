@@ -141,4 +141,50 @@ public class SoftwareCurveTests
         engine.Next(0, curve, 40, 1);
         Assert.Equal(Percent(curve, 70), engine.Next(1, curve, 70, 1).Value, 6);
     }
+
+    // Item 25: a curve can follow the GPU, or the higher of its sensor and the GPU.
+    static FanCurve WithSource(string source)
+    {
+        var c = Standard("balanced");
+        c.TempInput = 1;
+        c.Source = source;
+        return c;
+    }
+
+    [Fact]
+    public void TheSourcePicksTheTemperature()
+    {
+        var board = new List<float> { 40, 52, 33 };
+        Assert.Equal(52, SoftwareCurveEngine.SourceTemp(WithSource(null), board, 75));
+        Assert.Equal(75, SoftwareCurveEngine.SourceTemp(WithSource("gpu"), board, 75));
+        Assert.Equal(75, SoftwareCurveEngine.SourceTemp(WithSource("max"), board, 75));
+        Assert.Equal(52, SoftwareCurveEngine.SourceTemp(WithSource("max"), board, 45));
+    }
+
+    // GPU without a reading (its driver restarting): "max" goes on with the sensor, "gpu" hands the fan to the BIOS.
+    [Fact]
+    public void AMissingReadingFollowsTheRules()
+    {
+        var board = new List<float> { 40, 52, 33 };
+        Assert.Equal(52, SoftwareCurveEngine.SourceTemp(WithSource("max"), board, null));
+        Assert.True(double.IsNaN(SoftwareCurveEngine.SourceTemp(WithSource("gpu"), board, null)));
+        Assert.Null(new SoftwareCurveEngine().Next(0, WithSource("gpu"), SoftwareCurveEngine.SourceTemp(WithSource("gpu"), board, null), 1));
+        // An open thermistor (127 °C) counts as no reading, so "max" does not race to 100% because of it.
+        var open = new List<float> { 40, 127, 33 };
+        Assert.Equal(61, SoftwareCurveEngine.SourceTemp(WithSource("max"), open, 61));
+        Assert.True(double.IsNaN(SoftwareCurveEngine.SourceTemp(WithSource("max"), open, null)));
+    }
+
+    [Fact]
+    public void ACaseFanOnTheHigherOfCpuAndGpuSpeedsUpWithTheGpuHotAndTheCpuCold()
+    {
+        var engine = new SoftwareCurveEngine();
+        var curve = WithSource("max");
+        var cold = new List<float> { 0, 38, 0 };
+        double idle = engine.Next(0, curve, SoftwareCurveEngine.SourceTemp(curve, cold, 40), 1).Value;
+        double gaming = idle;
+        for (int s = 0; s < 60; s++) gaming = engine.Next(0, curve, SoftwareCurveEngine.SourceTemp(curve, cold, 76), 1).Value;
+        Assert.Equal(Math.Round(Percent(curve, 40)), Math.Round(idle));
+        Assert.Equal(Math.Round(Percent(curve, 76)), Math.Round(gaming));
+    }
 }

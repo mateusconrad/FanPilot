@@ -53,6 +53,8 @@ Primeira versão publicada (será a 0.1.0).
 - `FanPilot.exe --version`; a versão também aparece na primeira linha do log, no `--diagnose` e no rodapé do painel.
 - Releases no GitHub com o zip, o `SHA256SUMS.txt` e estas notas; CI compilando e testando cada push.
 - Texto secundário do painel com contraste de pelo menos 4,5:1 nos temas claro e escuro (conferido pelo axe-core).
+- Nas placas em que o FanPilot executa as curvas, um fan pode seguir a GPU, ou a maior entre a CPU e a GPU: os fans
+  do gabinete aceleram quando a GPU esquenta num jogo, mesmo com a CPU folgada.
 - Modo painel (`/panel`): uma tela só de leitura e em tela cheia para um celular ou tablet ao lado do monitor ou uma
   telinha de gabinete, legível de longe, com opção de manter a tela ligada e proteção para telas OLED.
 - Painel em inglês e em português: o idioma segue o do navegador e pode ser trocado no rodapé (a escolha fica no

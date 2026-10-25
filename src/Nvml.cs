@@ -65,6 +65,18 @@ abstract class GpuMonitor
     // What the loop read last (the sampler's snapshot uses it); a direct read before Start().
     public Dictionary<string, object> Latest { get { return _latest ?? Read(); } }
 
+    // The temperature in the last reading, or null when the GPU can't be read (curves that follow it, item 25).
+    public double? Temperature
+    {
+        get
+        {
+            var r = Latest;
+            object ok, temp;
+            return r != null && r.TryGetValue("ok", out ok) && ok is bool && (bool)ok && r.TryGetValue("temp", out temp) && temp != null
+                ? Convert.ToDouble(temp) : (double?)null;
+        }
+    }
+
     internal void Tick()
     {
         var r = Read();

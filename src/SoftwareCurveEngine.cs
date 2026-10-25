@@ -42,7 +42,22 @@ sealed class SoftwareCurveEngine
 
     readonly Dictionary<int, State> _states = new Dictionary<int, State>();
 
+    // A curve's temperature sources (item 25; FanCurve.Source). Sensor is stored as null: the curves saved before.
+    public const string SensorSource = "sensor", GpuSource = "gpu", MaxSource = "max";
+
     public static bool Plausible(double t) { return !double.IsNaN(t) && t >= MinPlausibleTemp && t <= MaxPlausibleTemp; }
+
+    // The raw temperature a curve follows, before Next smooths it: its board sensor (TempInput), the GPU, or the higher
+    // of the two that read now. NaN when none reads: the header goes back to the BIOS.
+    public static double SourceTemp(FanCurve curve, IList<float> boardTemps, double? gpu)
+    {
+        double board = curve.TempInput >= 0 && curve.TempInput < boardTemps.Count ? boardTemps[curve.TempInput] : double.NaN;
+        double g = gpu ?? double.NaN;
+        if (curve.Source == GpuSource) return g;
+        if (curve.Source != MaxSource) return board;
+        bool hasBoard = Plausible(board), hasGpu = Plausible(g);
+        return hasBoard && hasGpu ? Math.Max(board, g) : hasBoard ? board : hasGpu ? g : double.NaN;
+    }
 
     // The duty (0..100%) for this header now, or null: hand it back to the BIOS. dt: seconds since the last step.
     public double? Next(int header, FanCurve curve, double rawTemp, double dt)
