@@ -120,7 +120,7 @@ sealed class LhmGpu : GpuMonitor
 
     static void TryDefault(ISensor c)
     {
-        try { c.Control.SetDefault(); } catch (Exception ex) { Log.Warn("GPU: SetDefault falhou: " + ex.Message); }
+        try { c.Control.SetDefault(); } catch (Exception ex) { Log.Warn("GPU: SetDefault failed: " + ex.Message); }
     }
 
     public override void Shutdown()

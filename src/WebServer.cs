@@ -46,10 +46,9 @@ sealed class WebServer
     }
 
     // Start() fails like this when the port is taken; FanPilot shows it before touching any fan.
-    public static string PortProblem(int port, HttpListenerException ex)
+    public static Msg PortProblem(int port, HttpListenerException ex)
     {
-        return "Não foi possível abrir a porta " + port + " (" + ex.Message + "). Ela deve estar em uso por outro programa: " +
-               "feche-o ou mude \"port\" no config.json.";
+        return new Msg("console.portBusy", "port", port, "detail", ex.Message);
     }
 
     public void Start()

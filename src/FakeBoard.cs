@@ -80,7 +80,7 @@ sealed class FakeBoard : IBoard
                 var stall = Demo();
                 stall.Headers[2].StopsAfterSeconds = 35;
                 return stall;
-            default: throw new ArgumentException("Cenário da placa de teste desconhecido: " + name);
+            default: throw new ArgumentException("Unknown fake board scenario: " + name);
         }
     }
 
@@ -208,7 +208,7 @@ sealed class FakeBoard : IBoard
         lock (_sync)
         {
             Fail();
-            if (index < 0 || index >= Headers.Count) throw new ArgumentException("Fan inexistente.");
+            if (index < 0 || index >= Headers.Count) throw new UserError("err.fanMissing");
             return Copy(Headers[index].Curve, index);
         }
     }
@@ -229,12 +229,12 @@ sealed class FakeBoard : IBoard
         lock (_sync)
         {
             Fail();
-            if (curve.Index < 0 || curve.Index >= Headers.Count) throw new ArgumentException("Fan inexistente.");
+            if (curve.Index < 0 || curve.Index >= Headers.Count) throw new UserError("err.fanMissing");
             bool bios = curve.IsBios || curve.Points.Count == 0;
-            if (bios && HardwareCurves) throw new ArgumentException("Esta placa não devolve fans à BIOS.");
+            if (bios && HardwareCurves) throw new UserError("err.noBios");
             if (!bios && (curve.Points.Count < 3 || Math.Round(curve.Points[curve.Points.Count - 1][1]) != 255))
-                throw new ArgumentException("A curva precisa de >= 3 pontos e o último ponto em 255.");
-            if (curve.TempInput < 0 || curve.TempInput >= TempInputTitles.Length) throw new ArgumentException("Sensor de temperatura inválido.");
+                throw new UserError("err.curve.shape");
+            if (curve.TempInput < 0 || curve.TempInput >= TempInputTitles.Length) throw new UserError("err.tempInput");
             var stored = bios ? BiosCurve(curve.Index) : Copy(curve, curve.Index);
             Headers[curve.Index].Curve = Readback != null && !bios ? Readback(stored) : stored;
             Writes++;

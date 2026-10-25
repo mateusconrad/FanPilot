@@ -65,14 +65,16 @@ test('o serviço sobe sem console, responde e guarda os dados numa pasta protegi
   await waitFor(answers, 30_000, 'O serviço responder');
   expect(status()).toBe('Running');
   expect((await fetch(url('/api/state'))).status).toBe(200);
-  expect(readLog()).toContain('como serviço');
+  // The log is in English whatever Windows' language (item 21).
+  expect(readLog()).toContain('as a service');
   expect(ps('(Get-Acl -Path $env:D).AreAccessRulesProtected', { D: dataDir })).toBe('True');
 });
 
 test('o FanPilot.exe aberto com o serviço ativo diz que já está rodando', () => {
   const r = spawnSync(path.join(dir, 'FanPilot.exe'), ['--fake-board', '--no-browser', '--data', dataDir], { encoding: 'utf8', timeout: 60_000 });
   expect(r.status).toBe(4);
-  expect(r.stdout).toContain('já está rodando');
+  // The console speaks Windows' language: English on the CI's runner.
+  expect(r.stdout).toMatch(/já está rodando|already running/);
   expect(r.stdout).toContain(`http://localhost:${port}/`);
 });
 
@@ -86,14 +88,14 @@ test('o Windows reinicia o serviço se o processo morrer', async () => {
   }, 45_000, 'O Windows reiniciar o serviço');
   expect(status()).toBe('Running');
   // Started twice as a service: by Start-Service, then by Windows' recovery action.
-  expect(readLog().match(/como serviço/g).length).toBeGreaterThanOrEqual(2);
+  expect(readLog().match(/as a service/g).length).toBeGreaterThanOrEqual(2);
 });
 
 test('parar o serviço encerra limpo e rápido', async () => {
   ps('Stop-Service -Name $env:N', { N: NAME });
   expect(status()).toBe('Stopped');
   expect(await answers()).toBe(false);
-  const stops = [...readLog().matchAll(/Encerrado em (\d+) ms\./g)].map((m) => Number(m[1]));
+  const stops = [...readLog().matchAll(/Stopped in (\d+) ms\./g)].map((m) => Number(m[1]));
   expect(stops.length).toBeGreaterThan(0);
   expect(stops[stops.length - 1]).toBeLessThan(1000);
 });

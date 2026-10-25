@@ -106,17 +106,17 @@ sealed class FanManager
                     if (File.Exists(path) && !File.Exists(path + ".v1")) File.Copy(path, path + ".v1");
                 SaveDesired();
                 SaveBackup();
-                Log.Info("Arquivos de curvas convertidos para o formato com chave por fan (os antigos ficaram como .v1).");
+                Log.Info("Curve files converted to the format keyed by fan (the old ones were kept as .v1).");
             }
             if (_rawTurbo != null)
             {
                 SaveMode();
                 File.Delete(_turboPath);
-                Log.Info("turbo.json convertido para global-mode.json.");
+                Log.Info("turbo.json converted to global-mode.json.");
             }
             foreach (var kv in _desired)
                 if (Array.IndexOf(_keys, kv.Key) < 0)
-                    Log.Warn("A configuração salva para '" + TitleOf(kv.Value) + "' não corresponde a nenhum fan desta placa e não foi aplicada.");
+                    Log.Warn("The settings saved for '" + TitleOf(kv.Value) + "' match no fan on this board and were not applied.");
             CaptureBackups(curves);
         }
     }
@@ -241,7 +241,7 @@ sealed class FanManager
                 turbo = _turbo;
                 SaveMode();
             }
-            Log.Info("Modo: " + mode + (turbo ? " (vale quando o Turbo desligar)" : ""));
+            Log.Info("Mode: " + mode + (turbo ? " (takes effect when Turbo goes off)" : ""));
             if (!turbo) ApplyMode(false);
         }
     }
@@ -266,7 +266,7 @@ sealed class FanManager
                 var req = prev as Dictionary<string, object>;
                 if (req != null) ApplyCore(i, req); else RestoreCore(i);
             }
-            catch (Exception ex) { Log.Warn("Modo " + mode + ", fan " + i + ": " + ex.Message); }
+            catch (Exception ex) { Log.Warn("Mode " + mode + ", fan " + i + ": " + ex.Message); }
         }
         if (mode == "custom") lock (_sync) { _personal.Clear(); SaveMode(); }
     }
@@ -278,7 +278,7 @@ sealed class FanManager
         lock (_sync)
         {
             if (_mode == "custom") return;
-            Log.Info("Modo " + _mode + " deixado pela edição de um fan: as curvas dele ficam como configuração pessoal.");
+            Log.Info("Mode " + _mode + " left by editing a fan: its curves stay as the user's own settings.");
             _mode = "custom";
             _personal.Clear();
             SaveMode();
@@ -324,7 +324,7 @@ sealed class FanManager
     public void Start()
     {
         try { EnsureLoaded(); }
-        catch (Exception ex) { Log.Warn("Fans: a placa ainda não respondeu (" + ex.Message + "); nova tentativa no próximo acesso."); }
+        catch (Exception ex) { Log.Warn("Fans: the board has not answered yet (" + ex.Message + "); trying again on the next request."); }
         // Software-curve boards start with every header on the BIOS: put the user's curves back right away instead
         // of letting the watchdog find them "changed externally" a few seconds later.
         if (!_bridge.HardwareCurves) ReapplyDesired();
@@ -544,7 +544,7 @@ sealed class FanManager
                 SaveMode();
             }
         }
-        Log.Info("Configuração órfã descartada: " + key);
+        Log.Info("Orphan settings discarded: " + key);
     }
 
     // A saved curve (or backup) may come from another position: written to where its header is now.
@@ -580,7 +580,7 @@ sealed class FanManager
         try { return FanMeta.Parse(saved, title); }
         catch (ArgumentException ex)
         {
-            Log.Warn("fan-meta.json: a configuração de '" + title + "' é inválida (" + ex.Message + "); usando o padrão.");
+            Log.Warn("fan-meta.json: the settings for '" + title + "' are invalid (" + ex.Message + "); using the defaults.");
             return FanMeta.Default(title);
         }
     }
@@ -607,7 +607,7 @@ sealed class FanManager
     void ReapplyDesiredCore()
     {
         try { EnsureLoaded(); }
-        catch (Exception ex) { Log.Warn("Fans: não foi possível reaplicar as curvas salvas: " + ex.Message); return; }
+        catch (Exception ex) { Log.Warn("Fans: could not apply the saved curves again: " + ex.Message); return; }
         List<KeyValuePair<string, Dictionary<string, object>>> items;
         lock (_sync) items = _desired.ToList();
         int applied = 0;
@@ -621,9 +621,9 @@ sealed class FanManager
                 lock (_sync) if (_desired.ContainsKey(kv.Key)) { kv.Value["signature"] = result.Signature(); SaveDesired(); }
                 applied++;
             }
-            catch (Exception ex) { Log.Warn("Fan " + index + ": não foi possível reaplicar a curva salva: " + ex.Message); }
+            catch (Exception ex) { Log.Warn("Fan " + index + ": could not apply the saved curve again: " + ex.Message); }
         }
-        if (applied > 0) Log.Info(applied + " curva(s) salvas reaplicadas pelo FanPilot.");
+        if (applied > 0) Log.Info(applied + " saved curve(s) applied again by FanPilot.");
     }
 
     internal void Watchdog()

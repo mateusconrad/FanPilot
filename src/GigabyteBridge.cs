@@ -82,7 +82,7 @@ sealed class GigabyteBridge : IBoard
         if (!FanControlSupported)
         {
             FanControlCount = 0;
-            if (!_supportLogged) Log.Warn("Esta placa-mãe não expõe o controle de fans de 3ª geração do GCC; só monitoramento.");
+            if (!_supportLogged) Log.Warn("This motherboard doesn't expose the GCC's third-generation fan control; monitoring only.");
             _supportLogged = true;
             return;
         }

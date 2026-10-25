@@ -37,7 +37,7 @@ static class DataFile
         string problem;
         var value = TryParse(path, out problem);
         if (value != null) return value;
-        string aside = MoveAside(path);
+        object aside = MoveAside(path);
         string ignored;
         var previous = File.Exists(path + ".bak") ? TryParse(path + ".bak", out ignored) : null;
         AppNotices.Add(new Msg(previous != null ? "notice.fileUnreadable.previous" : "notice.fileUnreadable.fresh",
@@ -63,7 +63,8 @@ static class DataFile
         }
     }
 
-    static string MoveAside(string path)
+    // The name it was set aside as, or (it could not be moved) a message saying so, for the notice.
+    static object MoveAside(string path)
     {
         string aside = path + ".corrompido-" + DateTime.Now.ToString("yyyyMMdd-HHmmss");
         try
@@ -73,7 +74,7 @@ static class DataFile
         }
         catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
         {
-            return Path.GetFileName(path) + " (não foi possível movê-lo: " + ex.Message + ")";
+            return new Msg("notice.notMoved", "file", Path.GetFileName(path), "detail", ex.Message);
         }
     }
 

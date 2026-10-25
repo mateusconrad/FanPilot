@@ -77,11 +77,11 @@ sealed class CpuPackageMonitor
             foreach (var hw in all) hw.Update();
             m._sensor = LhmBoard.CpuTemperature(all);
             if (m._sensor == null) m.Close();
-            else Log.Info("Temperatura da CPU (" + m._sensor.Name + ") pelo LibreHardwareMonitor, junto com o Gigabyte Control Center.");
+            else Log.Info("CPU temperature (" + m._sensor.Name + ") from LibreHardwareMonitor, next to Gigabyte Control Center.");
         }
         catch (Exception ex)
         {
-            Log.Warn("Temperatura dos núcleos da CPU indisponível: " + ex.Message);
+            Log.Warn("CPU cores' temperature unavailable: " + ex.Message);
             m.Close();
         }
         return m;

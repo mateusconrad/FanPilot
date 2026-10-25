@@ -51,13 +51,13 @@ sealed class AppOptions
 
     static string Value(string[] args, ref int i, string name)
     {
-        if (i + 1 >= args.Length || args[i + 1].StartsWith("--")) throw new ArgumentException(name + " precisa de uma pasta: " + name + " <pasta>.");
+        if (i + 1 >= args.Length || args[i + 1].StartsWith("--")) throw new UserError("console.option.folder", "option", name);
         return args[++i];
     }
 
     static string NonEmpty(string value, string name)
     {
-        if (value.Trim().Length == 0) throw new ArgumentException(name + " precisa de uma pasta.");
+        if (value.Trim().Length == 0) throw new UserError("console.option.empty", "option", name);
         return value;
     }
 }
@@ -100,17 +100,17 @@ static class DataImport
         from = Path.GetFullPath(from);
         if (running)
         {
-            Console.WriteLine("Pare o FanPilot (ou o serviço) antes de importar: ele está usando os dados agora.");
+            Console.WriteLine(new Msg("console.import.busy").In(I18n.Windows));
             return 4;
         }
         if (!Directory.Exists(from))
         {
-            Console.WriteLine("Pasta não encontrada: " + from);
+            Console.WriteLine(new Msg("console.import.notFound", "path", from).In(I18n.Windows));
             return 1;
         }
         if (string.Equals(from.TrimEnd('\\'), Path.GetFullPath(to).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
         {
-            Console.WriteLine("A pasta de origem é a própria pasta de dados.");
+            Console.WriteLine(new Msg("console.import.same").In(I18n.Windows));
             return 1;
         }
         Directory.CreateDirectory(to);
@@ -124,9 +124,8 @@ static class DataImport
         }
         // Data from another PC or another board is moved aside here, exactly as on a normal start.
         MachineData.Check(to);
-        string summary = copied.Count == 0 ? "nada para importar em " + from : "importados de " + from + ": " + string.Join(", ", copied);
-        Console.WriteLine("Dados " + summary);
-        Log.Info("Dados " + summary);
+        Log.Info(copied.Count == 0 ? new Msg("console.import.nothing", "path", from)
+                                   : new Msg("console.import.done", "path", from, "files", string.Join(", ", copied)));
         return 0;
     }
 

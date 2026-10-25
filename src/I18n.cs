@@ -124,6 +124,13 @@ sealed class Msg
         return d;
     }
 
+    // What to tell people about an exception: its message in lang if it is one of ours, else its own text.
+    public static string TextOf(Exception ex, string lang)
+    {
+        var m = Of(ex);
+        return m != null ? m.In(lang) : ex.Message;
+    }
+
     // The message an exception carries for people, if it is one of ours.
     public static Msg Of(Exception ex)
     {

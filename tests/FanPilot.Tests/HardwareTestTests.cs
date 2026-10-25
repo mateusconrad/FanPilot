@@ -12,10 +12,12 @@ public sealed class HardwareTestTests : IDisposable
 
     public void Dispose() { _dir.Dispose(); }
 
-    HardwareTest Test(FakeBoard board, FakeGpu gpu, Action<HardwareTest> onSleep = null)
+    // In Portuguese unless said otherwise: the console and the report follow Windows' language, which differs between
+    // this PC and the CI's.
+    HardwareTest Test(FakeBoard board, FakeGpu gpu, Action<HardwareTest> onSleep = null, string lang = I18n.Portuguese)
     {
         HardwareTest test = null;
-        test = new HardwareTest(board, gpu, _cfg, _dir.Path, () => board, _ => { if (onSleep != null) onSleep(test); }, TimeSpan.Zero);
+        test = new HardwareTest(board, gpu, _cfg, _dir.Path, () => board, _ => { if (onSleep != null) onSleep(test); }, TimeSpan.Zero, lang);
         return test;
     }
 
@@ -47,6 +49,19 @@ public sealed class HardwareTestTests : IDisposable
         Assert.Equal(before, board.GetCurve(1).Signature());
         Assert.Null(RequestOf(board, _cfg, _dir.Path, 1));      // unmanaged again, as it was
         Assert.Equal("auto", gpu.Read()["fanMode"]);
+    }
+
+    // On an English Windows the console and the report are in English (item 21).
+    [Fact]
+    public void TheReportFollowsTheLanguage()
+    {
+        string report;
+        Assert.Equal(HardwareTest.Passed, Test(new FakeBoard(4), new FakeGpu(83), lang: I18n.English).Execute(1, out report));
+        string text = File.ReadAllText(report);
+        Assert.Contains("# FanPilot · hardware test", text);
+        Assert.Contains("**passed**", text);
+        Assert.Contains("| Fixed 40% and 100% | ok |", text);
+        Assert.Contains("| Put everything back as it was | ok |", text);
     }
 
     // On the B760M every fan has the user's own curve: the test must give that back, not the original.
@@ -129,7 +144,7 @@ public sealed class HardwareTestTests : IDisposable
         string report;
         var gpu = new FakeGpu(83);
         // The GPU step waits a few seconds: the CPU heats up meanwhile (settle is zero here, so earlier steps never sleep).
-        int code = Test(board, gpu, t => { if (t.CurrentStep.StartsWith("GPU")) board.Temps[2] = 92; }).Execute(1, out report);
+        int code = Test(board, gpu, t => { if (t.CurrentStep == HardwareTest.StepGpu) board.Temps[2] = 92; }).Execute(1, out report);
         Assert.Equal(HardwareTest.Aborted, code);
         Assert.Contains("CPU a 92", File.ReadAllText(report));
         Assert.Equal(before, board.GetCurve(1).Signature());
@@ -144,7 +159,7 @@ public sealed class HardwareTestTests : IDisposable
         string report;
         int code = Test(board, new FakeGpu(83), t =>
         {
-            if (!overwritten && t.CurrentStep.StartsWith("Curva")) { overwritten = true; board.ChangeExternally(1, FakeBoard.DefaultCurve(1, 0)); }
+            if (!overwritten && t.CurrentStep == HardwareTest.StepCurve) { overwritten = true; board.ChangeExternally(1, FakeBoard.DefaultCurve(1, 0)); }
         }).Execute(1, out report);
         Assert.Equal(HardwareTest.Failed, code);
         Assert.Contains("| Curva por 60 s sem o watchdog reaplicar | falhou |", File.ReadAllText(report));
