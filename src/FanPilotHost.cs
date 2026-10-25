@@ -61,6 +61,9 @@ sealed class FanPilotHost
         if (bridge.Notice != null) Log.Warn(bridge.Notice);
 
         var gpu = _openGpu();
+        // Curves FanPilot runs can follow the GPU too (item 25).
+        var lhm = bridge as LhmBoard;
+        if (lhm != null) lhm.GpuTemp = () => gpu.Temperature;
         var fans = new FanManager(bridge, _cfg, _dataDir);
         var sampler = new Sampler(bridge, gpu);
         var alerts = new AlertMonitor(sampler, fans, bridge, _dataDir);

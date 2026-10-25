@@ -51,6 +51,8 @@ sealed class LhmBoard : IBoard
     public bool FanControlSupported { get { lock (_sync) return _headers.Count > 0; } }
     public string[] TempInputTitles { get; private set; }
     public string BoardName { get; private set; }
+    // The GPU's temperature now, for curves that follow it (item 25); FanPilotHost sets it once the GPU is open.
+    public Func<double?> GpuTemp;
 
     public LhmBoard()
     {
@@ -217,7 +219,8 @@ sealed class LhmBoard : IBoard
         {
             var h = _headers[i];
             if (h.Curve == null) continue;
-            double t = h.Curve.TempInput < _tempValues.Count ? _tempValues[h.Curve.TempInput] : double.NaN;
+            var gpuTemp = GpuTemp;
+            double t = SoftwareCurveEngine.SourceTemp(h.Curve, _tempValues, gpuTemp == null ? null : gpuTemp());
             double? duty = _engine.Next(i, h.Curve, t, dt);
             if (duty == null)
             {

@@ -227,6 +227,9 @@ the fastest the speed may rise and fall. Fixed mode isn't smoothed. The protecti
 - **A reference sensor with no reading** (or an impossible value, such as the 127 °C of a disconnected input): that
   fan goes back to the BIOS until the reading returns.
 - **Repeated failures** of LibreHardwareMonitor (5 in a row): every fan goes back to the BIOS.
+- **The GPU as the reference:** besides the board's sensors, a curve can follow the GPU, or the higher of the CPU and
+  the GPU — case fans then speed up when a game heats the GPU while the CPU idles. Without a GPU reading, "the
+  higher of" follows the sensor alone, and "GPU" hands the fan to the BIOS until the reading returns.
 - The speed is set again every second, undoing whatever the BIOS or a maker's app changed.
 - **Limitation:** if the process is **killed** (Task Manager > End task, `taskkill /f`) or the PC freezes, there's no
   way to react: the fan stays at its last speed until the BIOS or FanPilot takes over again. That's why the 20% floor
@@ -327,7 +330,7 @@ the project: build each one with the .NET Framework's `csc.exe`, passing the GCC
 | POST | `/api/alerts/ack` | `{"id":"…"}` takes the alert off the strip (it stays in the list while it lasts) |
 | GET/POST | `/api/alerts/settings` | limits, the PC's name, the message language and the destinations; secrets come back masked only; `""` removes a destination |
 | POST | `/api/alerts/test` | sends a test message to the configured destinations |
-| POST | `/api/fans/{i}` | `{"mode":"fixed","percent":40}` or `{"mode":"curve","style":"SmartFanMode","points":[[0,30],…N points in %, N = the fan's pointCount],"tempInput":2}` |
+| POST | `/api/fans/{i}` | `{"mode":"fixed","percent":40}` or `{"mode":"curve","style":"SmartFanMode","points":[[0,30],…N points in %, N = the fan's pointCount],"tempInput":2}`; where FanPilot runs the curves, also `"response"` (`fast`, `balanced`, `smooth`) and `"source"` (`sensor`, `gpu` or `max`, the higher of `tempInput` and the GPU) |
 | POST | `/api/fans/{i}/restore` | back to the original curve |
 | POST | `/api/fans/{i}/meta` | `{"label":"Front","role":"pump","pumpPolicy":"min","pumpMinPercent":70}` name (up to 32 characters; empty goes back to the original) and role; `role` `fan` or `pump`, `pumpPolicy` `full` (always 100%) or `min` (a floor from 50 to 100%) |
 | POST | `/api/fans/turbo` | `{"on":true}` every motherboard fan at 100%; `{"on":false}` gives each fan back its previous state |

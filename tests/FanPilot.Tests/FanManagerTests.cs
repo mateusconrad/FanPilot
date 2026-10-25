@@ -366,4 +366,35 @@ public sealed class FanManagerTests : IDisposable
         Assert.Equal("balanced", fresh.GetCurve(1).Response);
         Assert.Null(fresh.GetCurve(2).Response);
     }
+
+    // Item 25: the GPU as the reference, where FanPilot runs the curve; a profile keeps the source the fan had.
+    [Fact]
+    public void TheSourceGoesWithTheCurveWhereFanPilotRunsIt()
+    {
+        var board = new FakeBoard(4, hardwareCurves: false);
+        var m = new FanManager(board, _cfg, _dir.Path);
+        m.Describe();
+        var max = Curve(Standard);
+        max["source"] = "max";
+        m.Apply(1, max);
+        Assert.Equal("max", board.GetCurve(1).Source);
+        m.SetMode("profile:quiet");
+        Assert.Equal("max", board.GetCurve(1).Source);
+        m.SetMode("custom");
+        m.Apply(2, Curve(Standard));
+        Assert.Null(board.GetCurve(2).Source); // the sensor, as every curve before item 25
+
+        var bad = Curve(Standard);
+        bad["source"] = "ram";
+        Assert.Equal("err.source", Assert.Throws<UserError>(() => m.Apply(1, bad)).Msg.Key);
+    }
+
+    [Fact]
+    public void TheChipOnlyFollowsItsOwnSensors()
+    {
+        var gpu = Curve(Standard);
+        gpu["source"] = "gpu";
+        Assert.Equal("err.source.chip", Assert.Throws<UserError>(() => Manager().Apply(1, gpu)).Msg.Key);
+        Assert.Null(_board.GetCurve(1).Source);
+    }
 }

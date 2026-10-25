@@ -226,6 +226,9 @@ valem em qualquer resposta:
 - **Sensor de referência sem leitura** (ou com valor impossível, como 127 °C de uma entrada desconectada): aquele
   fan volta à BIOS até a leitura voltar.
 - **Falhas seguidas** do LibreHardwareMonitor (5 em sequência): todos os fans voltam à BIOS.
+- **A GPU como referência:** além dos sensores da placa, uma curva pode seguir a GPU, ou a maior entre a CPU e a GPU —
+  aí os fans do gabinete aceleram quando um jogo esquenta a GPU com a CPU folgada. Sem leitura da GPU, "a maior entre"
+  segue só o sensor, e "GPU" devolve o fan à BIOS até a leitura voltar.
 - A velocidade é reaplicada a cada segundo, desfazendo o que a BIOS ou um app do fabricante tenha mudado.
 - **Limite:** se o processo for **encerrado à força** (Gerenciador de Tarefas > Finalizar tarefa, `taskkill /f`)
   ou o PC travar, não há como reagir: o fan fica na última velocidade até a BIOS ou o FanPilot assumir de novo.
@@ -326,7 +329,7 @@ Não fazem parte do projeto: compile cada um com o `csc.exe` do .NET Framework, 
 | POST | `/api/alerts/ack` | `{"id":"…"}` tira o alerta da faixa (ele continua na lista enquanto durar) |
 | GET/POST | `/api/alerts/settings` | limites, nome do PC e destinos; os segredos voltam só mascarados; `""` remove um destino |
 | POST | `/api/alerts/test` | envia uma mensagem de teste para os destinos configurados |
-| POST | `/api/fans/{i}` | `{"mode":"fixed","percent":40}` ou `{"mode":"curve","style":"SmartFanMode","points":[[0,30],…N pontos em %, N = pointCount do fan],"tempInput":2}` |
+| POST | `/api/fans/{i}` | `{"mode":"fixed","percent":40}` ou `{"mode":"curve","style":"SmartFanMode","points":[[0,30],…N pontos em %, N = pointCount do fan],"tempInput":2}`; onde o FanPilot executa as curvas, também `"response"` (`fast`, `balanced`, `smooth`) e `"source"` (`sensor`, `gpu` ou `max`, a maior entre o `tempInput` e a GPU) |
 | POST | `/api/fans/{i}/restore` | volta à curva original |
 | POST | `/api/fans/{i}/meta` | `{"label":"Frente","role":"pump","pumpPolicy":"min","pumpMinPercent":70}` nome (até 32 caracteres; vazio volta ao original) e função; `role` `fan` ou `pump`, `pumpPolicy` `full` (sempre 100%) ou `min` (piso de 50 a 100%) |
 | POST | `/api/fans/turbo` | `{"on":true}` todos os fans da placa-mãe em 100%; `{"on":false}` devolve cada fan ao estado anterior |

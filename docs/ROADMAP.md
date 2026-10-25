@@ -8,7 +8,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 - **Testes:** testes automatizados do item: `a fazer` · `ok` (commitados com o item; rodam na [CI](https://github.com/mateusconrad/FanPilot/actions) a cada push)
 - **Esforço**, em dias de trabalho focado: P ≈ 1 · P–M ≈ 2 · M ≈ 3 · G ≈ 10
 
-**Concluídos: 22 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 14a, 15, 16, 17, 18, 19, 20, 22, 27 (veja a seção própria)
+**Concluídos: 23 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 14a, 15, 16, 17, 18, 19, 20, 22, 25, 27 (veja a seção própria)
 
 ## Andamento
 
@@ -38,7 +38,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 | 22 | [Modo painel](specs/22-modo-painel.md) | 4 | P–M | — | concluído | ok | [#22](https://github.com/mateusconrad/FanPilot/issues/22) | `/panel` só de leitura com layout por formato de tela, tela cheia, tela ligada por Wake Lock ou vídeo mudo, proteção OLED; falta conferir num Android por 30 min |
 | 23 | [Integrações (Prometheus, Home Assistant)](specs/23-integracoes.md) | 4 | M | 01, 09 | a fazer | a fazer | [#23](https://github.com/mateusconrad/FanPilot/issues/23) | |
 | 24 | [Histórico persistente](specs/24-historico.md) | 4 | M | — | a fazer | a fazer | [#24](https://github.com/mateusconrad/FanPilot/issues/24) | |
-| 25 | [Fonte de temperatura combinada](specs/25-fonte-combinada.md) | 4 | P–M | 15 | a fazer | a fazer | [#25](https://github.com/mateusconrad/FanPilot/issues/25) | |
+| 25 | [Fonte de temperatura combinada](specs/25-fonte-combinada.md) | 4 | P–M | 15 | concluído | ok | [#25](https://github.com/mateusconrad/FanPilot/issues/25) | `source` = sensor, `gpu` ou `max` nas curvas por software; a Gigabyte recusa; falta uma placa no caminho LHM com GPU |
 | 26 | [Testes de ponta a ponta (painel e executável)](specs/26-testes-ponta-a-ponta.md) | 2 | M | 08, 11 | concluído | ok | [#26](https://github.com/mateusconrad/FanPilot/issues/26) | 36 testes no Edge (~1 min na CI) e smoke do zip; acharam e corrigiram a reconexão do SSE depois de um 503 e o contraste do texto secundário |
 | 27 | [Teste automatizado na placa real](specs/27-teste-em-hardware.md) | 2 | P–M | 08 | concluído | ok | [#27](https://github.com/mateusconrad/FanPilot/issues/27) | falta a primeira execução na B760M |
 
@@ -117,6 +117,7 @@ Itens já na `main` cujo comportamento na placa real ainda não foi conferido. P
 | 19 | Na B760M: sem o PawnIO, o card diz "CPU · socket" com a dica. Com o PawnIO instalado (`winget install namazso.PawnIO`) e o FanPilot reaberto, o log mostra "CPU temperature (…) from LibreHardwareMonitor", o card diz "CPU · pacote" com um valor próximo do "CPU Package" do HWiNFO, e o GCC continua respondendo (o `--hardware-test` passa) |
 | 18 | Na B760M: anotar as curvas de cada fan, escolher "Silencioso" (o RPM cai em poucos segundos; a bomba não muda), ligar e desligar o Turbo (volta ao Silencioso), reiniciar o FanPilot (continua no Silencioso) e escolher "Personalizado": cada fan volta exatamente à curva anotada |
 | 17 | Na B760M: marcar como bomba, em "Nome e função", o header em que ela estiver (o README desconfia do System 1): ele vai a 100%, o card mostra o selo "Bomba", e o Turbo ligado e desligado não o muda. Dar um nome a outro fan e reiniciar o FanPilot: nome e bomba continuam. O `--hardware-test` sem `--fan` não escolhe a bomba |
+| 25 | Numa placa no caminho LHM, com GPU: um fan de gabinete com "Maior entre CPU e GPU" acelera num jogo que esquenta a GPU com a CPU folgada; com o driver da GPU reiniciando (ou desinstalado), o fan segue a CPU; com "GPU", volta à BIOS até a leitura voltar |
 | 15 | Numa placa no caminho LHM (a B760M com `"backend": "lhm"`, se o LibreHardwareMonitor controlar o IT8689E): uma curva com resposta Equilibrada e carga intermitente (um benchmark em rajadas de poucos segundos) não faz o fan subir e descer audivelmente; com a Rápida, faz. Se precisar, ajustar τ, H e as rampas em `SoftwareCurveEngine.Responses` |
 | 27 | A primeira execução do `--hardware-test` na B760M passa (`--fan 1`, o System 1) e devolve as 4 curvas suas como estavam |
 | 01 | `curl.exe -H "Host: exemplo.invalid:8787" http://127.0.0.1:8787/api/fans` → `421`; sem o header → `200`; POST com `X-FanPilot: 1` e `Origin: http://exemplo.invalid:8787` em `/api/logout` → `403`; `/pair`, o painel no PC e o celular pareado funcionam como antes; o log registra a recusa uma vez só |

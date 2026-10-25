@@ -60,6 +60,10 @@ sealed class FanCurve
     public string Key;
     public string Title;
     public int TempInput;
+    // Where the temperature comes from on boards where FanPilot runs the curves (item 25): null, TempInput's sensor;
+    // "gpu"; or "max", the higher of that sensor and the GPU (SoftwareCurveEngine.SourceTemp). The chip only knows
+    // its own sensors.
+    public string Source;
     // "SmartFanMode" (linear between points) or "StairStepMode" (steps); other values come from hardware only.
     public string Mode;
     public int DeltaT;
@@ -87,14 +91,16 @@ sealed class FanCurve
 
     public string Signature()
     {
-        return (IsBios ? "bios|" : "") + TempInput + "|" + string.Join(";", Points.Select(p => (int)Math.Round(p[0]) + "," + (int)Math.Round(p[1])));
+        return (IsBios ? "bios|" : "") + (Source != null ? Source + "|" : "") + TempInput + "|" +
+               string.Join(";", Points.Select(p => (int)Math.Round(p[0]) + "," + (int)Math.Round(p[1])));
     }
 
     public Dictionary<string, object> ToDictionary()
     {
         return new Dictionary<string, object> {
             { "index", Index }, { "key", Key }, { "title", Title }, { "tempInput", TempInput }, { "mode", Mode },
-            { "deltaT", DeltaT }, { "points", Points.Select(p => new[] { p[0], p[1] }).ToList() }, { "response", Response }
+            { "deltaT", DeltaT }, { "points", Points.Select(p => new[] { p[0], p[1] }).ToList() }, { "response", Response },
+            { "source", Source }
         };
     }
 
@@ -108,6 +114,7 @@ sealed class FanCurve
         c.Mode = Json.GetString(d, "mode", "SmartFanMode");
         c.DeltaT = Json.GetInt(d, "deltaT", 1);
         c.Response = Json.GetString(d, "response", null);
+        c.Source = Json.GetString(d, "source", null);
         foreach (object p in Json.ToList(Json.Get(d, "points")))
         {
             var xy = Json.ToList(p);

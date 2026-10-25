@@ -1,6 +1,6 @@
 // FanPilot dashboard: live data over SSE (/api/stream), fan curve editor, GPU fan control.
 import { curveAt, resample, normalize, movePoint } from './js/curve.mjs';
-import { cpuMain } from './js/sensors.mjs';
+import { cpuMain, referenceTemp } from './js/sensors.mjs';
 // tr, not t: t is a temperature or a time all over this file.
 import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLanguageSelect } from './js/i18n.mjs';
 
@@ -325,9 +325,8 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
     else if (f.mode === BIOS) mode = tr('fan.bios');
     else if (f.points.every((p) => p[1] >= 255)) mode = tr('fan.gccMax');
     else mode = tr('fan.original');
-    const temps = snap && snap.tempInputs;
-    const srcT = temps ? temps[f.tempInput] : null;
-    const srcName = state.fans.tempInputs[f.tempInput] || '?';
+    const srcT = referenceTemp(f.source || 'sensor', f.tempInput, snap);
+    const srcName = sourceName(f.source || 'sensor', f.tempInput);
     const now = srcT !== null && srcT !== undefined ? curveAt(f.points, f.mode, srcT) : null;
     return `${mode} · ${srcName} ${fmt(srcT)} °C` + (now !== null ? ` → ${pct(now)}%` : '');
   }
@@ -381,7 +380,7 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
 
   // Duty cycle (0..100%) the chip is commanding right now, from the curve and its reference sensor.
   function commandedPercent(f, snap) {
-    const srcT = snap && snap.tempInputs ? snap.tempInputs[f.tempInput] : null;
+    const srcT = referenceTemp(f.source || 'sensor', f.tempInput, snap);
     if (srcT === null || srcT === undefined) return null;
     const pwm = curveAt(f.points, f.mode, srcT);
     return pwm === null ? null : pct(pwm);
@@ -492,6 +491,7 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
       pointCount: f.pointCount,
       points: toEditorPoints(f.points, limits, f.pointCount),
       response: (req && RESPONSES[req.response] && req.response) || 'balanced',
+      source: f.source || 'sensor', // item 25: the sensor, "gpu" or "max"
       selected: null,    // the point the fine-tune bar adjusts
     };
     renderEditorTitle(f);
@@ -506,17 +506,20 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
     $('edPumpPolicy').value = f.pumpPolicy || 'full';
     $('edPumpMin').value = f.pumpMinPercent || 70;
     renderMeta();
+    const hw = hardwareCurves();
     const sel = $('edTempInput');
-    sel.innerHTML = '';
-    state.fans.tempInputs.forEach((name, k) => {
-      const o = document.createElement('option');
-      o.value = k; o.textContent = name; o.selected = k === f.tempInput;
-      sel.appendChild(o);
-    });
+    const option = (value, text) => { const o = document.createElement('option'); o.value = value; o.textContent = text; return o; };
+    sel.replaceChildren(...state.fans.tempInputs.map((name, k) => option(k, name)));
+    // Item 25: where FanPilot runs the curve, the GPU too, alone or the higher of it and the CPU. The chip only
+    // knows its own sensors.
+    const gpuReads = state.snap && state.snap.gpu && state.snap.gpu.ok;
+    if (!hw && (gpuReads || state.editor.source !== 'sensor')) {
+      sel.append(option('gpu', tr('ed.source.gpu')), option('max', sourceName('max', maxInput(state.editor))));
+    }
+    sel.value = state.editor.source === 'sensor' ? String(f.tempInput) : state.editor.source;
     $('edStyle').value = state.editor.style;
     $('edFixedSlider').min = limits.minDutyPercent;
     $('edFixedSlider').value = state.editor.percent;
-    const hw = hardwareCurves();
     $('edFixedHint').textContent = tr(hw ? 'ed.fixedHint.chip' : 'ed.fixedHint.app', { temp: limits.fixedModeSafetyTemp });
     const socket = hw && state.snap && (state.snap.sensors || []).some((s) => s.role === 'cpu-socket');
     $('edLimits').textContent = [tr('ed.limits', { min: limits.minDutyPercent, max: limits.maxFullSpeedTemp }),
@@ -544,7 +547,17 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
   }
 
   // What "Aplicar" and "Salvar nome e função" would save: closing the sheet with a change asks first.
-  const curveDraft = (e) => JSON.stringify([e.mode, e.percent, e.style, e.tempInput, e.points, e.response]);
+  const curveDraft = (e) => JSON.stringify([e.mode, e.percent, e.style, e.tempInput, e.source, e.points, e.response]);
+
+  // The name of what a curve follows: its sensor, "GPU", or "Maior entre CPU e GPU" (item 25).
+  function sourceName(source, tempInput) {
+    const sensor = state.fans.tempInputs[tempInput] || '?';
+    return source === 'gpu' ? tr('ed.source.gpu') : source === 'max' ? tr('ed.source.max', { sensor }) : sensor;
+  }
+
+  // "The higher of the CPU and the GPU": the CPU's input (LibreHardwareMonitor lists it first, as "CPU"), or the
+  // sensor a curve already pairs with the GPU.
+  const maxInput = (e) => (e.source === 'max' ? e.tempInput : Math.max(0, state.fans.tempInputs.indexOf('CPU')));
   const metaDraft = () => JSON.stringify([$('edLabel').value.trim(), $('edRole').value, $('edPumpPolicy').value, $('edPumpMin').value]);
 
   // While the sheet is open, Tab and screen readers can't reach the page behind it.
@@ -601,6 +614,7 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
     $('edModeCurve').setAttribute('aria-pressed', e.mode === 'curve');
     $('edModeFixed').setAttribute('aria-pressed', e.mode === 'fixed');
     $('edCurveBox').hidden = e.mode !== 'curve';
+    $('edSourceHint').hidden = e.mode !== 'curve' || e.source === 'sensor';
     $('edFixedBox').hidden = e.mode !== 'fixed';
     $('edFixedValue').textContent = e.percent + '%';
     $('edResponseHint').textContent = tr('ed.response.hint', { name: tr(RESPONSES[e.response][0]), desc: tr(RESPONSES[e.response][1]) });
@@ -619,7 +633,7 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
     svg.querySelector('.curve').setAttribute('d', d);
 
     const snap = state.snap || {};
-    const srcT = snap.tempInputs ? snap.tempInputs[e.tempInput] : null;
+    const srcT = referenceTemp(e.source, e.tempInput, snap);
     const hasT = srcT !== null && srcT !== undefined;
     const now = svg.querySelector('.now');
     now.toggleAttribute('hidden', !hasT);
@@ -838,7 +852,7 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
     const body = e.mode === 'fixed'
       ? { mode: 'fixed', percent: e.percent, tempInput: e.tempInput }
       : { mode: 'curve', style: e.style, points: e.points, tempInput: e.tempInput };
-    if (e.mode === 'curve' && !hardwareCurves()) body.response = e.response;
+    if (e.mode === 'curve' && !hardwareCurves()) { body.response = e.response; body.source = e.source; }
     $('edApply').disabled = true;
     try {
       await api('/api/fans/' + e.index, body);
@@ -911,7 +925,17 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
     $('edModeFixed').onclick = () => { state.editor.mode = 'fixed'; renderEditor(); };
     $('edStyle').onchange = (ev) => { state.editor.style = ev.target.value; renderEditor(); };
     $('edResponse').onchange = (ev) => { state.editor.response = ev.target.value; renderEditor(); };
-    $('edTempInput').onchange = (ev) => { state.editor.tempInput = Number(ev.target.value); renderEditor(); };
+    $('edTempInput').onchange = (ev) => {
+      const e = state.editor, v = ev.target.value;
+      if (v === 'gpu' || v === 'max') {
+        if (v === 'max') e.tempInput = maxInput(e);
+        e.source = v;
+      } else {
+        e.source = 'sensor';
+        e.tempInput = Number(v);
+      }
+      renderEditor();
+    };
     $('edFixedSlider').oninput = (ev) => { state.editor.percent = Number(ev.target.value); renderEditor(); };
     $('edApply').onclick = applyEditor;
     $('edRestore').onclick = restoreEditor;
