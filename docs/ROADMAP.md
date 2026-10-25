@@ -8,7 +8,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 - **Testes:** testes automatizados do item: `a fazer` · `ok` (commitados com o item; rodam na [CI](https://github.com/mateusconrad/FanPilot/actions) a cada push)
 - **Esforço**, em dias de trabalho focado: P ≈ 1 · P–M ≈ 2 · M ≈ 3 · G ≈ 10
 
-**Concluídos: 12 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 27 (veja a seção própria)
+**Concluídos: 13 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 27 (veja a seção própria)
 
 ## Andamento
 
@@ -39,7 +39,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 | 23 | [Integrações (Prometheus, Home Assistant)](specs/23-integracoes.md) | 4 | M | 01, 09 | a fazer | a fazer | [#23](https://github.com/mateusconrad/FanPilot/issues/23) | |
 | 24 | [Histórico persistente](specs/24-historico.md) | 4 | M | — | a fazer | a fazer | [#24](https://github.com/mateusconrad/FanPilot/issues/24) | |
 | 25 | [Fonte de temperatura combinada](specs/25-fonte-combinada.md) | 4 | P–M | 15 | a fazer | a fazer | [#25](https://github.com/mateusconrad/FanPilot/issues/25) | |
-| 26 | [Testes de ponta a ponta (painel e executável)](specs/26-testes-ponta-a-ponta.md) | 2 | M | 08, 11 | a fazer | a fazer | [#26](https://github.com/mateusconrad/FanPilot/issues/26) | |
+| 26 | [Testes de ponta a ponta (painel e executável)](specs/26-testes-ponta-a-ponta.md) | 2 | M | 08, 11 | concluído | ok | [#26](https://github.com/mateusconrad/FanPilot/issues/26) | 36 testes no Edge (~1 min na CI) e smoke do zip; acharam e corrigiram a reconexão do SSE depois de um 503 e o contraste do texto secundário |
 | 27 | [Teste automatizado na placa real](specs/27-teste-em-hardware.md) | 2 | P–M | 08 | concluído | ok | [#27](https://github.com/mateusconrad/FanPilot/issues/27) | falta a primeira execução na B760M |
 
 ## Ordem de execução
