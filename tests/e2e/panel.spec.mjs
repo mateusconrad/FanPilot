@@ -49,6 +49,26 @@ test('Turbo põe todos os fans em 100% e desligar devolve o que estava', async (
   await expect(page.locator('#fans .fan .desc')).toHaveText(Array(4).fill(/^Curva original/));
 });
 
+// Item 18: a profile on every fan, Turbo on top of it, and back to the user's own settings.
+test('um perfil vai para todos os fans e Personalizado devolve o que havia', async ({ page }) => {
+  const seg = page.locator('#profileSeg');
+  await expect(seg.getByRole('button', { name: 'Personalizado' })).toHaveAttribute('aria-pressed', 'true');
+  await seg.getByRole('button', { name: 'Silencioso' }).click();
+  await expect(page.locator('#toast')).toHaveText('Perfil Silencioso em todos os fans (menos as bombas)');
+  await expect(seg.getByRole('button', { name: 'Silencioso' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#fans .fan .desc')).toHaveText(Array(4).fill(/^Perfil Silencioso/));
+
+  await page.locator('#turboBtn').click();
+  await expect(page.locator('#fans .fan .desc')).toHaveText(Array(4).fill(/^Turbo 100%/));
+  await page.locator('#turboBtn').click();
+  await expect(page.locator('#fans .fan .desc')).toHaveText(Array(4).fill(/^Perfil Silencioso/));
+
+  await seg.getByRole('button', { name: 'Personalizado' }).click();
+  await expect(page.locator('#toast')).toHaveText('Configuração pessoal de volta');
+  await expect(page.locator('#fans .fan .desc')).toHaveText(Array(4).fill(/^Curva original/));
+  expect((await (await page.request.get(fp.url + '/api/fans')).json()).mode).toBe('custom');
+});
+
 test('fan da GPU: fixo e de volta ao automático', async ({ page }) => {
   await page.locator('#gpuFixed').click();
   await expect(page.locator('#gpuFixedBox')).toBeVisible();

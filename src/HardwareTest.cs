@@ -174,6 +174,8 @@ sealed class HardwareTest
         if (NotForTests(fans[index]))
             return "'" + title + "' parece ser o fan da CPU ou uma bomba: o teste não mexe nele. Escolha um fan de gabinete com --fan.";
         if (_fans.TurboActive) return "Desligue o Turbo antes do teste.";
+        // Editing a fan leaves the profile (item 18): the test must not change the user's mode.
+        if (_fans.Mode != "custom") return "Volte ao modo Personalizado antes do teste: um perfil está ativo.";
         if (!(bool)fans[index]["managed"] && !(bool)fans[index]["hasBackup"])
             return "'" + title + "' não tem a curva original salva: o teste não teria como devolvê-lo. Escolha outro fan.";
         return null;

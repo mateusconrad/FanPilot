@@ -19,20 +19,23 @@ sealed class FanManager
 
     readonly IBoard _bridge;
     readonly AppConfig _cfg;
-    readonly string _backupPath, _desiredPath, _turboPath, _metaPath;
+    readonly string _backupPath, _desiredPath, _turboPath, _modePath, _metaPath;
     readonly object _sync = new object();
     // Everything that changes fans runs under this lock, one operation at a time: Turbo, editing a fan, Restore, the
     // watchdog and the re-apply never interleave (two quick taps on Turbo used to be able to save a wrong "previous"
     // state). _sync only guards the dictionaries; the order is always _opLock, then _sync.
     readonly object _opLock = new object();
     // The state files as read, until the board's headers are known: a version 1 file needs them to be migrated.
-    readonly Dictionary<string, object> _rawBackup, _rawDesired, _rawTurbo;
+    readonly Dictionary<string, object> _rawBackup, _rawDesired, _rawTurbo, _rawMode;
     // The board's headers by position, i.e. what the API's indexes mean this session. Null until the board answered.
     string[] _keys, _titles;
-    // Turbo = every header at 100% (GPU untouched). Remembers each fan's previous request (null = unmanaged)
-    // so turning it off puts things back exactly as they were. Persisted so it survives a restart.
+    // The global mode (item 18): "custom" (the user's own settings, which _desired holds) or "profile:<name>" (a preset
+    // on every fan but the pumps). Turbo (every header at 100%, the GPU untouched) is a layer on top of either. While a
+    // profile or Turbo is on, _personal keeps the user's own request for each header (null: FanPilot did not manage
+    // it), so going back puts things exactly as they were. All of it is in global-mode.json and survives a restart.
+    string _mode = "custom";
     bool _turbo;
-    Dictionary<string, object> _turboPrev = new Dictionary<string, object>();
+    Dictionary<string, object> _personal = new Dictionary<string, object>();
     Dictionary<string, FanCurve> _backup = new Dictionary<string, FanCurve>();
     // What the user asked for, plus the hardware readback signature we expect to keep seeing. An entry whose key no
     // header has any more is an orphan: kept, shown in the panel, never applied.
@@ -51,11 +54,16 @@ sealed class FanManager
         _backupPath = Path.Combine(dataDir, "backup-curves.json");
         _desiredPath = Path.Combine(dataDir, "desired-curves.json");
         _turboPath = Path.Combine(dataDir, "turbo.json");
+        _modePath = Path.Combine(dataDir, "global-mode.json");
         _metaPath = Path.Combine(dataDir, "fan-meta.json");
         _rawBackup = DataFile.Read(_backupPath);
         _rawDesired = DataFile.Read(_desiredPath);
-        _rawTurbo = DataFile.Read(_turboPath);
-        _turbo = _rawTurbo != null && Json.Get(_rawTurbo, "active") is bool active && active;
+        _rawMode = DataFile.Read(_modePath);
+        // Written before the global modes: its Turbo state is converted once the board's headers are known.
+        _rawTurbo = _rawMode == null ? DataFile.Read(_turboPath) : null;
+        _turbo = _rawMode != null ? Json.Get(_rawMode, "turbo") is bool on && on : _rawTurbo != null && Json.Get(_rawTurbo, "active") is bool active && active;
+        string mode = Json.GetString(_rawMode, "mode", "custom");
+        _mode = FanPresets.IsProfile(mode) ? mode : "custom";
         // Written by this version on: keyed from the start, nothing to migrate.
         var meta = Json.Get(DataFile.Read(_metaPath), "fans") as Dictionary<string, object>;
         if (meta != null)
@@ -82,14 +90,14 @@ sealed class FanManager
             bool migrated = false;
             _desired = ByKey(_rawDesired, v => v as Dictionary<string, object>, e => TitleOf(e), ref migrated);
             _backup = ByKey(_rawBackup, v => v is Dictionary<string, object> d ? FanCurve.FromDictionary(d) : null, c => c.Title, ref migrated);
-            var prev = _rawTurbo == null ? null : Json.Get(_rawTurbo, "prev") as Dictionary<string, object>;
+            var prev = (Json.Get(_rawMode, "personal") ?? Json.Get(_rawTurbo, "prev")) as Dictionary<string, object>;
             bool turboV1 = _rawTurbo != null && Json.GetInt(_rawTurbo, "version", 1) < FormatVersion;
             if (prev != null)
                 foreach (var kv in prev)
                 {
                     int index;
-                    if (!turboV1) _turboPrev[kv.Key] = kv.Value;
-                    else if (int.TryParse(kv.Key, out index) && index >= 0 && index < _keys.Length) _turboPrev[_keys[index]] = kv.Value;
+                    if (!turboV1) _personal[kv.Key] = kv.Value;
+                    else if (int.TryParse(kv.Key, out index) && index >= 0 && index < _keys.Length) _personal[_keys[index]] = kv.Value;
                 }
             if (migrated || turboV1)
             {
@@ -98,8 +106,13 @@ sealed class FanManager
                     if (File.Exists(path) && !File.Exists(path + ".v1")) File.Copy(path, path + ".v1");
                 SaveDesired();
                 SaveBackup();
-                SaveTurbo();
                 Log.Info("Arquivos de curvas convertidos para o formato com chave por fan (os antigos ficaram como .v1).");
+            }
+            if (_rawTurbo != null)
+            {
+                SaveMode();
+                File.Delete(_turboPath);
+                Log.Info("turbo.json convertido para global-mode.json.");
             }
             foreach (var kv in _desired)
                 if (Array.IndexOf(_keys, kv.Key) < 0)
@@ -192,14 +205,9 @@ sealed class FanManager
         {
             lock (_sync)
             {
-                _turboPrev = new Dictionary<string, object>();
-                foreach (var key in _keys)
-                {
-                    Dictionary<string, object> d;
-                    _turboPrev[key] = _desired.TryGetValue(key, out d) ? Json.Get(d, "request") : null;
-                }
+                if (_mode == "custom") _personal = Personal();
                 _turbo = true;
-                SaveTurbo();
+                SaveMode();
             }
             for (int i = 0; i < n; i++)
             {
@@ -209,21 +217,104 @@ sealed class FanManager
             Log.Info("Turbo ON");
             return;
         }
-        Dictionary<string, object> previous;
-        lock (_sync) { previous = new Dictionary<string, object>(_turboPrev); _turbo = false; }
-        for (int i = 0; i < n; i++)
+        lock (_sync) { _turbo = false; SaveMode(); }
+        ApplyMode(true);
+        Log.Info("Turbo OFF");
+    }
+
+    // "custom" or "profile:<name>" (FanPresets). Under Turbo, only remembered: it takes effect when Turbo turns off.
+    public string Mode { get { lock (_sync) return _mode; } }
+
+    public void SetMode(string mode)
+    {
+        lock (_opLock)
         {
-            object prev;
-            previous.TryGetValue(_keys[i], out prev);
+            if (mode != "custom" && !FanPresets.IsProfile(mode)) throw new ArgumentException("Modo inválido: use custom ou profile:quiet, profile:standard, profile:performance.");
+            EnsureLoaded();
+            if (_keys.Length == 0) throw new ArgumentException("Esta placa-mãe não oferece controle de fans pelo FanPilot.");
+            bool turbo;
+            lock (_sync)
+            {
+                if (mode == _mode) return;
+                // Leaving the user's own settings: they are what "Personalizado" brings back.
+                if (_mode == "custom" && !_turbo) _personal = Personal();
+                _mode = mode;
+                turbo = _turbo;
+                SaveMode();
+            }
+            Log.Info("Modo: " + mode + (turbo ? " (vale quando o Turbo desligar)" : ""));
+            if (!turbo) ApplyMode(false);
+        }
+    }
+
+    // Writes the current mode to the headers, Turbo off: a profile's curve on each fan that is not a pump, or the user's
+    // own settings back. Pumps keep the user's own setting in a profile, so they are written only after Turbo, which
+    // had put them at 100%.
+    void ApplyMode(bool afterTurbo)
+    {
+        string mode;
+        Dictionary<string, object> personal;
+        lock (_sync) { mode = _mode; personal = new Dictionary<string, object>(_personal); }
+        for (int i = 0; i < _keys.Length; i++)
+        {
             try
             {
+                bool pump = IsPump(i);
+                if (mode != "custom" && !pump) { ApplyCore(i, ProfileRequest(mode, i)); continue; }
+                if (pump && !afterTurbo) continue;
+                object prev;
+                personal.TryGetValue(_keys[i], out prev);
                 var req = prev as Dictionary<string, object>;
                 if (req != null) ApplyCore(i, req); else RestoreCore(i);
             }
-            catch (Exception ex) { Log.Warn("Turbo off, fan " + i + ": " + ex.Message); }
+            catch (Exception ex) { Log.Warn("Modo " + mode + ", fan " + i + ": " + ex.Message); }
         }
-        lock (_sync) { _turboPrev.Clear(); SaveTurbo(); }
-        Log.Info("Turbo OFF");
+        if (mode == "custom") lock (_sync) { _personal.Clear(); SaveMode(); }
+    }
+
+    // Editing or restoring one fan while a profile is on: the mode becomes custom, and the other fans keep the profile's
+    // curve as their own setting (the panel says so before).
+    void LeaveProfile()
+    {
+        lock (_sync)
+        {
+            if (_mode == "custom") return;
+            Log.Info("Modo " + _mode + " deixado pela edição de um fan: as curvas dele ficam como configuração pessoal.");
+            _mode = "custom";
+            _personal.Clear();
+            SaveMode();
+        }
+    }
+
+    // The user's own request for every header right now (null: FanPilot does not manage it). Call with _sync held.
+    Dictionary<string, object> Personal()
+    {
+        var personal = new Dictionary<string, object>();
+        foreach (var key in _keys)
+        {
+            Dictionary<string, object> d;
+            personal[key] = _desired.TryGetValue(key, out d) ? Json.Get(d, "request") : null;
+        }
+        return personal;
+    }
+
+    bool IsPump(int index) { lock (_sync) return MetaFor(_keys[index], _titles[index]).IsPump; }
+
+    // A profile's curve for header i: the preset at the header's point count and limits, on the sensor and with the
+    // response it uses now. "profile" in the request tells the panel where the curve came from.
+    Dictionary<string, object> ProfileRequest(string mode, int index)
+    {
+        string preset = mode.Substring("profile:".Length);
+        var current = _bridge.GetCurve(index);
+        Dictionary<string, object> desired;
+        lock (_sync) _desired.TryGetValue(_keys[index], out desired);
+        var now = Json.Get(desired, "request") as Dictionary<string, object>;
+        int tempInput = Json.GetInt(now, "tempInput", current.TempInput);
+        var points = FanPresets.Points(preset, PointCountFor(_keys[index], current), _cfg.MaxFullSpeedTemp, _cfg.MinDutyPercent);
+        return new Dictionary<string, object> {
+            { "mode", "curve" }, { "style", "SmartFanMode" }, { "points", points.Select(p => (object)new object[] { p[0], p[1] }).ToList() },
+            { "tempInput", tempInput }, { "response", Json.GetString(now, "response", SoftwareCurveEngine.DefaultResponse) }, { "profile", preset }
+        };
     }
 
     static void EnsureNotTurbo(bool turbo)
@@ -278,6 +369,8 @@ sealed class FanManager
             { "orphans", orphans },
             { "tempInputs", _bridge.TempInputTitles },
             { "turbo", TurboActive },
+            { "mode", Mode },
+            { "presets", FanPresets.Describe() },
             { "limits", new Dictionary<string, object> {
                 { "minDutyPercent", _cfg.MinDutyPercent }, { "fixedModeSafetyTemp", _cfg.FixedModeSafetyTemp },
                 { "maxFullSpeedTemp", _cfg.MaxFullSpeedTemp } } }
@@ -291,6 +384,7 @@ sealed class FanManager
         lock (_opLock)
         {
             EnsureNotTurbo(TurboActive);
+            LeaveProfile();
             return ApplyCore(index, request);
         }
     }
@@ -387,6 +481,7 @@ sealed class FanManager
         lock (_opLock)
         {
             EnsureNotTurbo(TurboActive);
+            LeaveProfile();
             return RestoreCore(index);
         }
     }
@@ -445,9 +540,9 @@ sealed class FanManager
             {
                 if (Array.IndexOf(_keys, key) >= 0) throw new ArgumentException("Esse fan existe nesta placa: use \"Restaurar original\" nele.");
                 if (!_desired.Remove(key)) throw new ArgumentException("Configuração não encontrada.");
-                _turboPrev.Remove(key);
+                _personal.Remove(key);
                 SaveDesired();
-                SaveTurbo();
+                SaveMode();
             }
         }
         Log.Info("Configuração órfã descartada: " + key);
@@ -493,10 +588,10 @@ sealed class FanManager
 
     void SaveBackup() { DataFile.WriteAtomic(_backupPath, Versioned(_backup.ToDictionary(kv => kv.Key, kv => (object)kv.Value.ToDictionary()))); }
 
-    void SaveTurbo()
+    void SaveMode()
     {
-        DataFile.WriteAtomic(_turboPath, new Dictionary<string, object> {
-            { "version", FormatVersion }, { "active", _turbo }, { "prev", new Dictionary<string, object>(_turboPrev) } });
+        DataFile.WriteAtomic(_modePath, new Dictionary<string, object> {
+            { "version", 1 }, { "mode", _mode }, { "turbo", _turbo }, { "personal", new Dictionary<string, object>(_personal) } });
     }
 
     static Dictionary<string, object> Versioned(Dictionary<string, object> fans)

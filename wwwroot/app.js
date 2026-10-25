@@ -298,6 +298,7 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     let mode;
     if (state.fans.turbo) mode = 'Turbo 100%';
     else if (f.managed && f.role === 'pump' && f.pumpPolicy === 'full') mode = 'Bomba: sempre 100%';
+    else if (f.managed && req && req.profile) mode = 'Perfil ' + ((state.fans.presets || {})[req.profile] || { name: req.profile }).name;
     else if (f.managed && req && req.mode === 'fixed') mode = `Fixo ${Math.max(req.percent, f.role === 'pump' ? f.pumpMinPercent : 0)}%`;
     else if (f.managed && !hardwareCurves()) mode = 'Curva personalizada, resposta ' + RESPONSES[(req && req.response) || 'balanced'][0].toLowerCase();
     else if (f.managed) mode = 'Curva personalizada';
@@ -316,6 +317,7 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     if (!state.fans) return;
     $('turboBtn').hidden = !state.fans.fans.length;
     $('fanSub').hidden = !state.fans.fans.length;
+    renderProfiles();
     $('fanMode').hidden = hardwareCurves() || !state.fans.fans.length;
     if (!state.fans.supported) {
       box.innerHTML = '<p class="hint"></p>';
@@ -397,6 +399,28 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     }
   }
 
+  // ---------- global profiles (item 18) ----------
+  const profileName = (mode) => mode && mode !== 'custom' ? state.fans.presets[mode.slice('profile:'.length)].name : null;
+
+  function renderProfiles() {
+    const seg = $('profileSeg');
+    seg.hidden = !state.fans.fans.length;
+    seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.mode === (state.fans.mode || 'custom')));
+  }
+
+  async function setProfile(mode) {
+    if (!state.fans || mode === state.fans.mode) return;
+    const buttons = $('profileSeg').querySelectorAll('button');
+    buttons.forEach((b) => { b.disabled = true; });
+    try {
+      const r = await api('/api/fans/mode', { mode });
+      const name = profileName(mode);
+      toast(r.turbo ? 'Vale quando o Turbo desligar' : name ? `Perfil ${name} em todos os fans (menos as bombas)` : 'Configuração pessoal de volta');
+      await loadFans();
+    } catch (e) { toast(e.message, true); }
+    finally { buttons.forEach((b) => { b.disabled = false; }); }
+  }
+
   async function toggleTurbo() {
     if (!state.fans) return;
     const on = !state.fans.turbo;
@@ -410,12 +434,10 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
   }
 
   // ---------- fan editor ----------
-  const PRESETS = {
-    'Silencioso': [[0, 25], [40, 25], [50, 30], [60, 40], [65, 50], [70, 65], [75, 80], [85, 100]],
-    'Padrão': [[0, 30], [35, 30], [45, 40], [55, 55], [62, 65], [68, 75], [74, 85], [82, 100]],
-    'Performance': [[0, 45], [30, 45], [40, 55], [50, 70], [58, 80], [64, 90], [70, 95], [78, 100]],
-    'Máximo': [[0, 100], [20, 100], [30, 100], [40, 100], [50, 100], [60, 100], [70, 100], [80, 100]],
-  };
+  // The presets come from the backend (/api/fans "presets", FanPresets.cs): the profiles use the same ones.
+  // { quiet: { name: 'Silencioso', points: [[°C, %], …] }, standard, performance, max }
+  const presetPoints = (key, limits, n) =>
+    normalize(resample(state.fans.presets[key].points.map(([t, p]) => [Math.min(t, limits.maxFullSpeedTemp), p]), n), limits);
   const ED = { w: 340, h: 230, l: 34, r: 12, t: 10, b: 26 };
   const exX = (t) => ED.l + t / 100 * (ED.w - ED.l - ED.r);
   const exY = (p) => ED.t + (1 - p / 100) * (ED.h - ED.t - ED.b);
@@ -423,7 +445,7 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
   // Editor works in [temp, percent] with the fan's own point count; hardware readbacks may differ, so resample.
   function toEditorPoints(points, limits, n) {
     // A fan on the BIOS has no curve to start from: open the editor on the "Padrão" preset.
-    if (!points.length) return normalize(resample(PRESETS['Padrão'].map(([t, p]) => [Math.min(t, limits.maxFullSpeedTemp), p]), n), limits);
+    if (!points.length) return presetPoints('standard', limits, n);
     let pts = points.map(([t, pwm]) => [Math.round(t), pct(pwm)]);
     if (pts.length !== n) {
       const temps = [0, 30, 40, 50, 60, 70, 75, Math.min(85, limits.maxFullSpeedTemp)];
@@ -450,6 +472,10 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
       response: (req && RESPONSES[req.response] && req.response) || 'balanced',
     };
     $('edTitle').textContent = (f.role === 'pump' ? 'Bomba · ' : 'Fan · ') + fanName(f);
+    renderPresetChips();
+    const profile = profileName(state.fans.mode);
+    $('edProfileNote').hidden = !profile;
+    $('edProfileNote').textContent = profile ? `O perfil ${profile} está ativo: aplicar ou restaurar aqui desliga o perfil, e os outros fans ficam com a curva dele como configuração pessoal.` : '';
     $('edPumpNote').hidden = !(f.role === 'pump' && f.pumpPolicy === 'full');
     $('edMeta').open = false;
     $('edLabel').value = f.label || '';
@@ -679,18 +705,17 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     $('edRole').onchange = renderMeta;
     $('edPumpPolicy').onchange = renderMeta;
     $('edMetaSave').onclick = saveMeta;
-    const chips = $('edPresets');
-    Object.keys(PRESETS).forEach((name) => {
+  }
+
+  // The preset chips, from the backend's presets (built when the editor opens: they arrive with /api/fans).
+  function renderPresetChips() {
+    $('edPresets').replaceChildren(...Object.entries(state.fans.presets || {}).map(([key, preset]) => {
       const b = document.createElement('button');
       b.className = 'btn';
-      b.textContent = name;
-      b.onclick = () => {
-        const limits = state.fans.limits;
-        const preset = PRESETS[name].map(([t, p]) => [Math.min(t, limits.maxFullSpeedTemp), p]);
-        morphPoints(normalize(resample(preset, state.editor.pointCount), limits));
-      };
-      chips.appendChild(b);
-    });
+      b.textContent = preset.name;
+      b.onclick = () => morphPoints(presetPoints(key, state.fans.limits, state.editor.pointCount));
+      return b;
+    }));
   }
 
   // ---------- GPU ----------
@@ -940,6 +965,7 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
       $(def.wrap).addEventListener('pointerleave', () => chartLeave(def));
     });
     $('turboBtn').onclick = toggleTurbo;
+    $('profileSeg').querySelectorAll('button').forEach((b) => { b.onclick = () => setProfile(b.dataset.mode); });
     $('sensorTable').closest('details').addEventListener('toggle', () => state.snap && renderSensors(state.snap));
     $('logout').onclick = async () => {
       if (!confirm('Desparear este aparelho? Será preciso escanear o QR code de novo.')) return;

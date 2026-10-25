@@ -35,6 +35,8 @@ Primeira versão publicada (será a 0.1.0).
 - Alertas de fan parado (bomba parada é crítico), temperatura crítica da CPU ou da GPU, placa sem responder e fan
   devolvido à BIOS por segurança: no painel e, se configurado, no ntfy ou no Telegram, no máximo uma vez a cada
   10 min por alerta. Nada sai do PC sem um destino configurado.
+- Perfis globais Silencioso, Padrão e Performance, com volta exata à configuração pessoal; o Turbo funciona por cima
+  de qualquer perfil, e as bombas ficam de fora. O `turbo.json` vira `global-mode.json` sozinho.
 - Um nome seu para cada fan, mostrado no painel e nos gráficos com o original ao lado.
 - Bombas de watercooler reconhecidas pelo nome (ou marcadas no editor) e protegidas: sempre 100% ou uma velocidade
   mínima, valendo para o editor, o Turbo e as curvas salvas.
