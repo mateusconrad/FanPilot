@@ -362,7 +362,7 @@ sealed class AlertMonitor
         {
             while (!_stopped)
             {
-                try { Tick(); } catch (Exception ex) { Log.Warn("Alertas: " + ex.Message); }
+                try { Tick(); } catch (Exception ex) { Log.Warn("Alerts: " + ex.Message); }
                 Thread.Sleep(1000);
             }
         }) { IsBackground = true, Name = "alerts" }.Start();
@@ -385,9 +385,9 @@ sealed class AlertMonitor
         }
         foreach (var a in changes)
         {
-            if (a.Resolved != null) Log.Info("Alerta resolvido: " + a.Title.Text);
-            else if (a.Severity == "critical") Log.Error("Alerta: " + a.Title.Text + ". " + a.Detail.Text);
-            else Log.Warn("Alerta: " + a.Title.Text + ". " + a.Detail.Text);
+            if (a.Resolved != null) Log.Info("Alert resolved: " + a.Title.Text);
+            else if (a.Severity == "critical") Log.Error("Alert: " + a.Title.Text + ". " + a.Detail.Text);
+            else Log.Warn("Alert: " + a.Title.Text + ". " + a.Detail.Text);
         }
     }
 
@@ -416,7 +416,7 @@ sealed class AlertMonitor
         new Thread(() =>
         {
             var errors = AlertSender.Send(s, title, detail, critical);
-            if (errors.Count > 0) Log.Warn("Alertas: não foi possível enviar (" + string.Join("; ", errors) + ").");
+            if (errors.Count > 0) Log.Warn("Alerts: could not send (" + string.Join("; ", errors) + ").");
         }) { IsBackground = true, Name = "alert-send" }.Start();
     }
 
@@ -492,8 +492,8 @@ sealed class AlertMonitor
             var updated = _settings.With(body);
             updated.Save(_settingsPath);
             _settings = updated;
-            Log.Info("Alertas: limites CPU " + updated.CpuTemp + " °C, GPU " + updated.GpuTemp + " °C; destinos: " +
-                     (updated.NtfyUrl != null ? "ntfy " : "") + (updated.TelegramToken != null ? "Telegram" : "") + (updated.HasDestination ? "" : "nenhum"));
+            Log.Info("Alerts: limits CPU " + updated.CpuTemp + " °C, GPU " + updated.GpuTemp + " °C; messages in " + updated.Language + "; destinations: " +
+                     (updated.NtfyUrl != null ? "ntfy " : "") + (updated.TelegramToken != null ? "Telegram" : "") + (updated.HasDestination ? "" : "none"));
             return updated.Describe();
         }
     }

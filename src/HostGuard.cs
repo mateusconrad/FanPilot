@@ -41,7 +41,7 @@ sealed class HostGuard
         set.Add(Normalize(Environment.MachineName + ".local"));
         if (!string.IsNullOrEmpty(_publicHost)) set.Add(Normalize(_publicHost));
         try { foreach (var a in _localAddresses()) set.Add(Normalize(a)); }
-        catch (Exception ex) { Log.Warn("HostGuard: não foi possível listar os endereços de rede: " + ex.Message); }
+        catch (Exception ex) { Log.Warn("HostGuard: could not list the network addresses: " + ex.Message); }
         _allowed = set;
     }
 
@@ -67,7 +67,7 @@ sealed class HostGuard
             if (_lastRejectLog.Count >= 1000) _lastRejectLog.Clear();
             _lastRejectLog[key] = DateTime.UtcNow;
         }
-        Log.Warn("Requisição recusada: '" + key + "' não é um endereço deste PC (possível DNS rebinding).");
+        Log.Warn("Request refused: '" + key + "' is not an address of this PC (possible DNS rebinding).");
         return true;
     }
 

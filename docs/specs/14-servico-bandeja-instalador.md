@@ -44,7 +44,7 @@ O modo console continua existindo, para desenvolvimento, para a versão portáti
 
 Feita, menos o ponto de parada, que depende da placa real:
 
-- `--service` (`FanPilotService`, um `ServiceBase` com `CanShutdown` e `CanHandlePowerEvent`): responde ao Windows na hora e abre a placa numa thread, porque o GCC pode levar segundos. `OnStop`/`OnShutdown` chamam o mesmo `FanPilotHost.Stop()` do console, que registra quanto levou ("Encerrado em N ms"). `OnPowerEvent` (volta da suspensão) chama o watchdog na hora. Avisos e erros também vão para o log de eventos (Aplicativo, fonte "FanPilot"), e o `AutoLog` registra partida e parada.
+- `--service` (`FanPilotService`, um `ServiceBase` com `CanShutdown` e `CanHandlePowerEvent`): responde ao Windows na hora e abre a placa numa thread, porque o GCC pode levar segundos. `OnStop`/`OnShutdown` chamam o mesmo `FanPilotHost.Stop()` do console, que registra quanto levou ("Stopped in N ms"). `OnPowerEvent` (volta da suspensão) chama o watchdog na hora. Avisos e erros também vão para o log de eventos (Aplicativo, fonte "FanPilot"), e o `AutoLog` registra partida e parada.
 - `--data <pasta>` (variáveis de ambiente expandidas). Como serviço, a pasta fica só para SYSTEM e Administradores, sem herança: o serviço confia nos pareamentos e no `config.json` dela.
 - `--import-data <pasta>` (item 6 da 14c, adiantado): copia `config.json`, `machine.json`, `sessions.json`, as curvas, o Turbo e o `fan-meta.json`, passa pelo `MachineData.Check` e recusa com o FanPilot rodando.
 - `LhmBoard` devolve todos os headers à BIOS na partida, antes de o `FanManager` reaplicar as curvas salvas.
@@ -62,10 +62,10 @@ sc.exe failure FanPilot reset= 86400 actions= restart/1000/restart/5000/restart/
 Start-Service FanPilot
 ```
 
-1. `C:\ProgramData\FanPilot\fanpilot.log` mostra "como serviço" e "Placa-mãe via Gigabyte Control Center": o IPC do GCC funciona como LocalSystem. A GPU aparece no painel: o NVML funciona na sessão 0.
+1. `C:\ProgramData\FanPilot\fanpilot.log` mostra "as a service" e "Motherboard via Gigabyte Control Center": o IPC do GCC funciona como LocalSystem. A GPU aparece no painel: o NVML funciona na sessão 0.
 2. O painel no PC (`http://localhost:8787`) e o celular pareado funcionam, e as curvas são as de antes.
-3. Suspender e voltar: o log mostra "Retorno da suspensão: curvas conferidas agora."
-4. `Stop-Service FanPilot`: o log mostra "Encerrado em N ms", com N abaixo de 1000.
+3. Suspender e voltar: o log mostra "Back from sleep: curves checked now."
+4. `Stop-Service FanPilot`: o log mostra "Stopped in N ms", com N abaixo de 1000.
 5. `Set-Service FanPilot -StartupType Automatic` e reiniciar o PC: o log mostra a partida antes do logon.
 6. Caminho LHM: `"backend": "lhm"` no `C:\ProgramData\FanPilot\config.json` (editor como Administrador), `Restart-Service FanPilot`: os fans respondem às curvas; `Stop-Service FanPilot`: voltam à BIOS.
 7. Para desfazer: `Stop-Service FanPilot; sc.exe delete FanPilot` (os dados ficam em `C:\ProgramData\FanPilot`).

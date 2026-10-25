@@ -201,7 +201,7 @@ public sealed class WebServerTests : IDisposable
             ListenHost = TestEnv.IsAdministrator ? "+" : "localhost"
         };
         var ex = Assert.Throws<HttpListenerException>(() => second.Start());
-        string message = WebServer.PortProblem(_port, ex);
+        string message = WebServer.PortProblem(_port, ex).Text;
         Assert.Contains(_port.ToString(), message);
         Assert.Contains("config.json", message);
     }

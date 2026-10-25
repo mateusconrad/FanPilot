@@ -23,10 +23,16 @@ static class Log
     public static void Warn(string msg) { Writer.Write("WARN", msg); }
     // Something took the fans out of FanPilot's control (handed back to the BIOS, the board stopped answering).
     public static void Error(string msg) { Writer.Write("ERROR", msg); }
+
+    // A line for the person at the console as well (item 21): the window shows it in Windows' language, the log file
+    // keeps it in English like every other line.
+    public static void Info(Msg m) { Writer.Write("INFO", m.Text, m.In(I18n.Windows)); }
+    public static void Warn(Msg m) { Writer.Write("WARN", m.Text, m.In(I18n.Windows)); }
+    public static void Error(Msg m) { Writer.Write("ERROR", m.Text, m.In(I18n.Windows)); }
 }
 
 // The console and data\fanpilot.log, rotated by size (fanpilot.1.log … fanpilot.3.log). The same line repeated in a
-// row is written once and then summarized every minute ("repetida N vezes"), so a failure that recurs every second
+// row is written once and then summarized every minute ("repeated N times"), so a failure that recurs every second
 // costs a few lines instead of 170 thousand a day.
 sealed class LogWriter
 {
@@ -52,7 +58,8 @@ sealed class LogWriter
         _maxBytes = maxBytes;
     }
 
-    public void Write(string level, string text)
+    // console: the line as the person at the window reads it (Log.Info(Msg)); null: the same text.
+    public void Write(string level, string text, string console = null)
     {
         lock (_sync)
         {
@@ -68,22 +75,23 @@ sealed class LogWriter
             _lastLevel = level;
             _lastText = text;
             _repeatSince = now;
-            Emit(now, level, text);
+            Emit(now, level, text, console);
         }
     }
 
     void Summarize(DateTime now)
     {
-        Emit(now, _lastLevel, "(a mensagem anterior se repetiu " + _repeats + (_repeats == 1 ? " vez" : " vezes") + " em " +
+        Emit(now, _lastLevel, "(the previous message repeated " + _repeats + (_repeats == 1 ? " time" : " times") + " in " +
                               Math.Max(1, (int)(now - _repeatSince).TotalSeconds) + " s)");
         _repeats = 0;
         _repeatSince = now;
     }
 
-    void Emit(DateTime now, string level, string text)
+    void Emit(DateTime now, string level, string text, string console = null)
     {
-        string line = now.ToString("yyyy-MM-dd HH:mm:ss") + " [" + level + "] " + text;
-        if (ToConsole) Console.WriteLine(line);
+        string stamp = now.ToString("yyyy-MM-dd HH:mm:ss") + " [" + level + "] ";
+        string line = stamp + text;
+        if (ToConsole) Console.WriteLine(console == null ? line : stamp + console);
         var mirror = Mirror;
         if (mirror != null) try { mirror(level, text); } catch { }
         if (FilePath == null) return;
@@ -121,7 +129,7 @@ static class AppNotices
 
     public static void Add(Msg message)
     {
-        Log.Warn(message.Text);
+        Log.Warn(message);
         lock (Sync) if (!Items.Any(m => m.Text == message.Text)) Items.Add(message);
     }
 
@@ -137,7 +145,7 @@ static class App
         try { o = AppOptions.Parse(args, FakeBoardAllowed); }
         catch (ArgumentException ex)
         {
-            Console.WriteLine(ex.Message);
+            Console.WriteLine(Msg.TextOf(ex, I18n.Windows));
             return 1;
         }
         if (o.Version)
@@ -149,7 +157,7 @@ static class App
         bool fake = o.Fake;
         if (fake && !FakeBoard.Scenarios.Contains(scenario))
         {
-            Console.WriteLine("Cenário da placa de teste desconhecido: " + scenario + ". Use um destes: " + string.Join(", ", FakeBoard.Scenarios) + ".");
+            Console.WriteLine(new Msg("console.unknownScenario", "scenario", scenario, "list", string.Join(", ", FakeBoard.Scenarios)).In(I18n.Windows));
             return 1;
         }
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
@@ -157,15 +165,15 @@ static class App
         string dataDir = DataDirectory.Resolve(o.DataDir, baseDir, fake);
         if (o.Service) DataDirectory.Restrict(dataDir); else Directory.CreateDirectory(dataDir);
         Log.FilePath = Path.Combine(dataDir, "fanpilot.log");
-        Log.Info("FanPilot " + AppVersion.Text + (fake ? " (placa de teste: " + scenario + ")" : "") + (o.Service ? " como serviço" : "") +
-                 "; dados em " + dataDir);
+        Log.Info("FanPilot " + AppVersion.Text + (fake ? " (fake board: " + scenario + ")" : "") + (o.Service ? " as a service" : "") +
+                 "; data in " + dataDir);
 
         // The fake board touches no hardware, so it also runs without Administrator, on localhost only (phones need
         // the "+" prefix, which needs Administrator): that is how the end-to-end tests run on a developer's PC.
         bool admin = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
         if (!admin && (!fake || o.Diagnose))
         {
-            Console.WriteLine("FanPilot precisa rodar como Administrador (o acesso aos sensores e fans da placa-mãe exige).");
+            Console.WriteLine(new Msg("console.admin").In(I18n.Windows));
             return 2;
         }
         if (o.ImportFrom != null) return DataImport.Run(o.ImportFrom, dataDir, SingleInstance.IsRunning(fake));
@@ -174,11 +182,11 @@ static class App
         {
             if (o.HardwareTest)
             {
-                Console.WriteLine("Feche o FanPilot antes do teste em hardware: os dois disputariam os fans.");
+                Console.WriteLine(new Msg("console.hwtestBusy").In(I18n.Windows));
                 return 4;
             }
             string panel = "http://localhost:" + AppConfig.Load(Path.Combine(dataDir, "config.json")).Port + "/";
-            Console.WriteLine("O FanPilot já está rodando. Painel: " + panel);
+            Console.WriteLine(new Msg("console.alreadyRunning", "url", panel).In(I18n.Windows));
             if (o.Interactive) try { Process.Start(panel); } catch { }
             return 4;
         }
@@ -228,7 +236,7 @@ static class Boards
         var api = gcc && cfg.Backend != "lhm" ? GigabyteApi.Load(Program.GccLibDir) : null;
         if (Choose(cfg.Backend, gcc, api) == "gigabyte")
         {
-            Log.Info("Gigabyte Control Center " + api.Version + " em " + Program.GccLibDir);
+            Log.Info("Gigabyte Control Center " + api.Version + " at " + Program.GccLibDir);
             return new GigabyteBridge(api);
         }
         PawnIoSetup.OfferInstall(interactive);
@@ -281,7 +289,7 @@ static class SingleInstance
         catch (AbandonedMutexException)
         {
             // The previous FanPilot ended without releasing it (killed, crashed): the mutex is ours now.
-            Log.Warn("O FanPilot anterior terminou sem encerrar normalmente.");
+            Log.Warn("The previous FanPilot ended without shutting down cleanly.");
             return mutex;
         }
     }
@@ -321,7 +329,7 @@ static class Exit
         AppDomain.CurrentDomain.ProcessExit += (s, e) => Cleanup();
         AppDomain.CurrentDomain.UnhandledException += (s, e) =>
         {
-            Log.Error("Erro fatal: " + e.ExceptionObject);
+            Log.Error("Fatal error: " + e.ExceptionObject);
             Cleanup();
         };
     }
@@ -329,7 +337,7 @@ static class Exit
     public static void Cleanup()
     {
         if (Interlocked.Exchange(ref _done, 1) == 1 || _cleanup == null) return;
-        try { _cleanup(); } catch (Exception ex) { Log.Warn("Encerramento: " + ex.Message); }
+        try { _cleanup(); } catch (Exception ex) { Log.Warn("Shutdown: " + ex.Message); }
     }
 }
 
@@ -407,7 +415,7 @@ sealed class Sampler
             if (took > SlowSample && DateTime.UtcNow - _lastSlowLog > TimeSpan.FromMinutes(1))
             {
                 _lastSlowLog = DateTime.UtcNow;
-                Log.Warn("Leitura dos sensores lenta: " + (int)took.TotalMilliseconds + " ms.");
+                Log.Warn("Slow sensor reading: " + (int)took.TotalMilliseconds + " ms.");
             }
             int wait = 1000 - (int)took.TotalMilliseconds;
             if (wait > 0) Thread.Sleep(wait);
@@ -443,7 +451,7 @@ sealed class Sampler
             if (_boardDown)
             {
                 _boardDown = false;
-                Log.Info("Sensores da placa voltaram a responder.");
+                Log.Info("Board sensors answering again.");
             }
         }
         catch (Exception ex)
@@ -453,7 +461,7 @@ sealed class Sampler
             if (!_boardDown)
             {
                 _boardDown = true;
-                Log.Error("Sensores da placa indisponíveis: " + ex.Message);
+                Log.Error("Board sensors unavailable: " + ex.Message);
             }
         }
         service["sampleMs"] = watch.ElapsedMilliseconds;

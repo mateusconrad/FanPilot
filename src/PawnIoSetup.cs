@@ -23,17 +23,17 @@ static class PawnIoSetup
         if (IsInstalled) return;
         if (!interactive || Console.IsInputRedirected)
         {
-            Log.Warn("Driver PawnIO não instalado: abra o FanPilot pela janela (sem --no-browser) para instalá-lo, ou baixe em " + Site + ".");
+            Log.Warn(new Msg("console.pawnio.notInstalled", "site", Site));
             return;
         }
         Console.WriteLine();
-        Console.WriteLine("O driver PawnIO não está instalado. Sem ele o FanPilot não lê os sensores nem controla os fans");
-        Console.WriteLine("da placa-mãe (é o mesmo driver usado pelo LibreHardwareMonitor e pelo FanControl).");
-        Console.Write("Instalar agora pelo winget (pacote " + WingetId + ", do site oficial " + Site + ")? [S/n] ");
+        Console.WriteLine(new Msg("console.pawnio.why").In(I18n.Windows));
+        Console.Write(new Msg("console.pawnio.ask", "id", WingetId, "site", Site).In(I18n.Windows) + " ");
         string answer = ReadLine(TimeSpan.FromMinutes(2));
-        if (answer == null) { Console.WriteLine(); Log.Warn("Sem resposta: PawnIO não instalado."); return; }
+        if (answer == null) { Console.WriteLine(); Log.Warn(new Msg("console.pawnio.noAnswer")); return; }
         answer = answer.Trim().ToLowerInvariant();
-        if (answer.Length > 0 && answer[0] != 's' && answer[0] != 'y') { Log.Info("Instalação do PawnIO recusada."); return; }
+        // "s" (sim) or "y" (yes), whatever the language of the question.
+        if (answer.Length > 0 && answer[0] != 's' && answer[0] != 'y') { Log.Info(new Msg("console.pawnio.declined")); return; }
 
         int code;
         try
@@ -44,17 +44,16 @@ static class PawnIoSetup
         }
         catch (Win32Exception)
         {
-            Log.Warn("winget não encontrado neste Windows. Baixe o PawnIO em " + Site + ", instale e abra o FanPilot de novo.");
+            Log.Warn(new Msg("console.pawnio.noWinget", "site", Site));
             try { Process.Start(Site); } catch { }
             return;
         }
         if (IsInstalled)
         {
-            Log.Info("PawnIO instalado." + (code == RebootRequired ? " O instalador pediu para reiniciar o PC; se os fans não aparecerem, reinicie." : ""));
+            Log.Info(new Msg(code == RebootRequired ? "console.pawnio.installedReboot" : "console.pawnio.installed"));
             return;
         }
-        Log.Warn("A instalação do PawnIO não terminou (código " + code + (code == AlreadyInstalled ? ", o winget diz que já está instalado" : "") +
-                 "). Reinicie o PC ou instale manualmente por " + Site + ".");
+        Log.Warn(new Msg(code == AlreadyInstalled ? "console.pawnio.unfinishedAlready" : "console.pawnio.unfinished", "code", code, "site", Site));
     }
 
     // Console.ReadLine with a timeout, so an unattended start doesn't wait forever.

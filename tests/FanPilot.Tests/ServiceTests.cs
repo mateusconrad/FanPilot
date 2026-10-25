@@ -34,9 +34,9 @@ public class AppOptionsTests
     [InlineData("--import-data")]
     public void AFolderOptionWithoutAFolderIsAnError(string option)
     {
-        Assert.Throws<ArgumentException>(() => AppOptions.Parse(new[] { option }, false));
-        Assert.Throws<ArgumentException>(() => AppOptions.Parse(new[] { option, "--service" }, false));
-        Assert.Throws<ArgumentException>(() => AppOptions.Parse(new[] { option + "=" }, false));
+        Assert.Throws<UserError>(() => AppOptions.Parse(new[] { option }, false));
+        Assert.Throws<UserError>(() => AppOptions.Parse(new[] { option, "--service" }, false));
+        Assert.Throws<UserError>(() => AppOptions.Parse(new[] { option + "=" }, false));
     }
 
     [Fact]

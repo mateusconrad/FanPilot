@@ -35,12 +35,12 @@ static class MachineData
                     string src = Path.Combine(dataDir, name);
                     if (File.Exists(src)) File.Move(src, Path.Combine(archive, name));
                 }
-            Log.Warn((saved == null ? "machine.json ilegível" : "data\\ veio de outro PC ou de outra placa-mãe (" + Json.GetString(saved, "board", "?") + ")") +
-                     "; curvas e pareamentos antigos movidos para " + archive + " e não serão aplicados.");
+            Log.Warn(saved == null ? new Msg("console.machine.unreadable", "archive", archive)
+                                   : new Msg("console.machine.other", "board", Json.GetString(saved, "board", "?"), "archive", archive));
         }
         // No machine.json yet: a fresh install, or data written by a version without this check on this same PC.
         DataFile.WriteAtomic(path, current);
-        Log.Info("Placa-mãe: " + (Board.Length > 0 ? Board : "desconhecida"));
+        Log.Info("Motherboard: " + (Board.Length > 0 ? Board : "unknown"));
     }
 
     static string ReadHklm(string subKey, string name)

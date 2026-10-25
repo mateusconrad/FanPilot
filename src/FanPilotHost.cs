@@ -40,7 +40,6 @@ sealed class FanPilotHost
         try { server.Start(); }
         catch (HttpListenerException ex)
         {
-            Console.WriteLine(WebServer.PortProblem(_cfg.Port, ex));
             Log.Error(WebServer.PortProblem(_cfg.Port, ex));
             return 5;
         }
@@ -50,17 +49,16 @@ sealed class FanPilotHost
             _server = server;
         }
 
-        if (!_admin) Log.Info("Sem Administrador: o painel só abre em http://localhost:" + _cfg.Port + "/ (nenhum celular pareia).");
+        if (!_admin) Log.Info(new Msg("console.noAdmin", "url", "http://localhost:" + _cfg.Port + "/"));
         IBoard bridge;
         try { bridge = _openBoard(); }
         catch (InvalidOperationException ex)
         {
-            Console.WriteLine(ex.Message);
-            Log.Error(ex.Message);
+            Log.Error(Msg.Of(ex) ?? new Msg("raw", "text", ex.Message));
             return 3;
         }
-        Log.Info("Placa-mãe via " + bridge.BackendName + (bridge.HardwareCurves ? " (curvas no chip)" : " (curvas executadas pelo FanPilot)"));
-        if (bridge.Notice != null) Log.Warn(bridge.Notice.Text);
+        Log.Info("Motherboard via " + bridge.BackendName + (bridge.HardwareCurves ? " (curves in the chip)" : " (curves run by FanPilot)"));
+        if (bridge.Notice != null) Log.Warn(bridge.Notice);
 
         var gpu = _openGpu();
         var fans = new FanManager(bridge, _cfg, _dataDir);
@@ -81,8 +79,8 @@ sealed class FanPilotHost
         server.Attach(new AuthManager(_dataDir, _cfg), sampler, fans, gpu, alerts);
 
         string pairUrl = "http://localhost:" + _cfg.Port + "/pair";
-        Log.Info("FanPilot rodando na porta " + _cfg.Port + ". Endereços na rede: " + string.Join(", ", NetworkInfo.CandidateHosts(_cfg).Select(h => "http://" + h + ":" + _cfg.Port)));
-        Log.Info("Para parear o celular, abra " + pairUrl + " neste PC e escaneie o QR code.");
+        Log.Info(new Msg("console.running", "port", _cfg.Port, "urls", string.Join(", ", NetworkInfo.CandidateHosts(_cfg).Select(h => "http://" + h + ":" + _cfg.Port))));
+        Log.Info(new Msg("console.pairHint", "url", pairUrl));
         if (_interactive) try { Process.Start(pairUrl); } catch { }
         return 0;
     }
@@ -107,13 +105,13 @@ sealed class FanPilotHost
         var watch = Stopwatch.StartNew();
         if (bridge != null)
             Log.Info(bridge.HardwareCurves
-                ? "Encerrando: fan da GPU volta para automático; curvas da placa-mãe permanecem no chip (com ponto de segurança)."
-                : "Encerrando: fans da placa-mãe e da GPU voltam ao controle automático (BIOS/driver).");
+                ? "Stopping: the GPU fan goes back to automatic; the motherboard's curves stay in the chip (with the safety point)."
+                : "Stopping: the motherboard's and the GPU's fans go back to automatic control (BIOS, driver).");
         if (sampler != null) sampler.Stop();
         if (server != null) server.Stop();
         if (bridge != null) bridge.Shutdown();
         if (gpu != null) { gpu.Stop(); gpu.Shutdown(); }
-        Log.Info("Encerrado em " + watch.ElapsedMilliseconds + " ms.");
+        Log.Info("Stopped in " + watch.ElapsedMilliseconds + " ms.");
     }
 
     // Back from sleep (the service's power event): the BIOS may have reset the chip. Curves are checked and put back
@@ -122,7 +120,7 @@ sealed class FanPilotHost
     {
         var fans = _fans;
         if (fans == null) return;
-        Log.Info("Retorno da suspensão: curvas conferidas agora.");
+        Log.Info("Back from sleep: curves checked now.");
         fans.Watchdog();
     }
 }

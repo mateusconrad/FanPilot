@@ -30,7 +30,7 @@ public sealed class LogTests : IDisposable
         var lines = Lines();
         Assert.InRange(lines.Length, 2, 20);
         Assert.Equal("2026-10-24 12:00:00 [WARN] LibreHardwareMonitor: falha ao ler o chip", lines[0]);
-        Assert.Contains("se repetiu", lines[1]);
+        Assert.Contains("repeated", lines[1]);
     }
 
     [Fact]
@@ -44,8 +44,17 @@ public sealed class LogTests : IDisposable
         var lines = Lines();
         Assert.Equal(3, lines.Length);
         Assert.EndsWith("[WARN] A", lines[0]);
-        Assert.Contains("se repetiu 2 vezes", lines[1]);
+        Assert.Contains("repeated 2 times", lines[1]);
         Assert.EndsWith("[INFO] B", lines[2]);
+    }
+
+    // A line for the person at the console (Log.Info(Msg)) goes to the file in English (item 21).
+    [Fact]
+    public void TheFileKeepsTheEnglishOfAConsoleLine()
+    {
+        var log = Writer();
+        log.Write("INFO", "To pair a phone, open the page.", "Para parear o celular, abra a página.");
+        Assert.EndsWith("[INFO] To pair a phone, open the page.", Assert.Single(Lines()));
     }
 
     [Fact]

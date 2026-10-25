@@ -24,7 +24,7 @@ public class DiagnoseTests
     [Fact]
     public void SerialNumbersAndUuidsAreLeftOut()
     {
-        string r = Diagnose.Redact(Sample);
+        string r = Diagnose.Redact(Sample, I18n.Portuguese);
         foreach (string value in new[] { "230612345678", "PATRIMONIO-0042", "BFEBFBFF000B0671", "03000200-0400", "SN-XYZ-123", "4d1e55b2" })
             Assert.DoesNotContain(value, r);
         Assert.Contains("Motherboard Serial: (omitido)", r);
@@ -32,12 +32,14 @@ public class DiagnoseTests
         Assert.Contains("System UUID: (omitido)", r);
         // An empty value stays empty: nothing was there to hide.
         Assert.Contains("Processor Serial:\r\n", r);
+        // The marker in the report's language (item 21).
+        Assert.Contains("Motherboard Serial: (omitted)", Diagnose.Redact(Sample, I18n.English));
     }
 
     [Fact]
     public void TheModelStays()
     {
-        string r = Diagnose.Redact(Sample);
+        string r = Diagnose.Redact(Sample, I18n.Portuguese);
         Assert.Contains("Mainboard Name: B760M GAMING X AX", r);
         Assert.Contains("Memory Device [0] Part Number: CMK32GX5M2B5600C36", r);
         Assert.Contains("System Enclosure SKU: Default string", r);

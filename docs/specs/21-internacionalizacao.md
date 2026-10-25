@@ -42,7 +42,12 @@ Painel e documentação em inglês e português, sem nenhuma regressão para que
   (iniciando, código inválido, pareado) seguem o `Accept-Language`. Os alertas enviados ao ntfy e ao Telegram saem no
   idioma do painel em que os avisos foram salvos (`language` no `alerts.json`; antes de salvar, o do Windows). A placa e
   a GPU falsas ganharam nomes em inglês ("Test board", "Test GPU").
-- **21c:** console, `--diagnose` e `--hardware-test` no idioma do Windows, lendo os mesmos dicionários; logs em inglês.
+- **21c (feita):** o log é todo em inglês, com frases estáveis (a linha "repetida" também). O que é para a pessoa na
+  janela do console (pareamento, porta ocupada, sem Administrador, PawnIO, dados de outro PC, avisos) usa
+  `Log.Info/Warn/Error(Msg)`: a janela mostra no idioma do Windows e o arquivo de log guarda o inglês. As mensagens de
+  console soltas (já está rodando, opções inválidas, importação) e os relatórios do `--diagnose` (inclusive o marcador
+  "(omitido)") e do `--hardware-test` seguem o idioma do Windows; os testes passam o idioma, já que o deste PC e o da CI
+  são diferentes. Os nomes de arquivos e pastas em disco (`.corrompido-`, `outra-maquina-`, `diagnostico-`) não mudam.
 - **21d:** README em inglês com o `README.pt-BR.md`, formulários de issue em inglês com rótulos bilíngues.
 
 ## Critérios de aceite

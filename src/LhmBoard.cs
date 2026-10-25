@@ -60,7 +60,7 @@ sealed class LhmBoard : IBoard
         catch (Exception ex)
         {
             // Monitoring of the GPU (NVML) and the panel keep working; the board just shows the reason.
-            Log.Warn("LibreHardwareMonitor não iniciou: " + ex);
+            Log.Warn("LibreHardwareMonitor did not start: " + ex);
             lock (_sync) Notice = new Msg("board.lhmFailed", "detail", ex.Message);
             _pc = null;
         }
@@ -121,9 +121,9 @@ sealed class LhmBoard : IBoard
                 Notice = null;
             Refresh(); // so the first curve applied already sees real temperatures
         }
-        Log.Info("LibreHardwareMonitor: placa " + (BoardName.Length > 0 ? BoardName : "?") + "; chips: " +
-                 (superIo.Count > 0 ? string.Join(", ", superIo.Select(h => h.Name)) : "nenhum") + "; " + headers.Count + " fans controláveis; " +
-                 temps.Count + " sensores de temperatura" + (pawnIo ? "" : "; PawnIO NÃO instalado"));
+        Log.Info("LibreHardwareMonitor: board " + (BoardName.Length > 0 ? BoardName : "?") + "; chips: " +
+                 (superIo.Count > 0 ? string.Join(", ", superIo.Select(h => h.Name)) : "none") + "; " + headers.Count + " fans that can be controlled; " +
+                 temps.Count + " temperature sensors" + (pawnIo ? "" : "; PawnIO NOT installed"));
     }
 
     internal static void Collect(IHardware hw, List<IHardware> into)
@@ -153,7 +153,7 @@ sealed class LhmBoard : IBoard
                     Refresh();
                     ApplyCurves();
                 }
-                if (_failures >= FailuresBeforeRelease) Log.Info("LibreHardwareMonitor voltou a responder: curvas do FanPilot reaplicadas.");
+                if (_failures >= FailuresBeforeRelease) Log.Info("LibreHardwareMonitor answering again: FanPilot's curves applied again.");
                 _failures = 0;
             }
             catch (Exception ex)
@@ -161,7 +161,7 @@ sealed class LhmBoard : IBoard
                 // The log records the transitions (first failure, hand-back, recovery), not every failed second.
                 if (++_failures == 1) Log.Warn("LibreHardwareMonitor: " + ex.Message);
                 if (_failures == FailuresBeforeRelease)
-                    Log.Error("LibreHardwareMonitor falhou " + _failures + " vezes seguidas: fans devolvidos à BIOS até ele voltar a responder. Último erro: " + ex.Message);
+                    Log.Error("LibreHardwareMonitor failed " + _failures + " times in a row: fans handed back to the BIOS until it answers again. Last error: " + ex.Message);
                 if (_failures >= FailuresBeforeRelease) lock (_sync) foreach (var h in _headers) TryDefault(h);
             }
             _stop.WaitOne(1000);
@@ -221,12 +221,12 @@ sealed class LhmBoard : IBoard
             double? duty = _engine.Next(i, h.Curve, t, dt);
             if (duty == null)
             {
-                if (!h.OnBiosFallback) Log.Warn("Fan " + h.Title + ": sem leitura válida do sensor de referência; devolvido à BIOS até voltar.");
+                if (!h.OnBiosFallback) Log.Warn("Fan " + h.Title + ": no valid reading from the reference sensor; on the BIOS until it comes back.");
                 h.OnBiosFallback = true;
                 TryDefault(h);
                 continue;
             }
-            if (h.OnBiosFallback) Log.Info("Fan " + h.Title + ": sensor de referência voltou; curva do FanPilot reaplicada.");
+            if (h.OnBiosFallback) Log.Info("Fan " + h.Title + ": the reference sensor is back; FanPilot's curve applied again.");
             h.OnBiosFallback = false;
             float percent = (float)Math.Max(h.Control.Control.MinSoftwareValue, Math.Min(h.Control.Control.MaxSoftwareValue, duty.Value));
             h.Control.Control.SetSoftware(percent);
@@ -235,7 +235,7 @@ sealed class LhmBoard : IBoard
 
     static void TryDefault(Header h)
     {
-        try { h.Control.Control.SetDefault(); } catch (Exception ex) { Log.Warn("Fan " + h.Title + ": SetDefault falhou: " + ex.Message); }
+        try { h.Control.Control.SetDefault(); } catch (Exception ex) { Log.Warn("Fan " + h.Title + ": SetDefault failed: " + ex.Message); }
     }
 
     public List<Msg> ControlProblems()
@@ -319,7 +319,7 @@ sealed class LhmBoard : IBoard
             int handed = 0;
             foreach (var h in _headers) if (h.Curve != null || h.OnBiosFallback) { TryDefault(h); handed++; }
             try { if (_pc != null) _pc.Close(); } catch { }
-            if (handed > 0) Log.Info("LibreHardwareMonitor: " + handed + " fan(s) devolvido(s) à BIOS.");
+            if (handed > 0) Log.Info("LibreHardwareMonitor: " + handed + " fan(s) handed back to the BIOS.");
         }
     }
 }
