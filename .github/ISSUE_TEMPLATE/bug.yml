@@ -1,0 +1,54 @@
+name: Problema
+description: Algo no FanPilot não funciona como deveria.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Se for a primeira vez numa placa que não é a B760M GAMING X AX, use o **relato de compatibilidade**: ele já pede o que ajuda a entender a placa.
+        Antes de anexar o log, confira se ele não tem nada que você prefira não publicar.
+  - type: textarea
+    id: problema
+    attributes:
+      label: O que aconteceu
+      description: E o que você esperava que acontecesse.
+    validations:
+      required: true
+  - type: textarea
+    id: passos
+    attributes:
+      label: Como reproduzir
+      placeholder: |
+        1. Abri o painel no celular
+        2. Toquei em System 1 › Fixo › 40% › Aplicar
+        3. …
+  - type: input
+    id: versao
+    attributes:
+      label: Versão do FanPilot
+      description: Rodapé do painel, primeira linha do log ou `FanPilot.exe --version`.
+      placeholder: 0.1.0+1a2b3c4
+    validations:
+      required: true
+  - type: input
+    id: placa
+    attributes:
+      label: Placa-mãe
+      placeholder: Gigabyte Technology Co., Ltd. B760M GAMING X AX
+    validations:
+      required: true
+  - type: dropdown
+    id: caminho
+    attributes:
+      label: Caminho usado pelo FanPilot
+      description: Aparece no rodapé do painel e no log ("Placa-mãe via …").
+      options:
+        - Gigabyte Control Center
+        - LibreHardwareMonitor
+        - Não sei
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: Arraste aqui o `data\fanpilot.log`, ou cole as linhas em volta do problema.
+      render: text

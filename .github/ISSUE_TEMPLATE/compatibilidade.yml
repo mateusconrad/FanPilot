@@ -1,0 +1,88 @@
+name: Relato de compatibilidade
+description: Testou o FanPilot numa placa-mãe? Conte como foi, mesmo que não tenha funcionado.
+title: "[Compatibilidade] "
+labels: ["compatibilidade"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por testar! Siga o [guia de teste](https://github.com/mateusconrad/FanPilot/blob/main/docs/TESTANDO-OUTRAS-PLACAS.md), da etapa mais segura para a menos segura, e pare na primeira que der algo estranho. O `FanPilot.exe --diagnose` grava um arquivo com o link deste formulário já preenchido e sem números de série.
+        As placas já relatadas estão em [docs/COMPATIBILIDADE.md](https://github.com/mateusconrad/FanPilot/blob/main/docs/COMPATIBILIDADE.md).
+  - type: input
+    id: placa
+    attributes:
+      label: Modelo da placa-mãe
+      description: Como aparece no diagnóstico ("Placa-mãe (registro)") ou na caixa.
+      placeholder: ASUSTeK COMPUTER INC. ROG STRIX B550-F GAMING (WI-FI)
+    validations:
+      required: true
+  - type: input
+    id: bios
+    attributes:
+      label: Versão da BIOS
+      placeholder: "3607"
+  - type: dropdown
+    id: fabricante
+    attributes:
+      label: Fabricante
+      options:
+        - ASUS
+        - ASRock
+        - Biostar
+        - Gigabyte
+        - MSI
+        - Outro
+    validations:
+      required: true
+  - type: dropdown
+    id: caminho
+    attributes:
+      label: Caminho usado pelo FanPilot
+      description: Aparece no rodapé do painel e no log ("Placa-mãe via …").
+      options:
+        - Gigabyte Control Center
+        - LibreHardwareMonitor
+        - Não sei
+    validations:
+      required: true
+  - type: input
+    id: versao
+    attributes:
+      label: Versão do FanPilot
+      description: Rodapé do painel, primeira linha do log ou do diagnóstico.
+      placeholder: 0.1.0+1a2b3c4
+    validations:
+      required: true
+  - type: checkboxes
+    id: etapas
+    attributes:
+      label: O que funcionou
+      description: As etapas do guia de teste.
+      options:
+        - label: "Diagnóstico: listou os fans e sensores de temperatura plausíveis"
+        - label: "Monitoramento: temperaturas e RPM batem com outro programa (HWiNFO, o app do fabricante)"
+        - label: "Fan fixo: o RPM mudou com 40%"
+        - label: "Curva: o RPM acompanhou a temperatura"
+        - label: "Ao fechar o FanPilot, os fans voltaram ao controle da BIOS (ou, na Gigabyte com GCC, a curva continuou no chip)"
+  - type: dropdown
+    id: resultado
+    attributes:
+      label: Resultado
+      options:
+        - Funcionou
+        - Funcionou em parte
+        - Não funcionou
+    validations:
+      required: true
+  - type: textarea
+    id: detalhes
+    attributes:
+      label: Detalhes
+      description: O que aconteceu em cada etapa, o que não funcionou, mensagens do painel, quais fans são de gabinete, CPU ou bomba.
+  - type: textarea
+    id: arquivos
+    attributes:
+      label: Diagnóstico e log
+      description: Arraste aqui o `data\diagnostico-….txt` e o `data\fanpilot.log` da pasta do FanPilot.
+    validations:
+      required: true

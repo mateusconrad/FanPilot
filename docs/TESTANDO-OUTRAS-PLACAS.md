@@ -24,8 +24,9 @@ Abra um terminal na pasta e rode:
 ```
 
 O diagnóstico não instala nada: se o PawnIO faltar, abra o `FanPilot.exe` uma vez antes (etapa 0). Ele pede
-Administrador, salva `data\diagnostico-<data>.txt` e abre o arquivo no Bloco de Notas. Mande esse
-arquivo. Confira nele:
+Administrador, salva `data\diagnostico-<data>.txt` e abre o arquivo no Bloco de Notas. O arquivo sai sem números de
+série nem UUIDs (são do seu PC, não do modelo da placa) e começa com o link do formulário de relato já preenchido.
+Confira nele:
 
 - `PawnIO: instalado` — se aparecer "NÃO instalado", volte à etapa 0.
 - Em **Fans controláveis**, a lista dos headers (ex.: `CPU Fan`, `Chassis Fan #1`, `AIO Pump`).
@@ -57,12 +58,15 @@ No mesmo fan de gabinete, escolha uma curva (ex.: "Padrão"), aplique e deixe al
 
 ## 5. O que mandar
 
-Abra uma issue em https://github.com/mateusconrad/FanPilot/issues com:
+Abra o link do começo do arquivo do diagnóstico (ou o
+[formulário de compatibilidade](https://github.com/mateusconrad/FanPilot/issues/new?template=compatibilidade.yml)
+direto). Ele já vem com o modelo da placa e a versão do FanPilot e pede:
 
-- modelo da placa-mãe e versão da BIOS;
-- o arquivo `diagnostico-….txt`;
-- o arquivo `data\fanpilot.log`;
-- até que etapa chegou e o que aconteceu em cada uma (o RPM mudou? voltou ao fechar?).
+- a versão da BIOS e o caminho que o FanPilot usou;
+- o que funcionou em cada etapa (o RPM mudou? voltou ao fechar?) e o resultado;
+- o arquivo `diagnostico-….txt` e o `data\fanpilot.log`, arrastados para o formulário.
+
+As placas já relatadas ficam em [COMPATIBILIDADE.md](COMPATIBILIDADE.md).
 
 ## Se algo der errado
 

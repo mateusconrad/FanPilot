@@ -123,8 +123,10 @@ despareia aparelhos.
 | Fan e sensores da GPU | NVIDIA (NVML); AMD e Intel Arc via LibreHardwareMonitor | Igual |
 
 Testado em: **B760M GAMING X AX** (GCC 26.03.26.01). ASUS e outras placas: **em teste**, ainda sem placa
-confirmada. Se testar, siga [docs/TESTANDO-OUTRAS-PLACAS.md](docs/TESTANDO-OUTRAS-PLACAS.md) e abra uma issue
-com o modelo, o arquivo do `--diagnose` e o resultado.
+confirmada. A lista das placas relatadas está em [docs/COMPATIBILIDADE.md](docs/COMPATIBILIDADE.md). Se testar,
+siga [docs/TESTANDO-OUTRAS-PLACAS.md](docs/TESTANDO-OUTRAS-PLACAS.md) e relate pelo
+[formulário de compatibilidade](https://github.com/mateusconrad/FanPilot/issues/new?template=compatibilidade.yml):
+o arquivo do `--diagnose` traz o link já preenchido e sai sem números de série nem UUIDs.
 
 Para forçar um caminho, use `"backend"` no `config.json`: `"auto"` (padrão: GCC se instalado, senão
 LibreHardwareMonitor), `"gigabyte"` ou `"lhm"`. Se uma atualização do GCC mudar a API interna que o FanPilot usa,
@@ -205,7 +207,7 @@ Limites ajustáveis em `bin\data\config.json` (`minDutyPercent`, `fixedModeSafet
 | Celular volta para a tela de bloqueio | Sessão revogada em `/pair`, cookies apagados ou 30 dias sem uso: pareie de novo. |
 | Status "sensores da placa indisponíveis" | Gigabyte: `EasyTuneEngineService` parado (`services.msc`) ou GCC atualizado/removido. A GPU continua funcionando. |
 | "Falta o driver PawnIO" | Placa sem GCC: feche e abra o FanPilot pela janela e responda `S` para instalar (ou instale pelo [site](https://pawnio.eu)). Com o autostart (`--no-browser`) ele não pergunta. |
-| Placa sem GCC não mostra fans | O LibreHardwareMonitor não reconheceu ou não controla o chip dessa placa. Rode `FanPilot.exe --diagnose` e abra uma issue com o arquivo gerado. |
+| Placa sem GCC não mostra fans | O LibreHardwareMonitor não reconheceu ou não controla o chip dessa placa. Rode `FanPilot.exe --diagnose` e relate pelo link que vem no arquivo gerado. |
 | FanPilot fecha logo ao abrir | Não está como Administrador, ou o GCC não está instalado. Veja o log. |
 | "Esta placa-mãe não oferece controle de fans" | A placa não usa o caminho de controle que o FanPilot implementa; só o monitoramento funciona. |
 | Fan da GPU não aceita modo fixo | Driver recusou o controle manual (mensagem com código NVML); o fan fica em automático. |

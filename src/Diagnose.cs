@@ -1,15 +1,37 @@
 // FanPilot.exe --diagnose: read-only report for boards nobody has tested yet. Opens LibreHardwareMonitor, lists what
-// it found and how FanPilot maps it (reference sensors, controllable headers), and saves it to data\ to be sent
-// along with an issue. Never changes a fan speed.
+// it found and how FanPilot maps it (reference sensors, controllable headers), and saves it to data\ to be attached
+// to a public issue: serial numbers and UUIDs are left out. Never changes a fan speed.
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using LibreHardwareMonitor.Hardware;
 
 static class Diagnose
 {
+    const string NewIssueUrl = "https://github.com/mateusconrad/FanPilot/issues/new";
+
+    // The compatibility form (.github/ISSUE_TEMPLATE/compatibilidade.yml) with the board and the version filled in.
+    internal static string ReportUrl(string board)
+    {
+        string title = "[Compatibilidade] " + (string.IsNullOrEmpty(board) ? "placa desconhecida" : board);
+        return NewIssueUrl + "?template=compatibilidade.yml&title=" + Uri.EscapeDataString(title) +
+               "&placa=" + Uri.EscapeDataString(board ?? "") + "&versao=" + Uri.EscapeDataString(AppVersion.Text);
+    }
+
+    // What identifies this very machine rather than its model: the SMBIOS serial numbers (board, chassis, processor),
+    // asset and service tags, UUIDs, and any GUID elsewhere. LibreHardwareMonitor's report has several of them.
+    // No "$": in Multiline mode it matches before "\n" only, and the report's lines end with "\r\n".
+    static readonly Regex IdentifyingField = new Regex(@"^(?<key>[^:\r\n]*\b(serial|uuid|guid|asset ?tag|service ?tag)[^:\r\n]*:[ \t]*)\S[^\r\n]*",
+                                                       RegexOptions.IgnoreCase | RegexOptions.Multiline);
+    static readonly Regex Guid = new Regex(@"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", RegexOptions.IgnoreCase);
+
+    internal static string Redact(string report)
+    {
+        return Guid.Replace(IdentifyingField.Replace(report, "${key}(omitido)"), "(omitido)");
+    }
     // Where GCC is, its version, and whether this FanPilot can use it (what an update broke, if anything).
     static string GccLine()
     {
@@ -25,6 +47,9 @@ static class Diagnose
         string path = Path.Combine(dataDir, "diagnostico-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".txt");
         var sb = new StringBuilder();
         sb.AppendLine("FanPilot " + AppVersion.Text + " --diagnose  " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+        // In the file too: started from a terminal that is not elevated, the console window closes before it can be read.
+        sb.AppendLine("Para relatar como foi nesta placa, abra o formulário já preenchido e anexe este arquivo: " + ReportUrl(MachineData.Board));
+        sb.AppendLine("Números de série e UUIDs foram omitidos.");
         if (otherInstance) sb.AppendLine("Atenção: outro FanPilot está rodando agora; as leituras abaixo podem refletir o controle dele.");
         sb.AppendLine("Windows: " + Environment.OSVersion.VersionString + (Environment.Is64BitOperatingSystem ? " x64" : ""));
         sb.AppendLine("Placa-mãe (registro): " + MachineData.Board);
@@ -68,9 +93,10 @@ static class Diagnose
         catch (Exception ex) { sb.AppendLine("Falhou: " + ex); }
         finally { try { pc.Close(); } catch { } }
 
-        File.WriteAllText(path, sb.ToString(), Encoding.UTF8);
-        Console.WriteLine("Diagnóstico salvo em " + path);
-        Console.WriteLine("Nenhuma velocidade de fan foi alterada. Envie esse arquivo junto com o modelo da placa-mãe.");
+        File.WriteAllText(path, Redact(sb.ToString()), Encoding.UTF8);
+        Console.WriteLine("Diagnóstico salvo em " + path + " (sem números de série).");
+        Console.WriteLine("Nenhuma velocidade de fan foi alterada. Para relatar, abra o formulário já preenchido e anexe esse arquivo:");
+        Console.WriteLine(ReportUrl(MachineData.Board));
         if (interactive) try { Process.Start("notepad.exe", "\"" + path + "\""); } catch { }
         return 0;
     }
