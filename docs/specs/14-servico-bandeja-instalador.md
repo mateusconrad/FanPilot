@@ -40,6 +40,38 @@ O modo console continua existindo, para desenvolvimento, para a versão portáti
 8. Sem console: o serviço não pergunta sobre o PawnIO (o instalador cuida dele), e abrir o navegador sai do serviço e passa para a bandeja.
 9. **Ponto de parada:** antes de seguir para 14b, verificar no hardware o IPC do GCC rodando como LocalSystem, o NVML na sessão 0, o LibreHardwareMonitor com PawnIO como serviço, a devolução à BIOS no desligamento, e a suspensão e o retorno.
 
+### Andamento da 14a (25/10/2026)
+
+Feita, menos o ponto de parada, que depende da placa real:
+
+- `--service` (`FanPilotService`, um `ServiceBase` com `CanShutdown` e `CanHandlePowerEvent`): responde ao Windows na hora e abre a placa numa thread, porque o GCC pode levar segundos. `OnStop`/`OnShutdown` chamam o mesmo `FanPilotHost.Stop()` do console, que registra quanto levou ("Encerrado em N ms"). `OnPowerEvent` (volta da suspensão) chama o watchdog na hora. Avisos e erros também vão para o log de eventos (Aplicativo, fonte "FanPilot"), e o `AutoLog` registra partida e parada.
+- `--data <pasta>` (variáveis de ambiente expandidas). Como serviço, a pasta fica só para SYSTEM e Administradores, sem herança: o serviço confia nos pareamentos e no `config.json` dela.
+- `--import-data <pasta>` (item 6 da 14c, adiantado): copia `config.json`, `machine.json`, `sessions.json`, as curvas, o Turbo e o `fan-meta.json`, passa pelo `MachineData.Check` e recusa com o FanPilot rodando.
+- `LhmBoard` devolve todos os headers à BIOS na partida, antes de o `FanManager` reaplicar as curvas salvas.
+- `FanPilotHost` reúne o que o `App.Run` fazia (a porta antes da placa, a ordem de partida, a limpeza), com a placa e a GPU por fábrica.
+- Testes: `ServiceTests` (opções, pasta e ACL, importação, o host com a placa falsa) e `tests/e2e/service.spec.mjs`, que na CI instala um serviço de verdade com a placa falsa: ele sobe sem console com a pasta protegida, o `FanPilot.exe` de console diz "já está rodando", o Windows o reinicia em segundos depois de morto (a recuperação de 1 s, 5 s e 60 s) e a parada leva menos de 1 s.
+
+### Ponto de parada: como verificar na B760M
+
+Num PowerShell como Administrador, com o FanPilot fechado (os dois disputariam os fans), na pasta do repositório, depois do `.\build.ps1`:
+
+```powershell
+.\bin\FanPilot.exe --import-data .\bin\data --data C:\ProgramData\FanPilot
+New-Service -Name FanPilot -StartupType Manual -BinaryPathName ('"' + (Resolve-Path .\bin\FanPilot.exe) + '" --service --data C:\ProgramData\FanPilot')
+sc.exe failure FanPilot reset= 86400 actions= restart/1000/restart/5000/restart/60000
+Start-Service FanPilot
+```
+
+1. `C:\ProgramData\FanPilot\fanpilot.log` mostra "como serviço" e "Placa-mãe via Gigabyte Control Center": o IPC do GCC funciona como LocalSystem. A GPU aparece no painel: o NVML funciona na sessão 0.
+2. O painel no PC (`http://localhost:8787`) e o celular pareado funcionam, e as curvas são as de antes.
+3. Suspender e voltar: o log mostra "Retorno da suspensão: curvas conferidas agora."
+4. `Stop-Service FanPilot`: o log mostra "Encerrado em N ms", com N abaixo de 1000.
+5. `Set-Service FanPilot -StartupType Automatic` e reiniciar o PC: o log mostra a partida antes do logon.
+6. Caminho LHM: `"backend": "lhm"` no `C:\ProgramData\FanPilot\config.json` (editor como Administrador), `Restart-Service FanPilot`: os fans respondem às curvas; `Stop-Service FanPilot`: voltam à BIOS.
+7. Para desfazer: `Stop-Service FanPilot; sc.exe delete FanPilot` (os dados ficam em `C:\ProgramData\FanPilot`).
+
+Passando, seguem a 14b (bandeja) e a 14c (instalador).
+
 ## 14b · Bandeja (`FanPilotTray.exe`)
 
 1. Projeto WinForms separado (`net472`), sem elevação, iniciado no logon pela chave `Run` em HKLM (roda para cada usuário).
