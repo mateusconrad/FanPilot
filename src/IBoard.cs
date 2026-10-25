@@ -28,6 +28,10 @@ interface IBoard
     FanCurve SetCurve(FanCurve curve);
     // Called on every exit path FanPilot can intercept.
     void Shutdown();
+    // What the board did for safety and is still doing right now (a header back on the BIOS because its reference
+    // sensor stopped reading, every header back after repeated failures), one message each; empty when all is well.
+    // The alerts (item 16) show them.
+    List<string> ControlProblems();
 }
 
 sealed class SensorReading

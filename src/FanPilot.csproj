@@ -28,6 +28,8 @@
     <Reference Include="System.Web.Extensions" />
     <!-- The Windows service mode (item 14a). -->
     <Reference Include="System.ServiceProcess" />
+    <!-- DPAPI for the alert destinations' secrets (item 16). -->
+    <Reference Include="System.Security" />
     <InternalsVisibleTo Include="FanPilot.Tests" />
   </ItemGroup>
 

@@ -16,6 +16,7 @@ sealed class WebServer
     Sampler _sampler;
     FanManager _fans;
     GpuMonitor _gpu;
+    AlertMonitor _alerts;
     volatile bool _ready;
     readonly HostGuard _hosts;
     readonly SseHub _hub = new SseHub();
@@ -35,9 +36,10 @@ sealed class WebServer
         _hosts = new HostGuard(cfg.Port, cfg.PublicHost);
     }
 
-    public void Attach(AuthManager auth, Sampler sampler, FanManager fans, GpuMonitor gpu)
+    // alerts: null where nobody watches (the tests that do not need them); the alert routes then answer 404.
+    public void Attach(AuthManager auth, Sampler sampler, FanManager fans, GpuMonitor gpu, AlertMonitor alerts = null)
     {
-        _auth = auth; _sampler = sampler; _fans = fans; _gpu = gpu;
+        _auth = auth; _sampler = sampler; _fans = fans; _gpu = gpu; _alerts = alerts;
         // The sampler only hands the snapshot over: the hub writes to each client on its own.
         sampler.Subscribe(json => _hub.Publish(Frame(json)));
         _ready = true; // volatile: the fields above are visible to whoever sees this
@@ -177,6 +179,19 @@ sealed class WebServer
             WriteJson(r.Ctx, 200, new Dictionary<string, object> {
                 { "version", AppVersion.Text }, { "backend", _fans.BackendName }, { "board", MachineData.Board } });
             return true;
+        }
+        if (p.StartsWith("/api/alerts") && _alerts != null)
+        {
+            if (r.Method == "GET" && p == "/api/alerts") { WriteJson(r.Ctx, 200, _alerts.Describe()); return true; }
+            if (r.Method == "GET" && p == "/api/alerts/settings") { WriteJson(r.Ctx, 200, _alerts.Settings()); return true; }
+            if (r.Method == "POST" && p == "/api/alerts/settings") { WriteJson(r.Ctx, 200, _alerts.UpdateSettings(ReadBody(r))); return true; }
+            if (r.Method == "POST" && p == "/api/alerts/test") { WriteJson(r.Ctx, 200, _alerts.SendTest()); return true; }
+            if (r.Method == "POST" && p == "/api/alerts/ack")
+            {
+                bool found = _alerts.Acknowledge(Json.GetString(ReadBody(r), "id", ""));
+                WriteJson(r.Ctx, found ? 200 : 404, found ? new Dictionary<string, object> { { "ok", true } } : Error("Alerta não encontrado (já resolvido?)."));
+                return true;
+            }
         }
         if (r.Method == "POST" && p == "/api/logout")
         {

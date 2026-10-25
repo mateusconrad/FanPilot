@@ -238,6 +238,17 @@ sealed class LhmBoard : IBoard
         try { h.Control.Control.SetDefault(); } catch (Exception ex) { Log.Warn("Fan " + h.Title + ": SetDefault falhou: " + ex.Message); }
     }
 
+    public List<string> ControlProblems()
+    {
+        lock (_sync)
+        {
+            var problems = _headers.Where(h => h.Curve != null && h.OnBiosFallback)
+                .Select(h => h.Title + ": sem leitura válida do sensor de referência; com a BIOS até ela voltar.").ToList();
+            if (_failures >= FailuresBeforeRelease) problems.Add("O LibreHardwareMonitor parou de responder: todos os fans estão com a BIOS até ele voltar.");
+            return problems;
+        }
+    }
+
     public int CountFans() { lock (_sync) return _headers.Count; }
 
     public List<SensorReading> ReadSensors() { lock (_sync) return _readings.ToList(); }

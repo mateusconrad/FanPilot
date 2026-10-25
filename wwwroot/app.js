@@ -13,6 +13,7 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     fans: null,          // /api/fans payload
     editor: null,        // open editor state
     gpuDirty: false,
+    alerts: [],          // the active alerts of the last snapshot
   };
 
   // ---------- helpers ----------
@@ -747,6 +748,115 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     };
   }
 
+  // ---------- alerts (item 16) ----------
+  const hhmm = (ms) => new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  function alertItem(a, onAck) {
+    const row = document.createElement('div');
+    row.className = 'alert-item ' + (a.resolved ? 'resolved' : a.severity);
+    const text = document.createElement('div');
+    const title = document.createElement('strong');
+    title.textContent = a.title;
+    const detail = document.createElement('span');
+    detail.textContent = a.detail + ' · ' + (a.resolved ? 'resolvido às ' + hhmm(a.resolved) : 'desde ' + hhmm(a.since));
+    text.append(title, detail);
+    row.append(text);
+    if (onAck) {
+      const ok = document.createElement('button');
+      ok.className = 'btn';
+      ok.textContent = 'OK';
+      ok.setAttribute('aria-label', 'Dispensar: ' + a.title);
+      ok.onclick = () => onAck(a, ok);
+      row.append(ok);
+    }
+    return row;
+  }
+
+  // The active alerts come with every snapshot; the banner shows the ones not acknowledged yet. Rebuilt only when
+  // that set changes, so a screen reader does not hear the same alert every second.
+  let bannerKey = null;
+  function renderAlertBanner(alerts) {
+    const open = (alerts || []).filter((a) => !a.acknowledged);
+    const key = open.map((a) => a.id).join('|');
+    if (key === bannerKey) return;
+    const first = bannerKey === null;
+    bannerKey = key;
+    $('alertBanner').replaceChildren(...open.map((a) => alertItem(a, acknowledge)));
+    $('alertBanner').hidden = !open.length;
+    if (!first) loadAlerts();
+  }
+
+  async function acknowledge(a, button) {
+    button.disabled = true;
+    try {
+      await api('/api/alerts/ack', { id: a.id });
+      a.acknowledged = true;
+      renderAlertBanner(state.alerts);
+    } catch (e) { toast(e.message, true); button.disabled = false; }
+  }
+
+  async function loadAlerts() {
+    try {
+      const { active, recent } = await api('/api/alerts');
+      $('alertList').replaceChildren(...active.map((a) => alertItem(a)), ...recent.map((a) => alertItem(a)));
+      $('alertsSub').textContent = active.length ? `${active.length} ativo${active.length > 1 ? 's' : ''}` : 'nenhum alerta ativo';
+    } catch (e) { $('alertsSub').textContent = 'indisponíveis: ' + e.message; }
+  }
+
+  async function loadAlertSettings() {
+    try {
+      const s = await api('/api/alerts/settings');
+      $('alCpu').value = s.cpuTemp;
+      $('alGpu').value = s.gpuTemp;
+      $('alPcName').value = s.pcName;
+      $('alNtfy').value = '';
+      $('alTgToken').value = '';
+      $('alTgChat').value = s.telegramChatId || '';
+      $('alNtfyState').textContent = s.ntfy ? `configurado (${s.ntfy})` : 'não configurado';
+      $('alTgState').textContent = s.telegram ? `Telegram configurado (token ${s.telegram})` : 'Telegram não configurado';
+    } catch (e) { toast(e.message, true); }
+  }
+
+  // Secrets go only when typed: an empty field keeps what is saved. clear: removes both destinations.
+  async function saveAlertSettings(clear) {
+    const body = { cpuTemp: Number($('alCpu').value), gpuTemp: Number($('alGpu').value), pcName: $('alPcName').value };
+    if (clear) Object.assign(body, { ntfyUrl: '', telegramToken: '', telegramChatId: '' });
+    else {
+      if ($('alNtfy').value.trim()) body.ntfyUrl = $('alNtfy').value.trim();
+      if ($('alTgToken').value.trim()) body.telegramToken = $('alTgToken').value.trim();
+      body.telegramChatId = $('alTgChat').value.trim();
+    }
+    try {
+      await api('/api/alerts/settings', body);
+      toast(clear ? 'Destinos removidos' : 'Alertas salvos');
+      await loadAlertSettings();
+    } catch (e) { toast(e.message, true); }
+  }
+
+  async function testAlerts() {
+    $('alTest').disabled = true;
+    try {
+      const r = await api('/api/alerts/test', {});
+      toast(r.ok ? 'Teste enviado' : 'Não chegou: ' + r.errors.join('; '), !r.ok);
+    } catch (e) { toast(e.message, true); }
+    finally { $('alTest').disabled = false; }
+  }
+
+  // A topic is a password for ntfy: random and long, so nobody else stumbles on it.
+  function newNtfyTopic() {
+    const alphabet = 'abcdefghijklmnopqrstuvwxyz234567';
+    const bytes = crypto.getRandomValues(new Uint8Array(20));
+    $('alNtfy').value = 'https://ntfy.sh/fanpilot-' + Array.from(bytes, (b) => alphabet[b % 32]).join('');
+  }
+
+  function wireAlerts() {
+    $('alertSettings').addEventListener('toggle', () => { if ($('alertSettings').open) loadAlertSettings(); });
+    $('alSave').onclick = () => saveAlertSettings(false);
+    $('alClear').onclick = () => saveAlertSettings(true);
+    $('alTest').onclick = testAlerts;
+    $('alNtfyNew').onclick = newNtfyTopic;
+  }
+
   // ---------- sensors table ----------
   const GROUPS = { Temperature: 'Temperaturas', Fan: 'Fans', Voltage: 'Tensões', Frequency: 'Clocks', Power: 'Potência' };
   function renderSensors(snap) {
@@ -785,6 +895,8 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     const svc = snap.service || {};
     setStatus(svc.ok, svc.ok ? 'ao vivo' : 'sensores da placa indisponíveis');
     renderNotices(svc.notices);
+    state.alerts = snap.alerts || [];
+    renderAlertBanner(state.alerts);
     renderTiles(snap);
     renderCharts();
     renderFans();
@@ -821,6 +933,8 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
   async function init() {
     wireEditor();
     wireGpu();
+    wireAlerts();
+    loadAlerts();
     Object.values(CHARTS).forEach((def) => {
       $(def.wrap).addEventListener('pointermove', (ev) => chartHover(def, ev));
       $(def.wrap).addEventListener('pointerleave', () => chartLeave(def));

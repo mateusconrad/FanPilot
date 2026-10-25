@@ -24,6 +24,7 @@
 
   <main>
     <p class="notice-banner" id="notices" role="status" hidden></p>
+    <div class="alert-banner" id="alertBanner" role="alert" hidden></div>
     <section class="tiles" id="tiles" aria-live="polite"></section>
 
     <section class="card">
@@ -87,6 +88,47 @@
         </div>
       </div>
       <p class="hint" id="gpuNote" hidden></p>
+    </section>
+
+    <section class="card" id="alertsCard">
+      <div class="card-head">
+        <h2>Alertas</h2>
+        <span class="sub" id="alertsSub"></span>
+      </div>
+      <div class="alert-list" id="alertList"></div>
+      <details id="alertSettings">
+        <summary>Limites e avisos fora do painel</summary>
+        <div class="row">
+          <label class="field">CPU (°C)
+            <input type="number" id="alCpu" min="60" max="105" step="1">
+          </label>
+          <label class="field">GPU (°C)
+            <input type="number" id="alGpu" min="60" max="100" step="1">
+          </label>
+          <label class="field">Nome do PC nas mensagens
+            <input type="text" id="alPcName" maxlength="40" autocomplete="off">
+          </label>
+        </div>
+        <label class="field">ntfy: endereço do tópico
+          <input type="text" id="alNtfy" autocomplete="off" placeholder="https://ntfy.sh/…">
+        </label>
+        <div class="row"><button class="btn" id="alNtfyNew">Gerar tópico</button><span class="hint" id="alNtfyState"></span></div>
+        <div class="row">
+          <label class="field">Telegram: token do bot
+            <input type="text" id="alTgToken" autocomplete="off">
+          </label>
+          <label class="field">Chat id
+            <input type="text" id="alTgChat" autocomplete="off">
+          </label>
+        </div>
+        <p class="hint" id="alTgState"></p>
+        <p class="hint">Nada sai do PC sem um destino aqui, e as mensagens levam só o alerta e o nome do PC. O endereço do ntfy e o token ficam cifrados neste PC; um campo deixado em branco mantém o que já está.</p>
+        <div class="row">
+          <button class="btn primary" id="alSave">Salvar</button>
+          <button class="btn" id="alTest">Enviar teste</button>
+          <button class="btn" id="alClear">Remover destinos</button>
+        </div>
+      </details>
     </section>
 
     <section class="card">

@@ -91,7 +91,7 @@ static class DataImport
 {
     // The state worth keeping; logs and the .bak/.corrompido copies stay behind.
     static readonly string[] Files = {
-        "config.json", "machine.json", "sessions.json", "backup-curves.json", "desired-curves.json", "turbo.json", "fan-meta.json"
+        "config.json", "machine.json", "sessions.json", "backup-curves.json", "desired-curves.json", "turbo.json", "fan-meta.json", "alerts.json"
     };
 
     // Returns the process exit code. running: a FanPilot is using the destination right now.

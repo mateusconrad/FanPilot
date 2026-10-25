@@ -16,6 +16,7 @@ sealed class FakeBoard : IBoard
         public bool HasTach = true; // like CPU and System 3 on the B760M: nothing with a tachometer plugged in
         public int MaxRpm = 2400;
         public float? StuckRpm;     // a fan that ignores its PWM (wired to a fixed-speed hub, broken)
+        public double? StopsAfterSeconds; // a fan that seizes this long after the board opened (the "stall" scenario)
     }
 
     readonly object _sync = new object();
@@ -53,7 +54,7 @@ sealed class FakeBoard : IBoard
 
     // The boards the panel has to cope with, as tools/ui-mock shows them: "--fake-board=<name>" picks one, and the
     // end-to-end tests (tests/e2e) run on each.
-    public static readonly string[] Scenarios = { "demo", "worst", "unsupported", "down", "lhm", "slow" };
+    public static readonly string[] Scenarios = { "demo", "worst", "unsupported", "down", "lhm", "slow", "stall" };
 
     public static FakeBoard Scenario(string name)
     {
@@ -70,6 +71,11 @@ sealed class FakeBoard : IBoard
             case "slow":
                 System.Threading.Thread.Sleep(4000);
                 return Demo();
+            // The demo board whose System 2 seizes after 35 s of spinning: the stopped-fan alert (item 16).
+            case "stall":
+                var stall = Demo();
+                stall.Headers[2].StopsAfterSeconds = 35;
+                return stall;
             default: throw new ArgumentException("Cenário da placa de teste desconhecido: " + name);
         }
     }
@@ -123,6 +129,11 @@ sealed class FakeBoard : IBoard
     {
         return new FanCurve { Index = index, Mode = FanCurve.BiosMode, TempInput = 0, DeltaT = 1 };
     }
+
+    // What ControlProblems() reports; the tests set it.
+    public readonly List<string> Problems = new List<string>();
+
+    public List<string> ControlProblems() { lock (_sync) return Problems.ToList(); }
 
     public string BackendName { get { return "Placa de teste"; } }
     public bool HardwareCurves { get; private set; }
@@ -179,6 +190,7 @@ sealed class FakeBoard : IBoard
         {
             if (!h.HasTach) return 0.0;
             if (h.StuckRpm.HasValue) return h.StuckRpm.Value;
+            if (h.StopsAfterSeconds.HasValue && (DateTime.UtcNow - _started).TotalSeconds >= h.StopsAfterSeconds.Value) return 0.0;
             double pwm = h.Curve.IsBios ? 128 : h.Curve.PwmAt(h.Curve.TempInput < temps.Length ? temps[h.Curve.TempInput] : 0);
             return Math.Round(h.MaxRpm * pwm / 255);
         }).ToList();

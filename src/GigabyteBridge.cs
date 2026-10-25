@@ -30,6 +30,9 @@ sealed class GigabyteBridge : IBoard
     public string BackendName { get { return "Gigabyte Control Center"; } }
     public bool HardwareCurves { get { return true; } }
     public string Notice { get { return FanControlSupported ? null : "Esta placa-mãe não expõe o controle de fans de 3ª geração do GCC."; } }
+
+    // The curves run in the chip: there is nothing FanPilot hands back on its own.
+    public List<string> ControlProblems() { return new List<string>(); }
     // Curves live in the chip, nothing to hand back.
     public void Shutdown() { }
 

@@ -8,7 +8,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 - **Testes:** testes automatizados do item: `a fazer` · `ok` (commitados com o item; rodam na [CI](https://github.com/mateusconrad/FanPilot/actions) a cada push)
 - **Esforço**, em dias de trabalho focado: P ≈ 1 · P–M ≈ 2 · M ≈ 3 · G ≈ 10
 
-**Concluídos: 16 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 15, 17, 27 (veja a seção própria)
+**Concluídos: 17 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 14a, 15, 16, 17, 27 (veja a seção própria)
 
 ## Andamento
 
@@ -29,7 +29,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 | 13 | [Relatos de compatibilidade](specs/13-compatibilidade.md) | 2 | P | — | concluído | ok | [#13](https://github.com/mateusconrad/FanPilot/issues/13) | `--diagnose` sem números de série nem GUIDs e com o link do formulário; falta ver o formulário no GitHub logado |
 | 14 | [Serviço, bandeja e instalador](specs/14-servico-bandeja-instalador.md) | 3 | G | 03, 05, 06 | bloqueado | ok (14a) | [#14](https://github.com/mateusconrad/FanPilot/issues/14) | 14a feita (`--service`, `--data`, `--import-data`, testada na CI com um serviço de verdade); parada no ponto de verificação do serviço na B760M antes da 14b e da 14c |
 | 15 | [Curvas por software suaves](specs/15-curvas-suaves.md) | 3 | M | 08 | concluído | ok | [#15](https://github.com/mateusconrad/FanPilot/issues/15) | `SoftwareCurveEngine` com resposta Rápida/Equilibrada/Suave; falta a carga real numa placa no caminho LHM |
-| 16 | [Alertas de fan parado e temperatura](specs/16-alertas.md) | 3 | M | 02 | a fazer | a fazer | [#16](https://github.com/mateusconrad/FanPilot/issues/16) | |
+| 16 | [Alertas de fan parado e temperatura](specs/16-alertas.md) | 3 | M | 02 | concluído | ok | [#16](https://github.com/mateusconrad/FanPilot/issues/16) | painel, ntfy e Telegram; a notificação do Windows fica para a bandeja (14b); falta o ntfy no celular e um limite baixo na B760M |
 | 17 | [Nomes dos fans e papel "bomba"](specs/17-nomes-e-bomba.md) | 3 | P–M | 04 | concluído | ok | [#17](https://github.com/mateusconrad/FanPilot/issues/17) | política da bomba no `BuildCurve`, por onde passam editor, Turbo, reaplicação e os perfis do 18; falta conferir na B760M |
 | 18 | [Perfis globais](specs/18-perfis.md) | 3 | P–M | 07, 17 | a fazer | a fazer | [#18](https://github.com/mateusconrad/FanPilot/issues/18) | |
 | 19 | [Temperatura dos núcleos na Gigabyte](specs/19-temperatura-cpu-gigabyte.md) | 3 | P–M | — | a fazer | a fazer | [#19](https://github.com/mateusconrad/FanPilot/issues/19) | |
@@ -111,6 +111,7 @@ Itens já na `main` cujo comportamento na placa real ainda não foi conferido. P
 | 10 | `--hardware-test` passa com o exe compilado sem referência ao GCC; o log mostra "Gigabyte Control Center 8.0.8.2 em …"; `--diagnose` mostra a versão e "compatível" |
 | 11 | O zip feito pela CI (artefato `FanPilot-0.1.0-win-x64.zip` da última execução em [Actions](https://github.com/mateusconrad/FanPilot/actions)), extraído numa pasta nova com uma cópia da `data\` do `bin\`, passa no `--hardware-test`; o log começa com "FanPilot 0.1.0+<commit>" e o rodapé do painel mostra a mesma versão. A `data\` do `bin\` não é tocada, e a pasta de teste pode ser apagada depois. É esse zip que a `v0.1.0` vai publicar |
 | 14a | O ponto de parada do item 14: o FanPilot como serviço na B760M (GCC como LocalSystem, NVML na sessão 0, suspensão, parada em menos de 1 s, partida antes do logon, caminho LHM). Passo a passo na [spec 14](specs/14-servico-bandeja-instalador.md#ponto-de-parada-como-verificar-na-b760m). Passando, o item segue para a bandeja e o instalador |
+| 16 | Na B760M: em "Alertas", gerar um tópico do ntfy, assinar o mesmo tópico no app do ntfy no celular, salvar e "Enviar teste": a mensagem chega ao celular. Pôr o limite da CPU em 60 °C (abaixo da temperatura atual): em ~10 s aparece "CPU a … °C" na faixa e no celular; voltar o limite a 95 °C: o alerta termina 30 s depois e chega o "Resolvido" |
 | 17 | Na B760M: marcar como bomba, em "Nome e função", o header em que ela estiver (o README desconfia do System 1): ele vai a 100%, o card mostra o selo "Bomba", e o Turbo ligado e desligado não o muda. Dar um nome a outro fan e reiniciar o FanPilot: nome e bomba continuam. O `--hardware-test` sem `--fan` não escolhe a bomba |
 | 15 | Numa placa no caminho LHM (a B760M com `"backend": "lhm"`, se o LibreHardwareMonitor controlar o IT8689E): uma curva com resposta Equilibrada e carga intermitente (um benchmark em rajadas de poucos segundos) não faz o fan subir e descer audivelmente; com a Rápida, faz. Se precisar, ajustar τ, H e as rampas em `SoftwareCurveEngine.Responses` |
 | 27 | A primeira execução do `--hardware-test` na B760M passa (`--fan 1`, o System 1) e devolve as 4 curvas suas como estavam |
