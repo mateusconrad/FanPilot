@@ -15,9 +15,16 @@ export const buildDir = process.env.FANPILOT_BUILD || path.join(repo, 'src', 'bi
 // form of the path: the CI's %TEMP% can be an 8.3 name, and process paths are not.
 export const scratchRoot = path.join(fs.realpathSync.native(os.tmpdir()), 'fanpilot-e2e');
 
-export const isAdmin = execFileSync('powershell', ['-NoProfile', '-Command',
-  '([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)'],
-  { encoding: 'utf8' }).trim() === 'True';
+// Windows PowerShell, with values passed in environment variables instead of quoted inside the script. PSModulePath
+// is left out: under pwsh 7 (the CI's shell) it points Windows PowerShell at modules it cannot load (Get-Acl failed so).
+export function powershell(script, env = {}) {
+  const childEnv = { ...process.env, ...env };
+  for (const k of Object.keys(childEnv)) if (k.toLowerCase() === 'psmodulepath') delete childEnv[k];
+  return execFileSync('powershell', ['-NoProfile', '-Command', script], { encoding: 'utf8', env: childEnv }).trim();
+}
+
+export const isAdmin = powershell(
+  '([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)') === 'True';
 
 // A process ended by kill() has no exit code, only a signal (SIGTERM, even on Windows).
 export const hasExited = (proc) => proc.exitCode !== null || proc.signalCode !== null;
@@ -34,10 +41,8 @@ export function freePort() {
 
 // A FanPilot left running by a crashed run would hold the fake board's single-instance lock.
 export function stopLeftovers() {
-  const root = scratchRoot.replace(/'/g, "''");
-  execFileSync('powershell', ['-NoProfile', '-Command',
-    `Get-CimInstance Win32_Process -Filter "Name='FanPilot.exe'" | Where-Object { $_.ExecutablePath -like '${root}\\*' } | ` +
-    'ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }'], { stdio: 'ignore' });
+  powershell("Get-CimInstance Win32_Process -Filter \"Name='FanPilot.exe'\" | Where-Object { $_.ExecutablePath -like ($env:ROOT + '\\*') } | " +
+    'ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }', { ROOT: scratchRoot });
 }
 
 export class FanPilot {

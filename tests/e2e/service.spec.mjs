@@ -7,17 +7,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { expect, test } from '@playwright/test';
-import { buildDir, freePort, isAdmin, scratchRoot } from './fanpilot.mjs';
+import { buildDir, freePort, isAdmin, powershell as ps, scratchRoot } from './fanpilot.mjs';
 
 const NAME = 'FanPilotE2E';
 const enabled = isAdmin && (!!process.env.CI || process.env.FANPILOT_SERVICE_TEST === '1');
 test.skip(!enabled, 'instala um serviço do Windows: roda na CI ou com FANPILOT_SERVICE_TEST=1 como Administrador');
 test.describe.configure({ mode: 'serial' });
 
-// PowerShell with the values in environment variables: no quoting of paths inside the script.
-function ps(script, env = {}) {
-  return execFileSync('powershell', ['-NoProfile', '-Command', script], { encoding: 'utf8', env: { ...process.env, ...env } }).trim();
-}
 const status = () => ps('(Get-Service -Name $env:N).Status', { N: NAME });
 const servicePid = () => Number(ps('(Get-CimInstance Win32_Service -Filter "Name=\'$env:N\'").ProcessId', { N: NAME }));
 
