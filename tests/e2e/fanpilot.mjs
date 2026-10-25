@@ -19,6 +19,9 @@ export const isAdmin = execFileSync('powershell', ['-NoProfile', '-Command',
   '([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)'],
   { encoding: 'utf8' }).trim() === 'True';
 
+// A process ended by kill() has no exit code, only a signal (SIGTERM, even on Windows).
+export const hasExited = (proc) => proc.exitCode !== null || proc.signalCode !== null;
+
 export function freePort() {
   return new Promise((resolve, reject) => {
     const srv = net.createServer().once('error', reject);
@@ -84,7 +87,7 @@ export class FanPilot {
   async waitReady(timeoutMs = 30000) {
     const until = Date.now() + timeoutMs;
     while (Date.now() < until) {
-      if (this.proc.exitCode !== null) return false;
+      if (hasExited(this.proc)) return false;
       try {
         if ((await fetch(this.url + '/api/info')).ok) return true;
       } catch { /* not listening yet */ }
@@ -95,7 +98,7 @@ export class FanPilot {
 
   // Ends the process the way a crash or Task Manager would (the fake board has nothing to hand back).
   async kill() {
-    if (!this.proc || this.proc.exitCode !== null) return;
+    if (!this.proc || hasExited(this.proc)) return;
     const exited = new Promise((resolve) => this.proc.once('exit', resolve));
     this.proc.kill();
     await exited;

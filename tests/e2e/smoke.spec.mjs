@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { expect, test } from '@playwright/test';
-import { freePort, isAdmin, scratchRoot } from './fanpilot.mjs';
+import { freePort, hasExited, isAdmin, scratchRoot } from './fanpilot.mjs';
 
 const zip = process.env.FANPILOT_ZIP;
 test.skip(!zip, 'FANPILOT_ZIP não definido: o smoke do zip roda na CI');
@@ -42,7 +42,7 @@ test.beforeAll(async () => {
   proc.stdout.on('data', (d) => { output += d; });
   proc.stderr.on('data', (d) => { output += d; });
   for (const until = Date.now() + 90_000; Date.now() < until;) {
-    if (proc.exitCode !== null) throw new Error(`O FanPilot.exe do zip saiu com ${proc.exitCode}:\n${output}`);
+    if (hasExited(proc)) throw new Error(`O FanPilot.exe do zip saiu com ${proc.exitCode ?? proc.signalCode}:\n${output}`);
     try {
       if ((await fetch(`http://localhost:${port}/api/info`)).ok) return;
     } catch { /* not listening yet */ }
@@ -51,12 +51,15 @@ test.beforeAll(async () => {
   throw new Error(`O FanPilot.exe do zip não respondeu em 90 s:\n${output}`);
 });
 
+async function stopServer() {
+  if (!proc || hasExited(proc)) return;
+  const exited = new Promise((resolve) => proc.once('exit', resolve));
+  proc.kill();
+  await exited;
+}
+
 test.afterAll(async () => {
-  if (proc && proc.exitCode === null) {
-    const exited = new Promise((resolve) => proc.once('exit', resolve));
-    proc.kill();
-    await exited;
-  }
+  await stopServer();
   if (dir) fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
@@ -79,9 +82,7 @@ test('--version e --diagnose', async () => {
   expect(v.out.trim()).toMatch(new RegExp(`^FanPilot ${version.replace(/\./g, '\\.')}\\+[0-9a-f]{7}$`));
 
   // Read-only, and with the panel's FanPilot closed, as the README asks.
-  const exited = new Promise((resolve) => proc.once('exit', resolve));
-  proc.kill();
-  await exited;
+  await stopServer();
   const before = stateFiles();
   const d = run(['--diagnose', '--no-browser']);
   expect(d.code, d.out).toBe(0);
