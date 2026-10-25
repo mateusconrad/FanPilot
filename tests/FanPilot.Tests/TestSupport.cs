@@ -38,4 +38,21 @@ static class TestEnv
         l.Stop();
         return port;
     }
+
+    // Starts the server create(port) returns on a free port. A port that FreePort found free can be taken before
+    // the server binds it: it comes from the ephemeral range, which the tests' own client connections use too
+    // (the CI saw it once, elevated, listening on every address). So a failed start tries another port.
+    public static WebServer StartServer(Func<int, WebServer> create)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            var server = create(FreePort());
+            try
+            {
+                server.Start();
+                return server;
+            }
+            catch (HttpListenerException) when (attempt < 5) { server.Stop(); }
+        }
+    }
 }
