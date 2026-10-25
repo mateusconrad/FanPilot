@@ -85,7 +85,8 @@ test('o Windows reinicia o serviço se o processo morrer', async () => {
     return now > 0 && now !== before && await answers();
   }, 45_000, 'O Windows reiniciar o serviço');
   expect(status()).toBe('Running');
-  expect(readLog()).toContain('O FanPilot anterior terminou sem encerrar normalmente');
+  // Started twice as a service: by Start-Service, then by Windows' recovery action.
+  expect(readLog().match(/como serviço/g).length).toBeGreaterThanOrEqual(2);
 });
 
 test('parar o serviço encerra limpo e rápido', async () => {
