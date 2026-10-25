@@ -8,7 +8,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 - **Testes:** testes automatizados do item: `a fazer` · `ok` (commitados com o item; rodam na CI quando ela existir)
 - **Esforço**, em dias de trabalho focado: P ≈ 1 · P–M ≈ 2 · M ≈ 3 · G ≈ 10
 
-**Concluídos: 9 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09 (veja a seção própria)
+**Concluídos: 10 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09, 27 (veja a seção própria)
 
 ## Andamento
 
@@ -40,7 +40,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 | 24 | [Histórico persistente](specs/24-historico.md) | 4 | M | — | a fazer | a fazer | [#24](https://github.com/mateusconrad/FanPilot/issues/24) | |
 | 25 | [Fonte de temperatura combinada](specs/25-fonte-combinada.md) | 4 | P–M | 15 | a fazer | a fazer | [#25](https://github.com/mateusconrad/FanPilot/issues/25) | |
 | 26 | [Testes de ponta a ponta (painel e executável)](specs/26-testes-ponta-a-ponta.md) | 2 | M | 08, 11 | a fazer | a fazer | [#26](https://github.com/mateusconrad/FanPilot/issues/26) | |
-| 27 | [Teste automatizado na placa real](specs/27-teste-em-hardware.md) | 2 | P–M | 08 | a fazer | a fazer | [#27](https://github.com/mateusconrad/FanPilot/issues/27) | |
+| 27 | [Teste automatizado na placa real](specs/27-teste-em-hardware.md) | 2 | P–M | 08 | concluído | ok | [#27](https://github.com/mateusconrad/FanPilot/issues/27) | falta a primeira execução na B760M |
 
 ## Ordem de execução
 
@@ -94,7 +94,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 - Direto na `main`, sem branches nem PRs: um ou mais commits por item, todos com `(#N)` na mensagem; o último fecha a issue com `Closes #N`.
 - Antes de cada push: build e `dotnet test` passando localmente. A partir do 11, a CI confere de novo a cada push, e um build vermelho é corrigido antes do próximo item.
 - Código, testes automatizados e documentação quando o usuário percebe a mudança (README e, a partir do 11, CHANGELOG).
-- Item que mexe em fans, GPU, ponte da placa ou build: rodar o teste em hardware (item 27; até ele existir, o roteiro manual abaixo) e registrar o resultado na issue. Enquanto isso não acontecer, o item entra em "Verificação em hardware pendente".
+- Item que mexe em fans, GPU, ponte da placa ou build: rodar `FanPilot.exe --hardware-test` na B760M e anexar o relatório (`data\hwtest-*.md`) na issue. Enquanto isso não acontecer, o item entra em "Verificação em hardware pendente".
 
 ## Como o andamento é registrado
 
@@ -104,10 +104,11 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 
 ## Verificação em hardware pendente
 
-Itens já na `main` cujo comportamento na placa real ainda não foi conferido. Para conferir: fechar o FanPilot aberto, rodar `.\build.ps1` e abrir o `bin\FanPilot.exe` como Administrador. Com o item 27 pronto, `FanPilot.exe --hardware-test` cobre a maior parte disso de uma vez.
+Itens já na `main` cujo comportamento na placa real ainda não foi conferido. Para conferir: fechar o FanPilot aberto, rodar `.\build.ps1` e, como Administrador, `bin\FanPilot.exe --hardware-test`: ele cobre o roteiro abaixo e grava `data\hwtest-<data>.md` para anexar nas issues. O que ele não mede (o celular, a comparação com o HWiNFO, os casos de cada item) está na tabela.
 
 | Item | O que conferir |
 |---|---|
+| 27 | A primeira execução do `--hardware-test` na B760M passa (`--fan 1`, o System 1) e devolve as 4 curvas suas como estavam |
 | 01 | `curl.exe -H "Host: exemplo.invalid:8787" http://127.0.0.1:8787/api/fans` → `421`; sem o header → `200`; POST com `X-FanPilot: 1` e `Origin: http://exemplo.invalid:8787` em `/api/logout` → `403`; `/pair`, o painel no PC e o celular pareado funcionam como antes; o log registra a recusa uma vez só |
 | 02 | GPU: Fixo 50% → Automático pelo painel. Painel aberto no celular por 10 min, com a tela apagando e voltando: continua atualizando, sem "dados atrasados". O log não mostra "Leitura dos sensores lenta" |
 | 04 | Primeira execução depois do build: o log mostra a conversão para o formato com chave; os 4 fans continuam com o selo "FanPilot" e as mesmas curvas; nenhum aviso de configuração órfã; `data\` tem os `.v1`. Abrir de novo: nenhuma conversão repetida |
@@ -116,7 +117,7 @@ Itens já na `main` cujo comportamento na placa real ainda não foi conferido. P
 
 ## Roteiro de verificação em hardware
 
-Placa de referência: B760M GAMING X AX com Gigabyte Control Center 26.03.26.01. O item 27 automatiza este roteiro.
+Placa de referência: B760M GAMING X AX com Gigabyte Control Center 26.03.26.01. O `FanPilot.exe --hardware-test` (item 27) automatiza os passos 1 e 3 a 9; o 2 (celular, HWiNFO) continua à mão.
 
 1. Abrir o FanPilot: nenhum `WARN` inesperado no log; backend e placa corretos.
 2. Painel no PC e no celular: temperaturas, RPM e GPU batem com o GCC/HWiNFO.

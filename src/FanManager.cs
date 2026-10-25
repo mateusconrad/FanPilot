@@ -38,6 +38,9 @@ sealed class FanManager
     // header has any more is an orphan: kept, shown in the panel, never applied.
     Dictionary<string, Dictionary<string, object>> _desired = new Dictionary<string, Dictionary<string, object>>();
     Timer _watchdog;
+    // How many times the watchdog found a curve overwritten (by GCC, the BIOS…) and put it back; --hardware-test
+    // expects none while it watches a curve.
+    internal int ExternalChanges;
 
     public FanManager(IBoard bridge, AppConfig cfg, string dataDir)
     {
@@ -477,6 +480,7 @@ sealed class FanManager
                     // Keep whatever the hardware reports for this curve, so a lossy readback cannot cause a loop.
                     if (_desired.ContainsKey(kv.Key)) { kv.Value["signature"] = result.Signature(); SaveDesired(); }
                 }
+                ExternalChanges++;
                 Log.Warn("Fan " + index + " curve was changed externally; re-applied.");
             }
             catch (Exception ex) { Log.Warn("Watchdog fan " + index + ": " + ex.Message); }
