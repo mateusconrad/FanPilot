@@ -1,6 +1,8 @@
 // FanPilot dashboard: live data over SSE (/api/stream), fan curve editor, GPU fan control.
 import { curveAt, resample, normalize, movePoint } from './js/curve.mjs';
 import { cpuMain } from './js/sensors.mjs';
+// tr, not t: t is a temperature or a time all over this file.
+import { t as tr, msg, num, time, loadLanguage, translatePage, wireLanguageSelect } from './js/i18n.mjs';
 
 (function () {
   'use strict';
@@ -23,9 +25,10 @@ import { cpuMain } from './js/sensors.mjs';
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-FanPilot': '1' }, body: JSON.stringify(body)
     };
     const r = await fetch(path, opts);
-    if (r.status === 401) { location.reload(); throw new Error('Não pareado'); }
+    if (r.status === 401) { location.reload(); throw new Error(tr('err.unpaired')); }
     const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data.error || r.statusText);
+    // FanPilot's errors come with a code to translate; the English text is the fallback.
+    if (!r.ok) throw new Error(data.code ? tr(data.code, data.params, data.error) : data.error || r.statusText);
     return data;
   }
 
@@ -65,15 +68,15 @@ import { cpuMain } from './js/sensors.mjs';
   // 8 colors in style.css (--fan-0..7); boards with more headers reuse them.
   const fanColor = (i) => `var(--fan-${i % 8})`;
 
-  const fmt = (v, d = 0) => (v === null || v === undefined || Number.isNaN(v)) ? '–' : Number(v).toFixed(d).replace('.', ',');
+  const fmt = (v, d = 0) => (v === null || v === undefined || Number.isNaN(v)) ? '–' : num(Number(v), d);
   const pct = (pwm) => Math.round(pwm / 2.55);
 
-  function tempStatus(t) {
-    if (t === null || t === undefined) return { cls: '', label: 'sem dado' };
-    if (t < 60) return { cls: 'good', label: 'normal' };
-    if (t < 75) return { cls: 'warning', label: 'morno' };
-    if (t < 85) return { cls: 'serious', label: 'quente' };
-    return { cls: 'critical', label: 'crítico' };
+  function tempStatus(v) {
+    if (v === null || v === undefined) return { cls: '', label: tr('temp.none') };
+    if (v < 60) return { cls: 'good', label: tr('temp.normal') };
+    if (v < 75) return { cls: 'warning', label: tr('temp.warm') };
+    if (v < 85) return { cls: 'serious', label: tr('temp.hot') };
+    return { cls: 'critical', label: tr('temp.critical') };
   }
 
   function sensor(snap, type, title) {
@@ -91,18 +94,23 @@ import { cpuMain } from './js/sensors.mjs';
     const clk = sensor(snap, 'Frequency', 'CPU');
     const tiles = [
       // The label says which reading it is ("CPU · pacote", "CPU · socket"); the hint, how to get the cores' one.
-      { label: esc(cpu ? cpu.title : 'CPU'), value: fmt(cpuT), unit: '°C', status: tempStatus(cpuT), meta: clk ? fmt(clk.value / 1000, 2) + ' GHz' : '', hint: cpu && cpu.hint },
-      { label: gpu.name ? 'GPU' : 'GPU (indisponível)', value: fmt(gpu.temp), unit: '°C', status: tempStatus(gpu.temp), meta: gpu.util !== undefined ? gpu.util + '% uso' : '' },
-      { label: 'CPU · potência', value: fmt(pkg && pkg.value, 0), unit: 'W', meta: 'pacote' },
-      { label: 'GPU · potência', value: fmt(gpu.power, 0), unit: 'W', meta: gpu.powerLimit ? 'limite ' + gpu.powerLimit + ' W' : '' },
+      { label: esc(cpu ? sensorTitle(cpu) : 'CPU'), value: fmt(cpuT), unit: '°C', status: tempStatus(cpuT), meta: clk ? fmt(clk.value / 1000, 2) + ' GHz' : '', hint: cpu && sensorHint(cpu) },
+      { label: gpu.name ? 'GPU' : tr('tile.gpu.unavailable'), value: fmt(gpu.temp), unit: '°C', status: tempStatus(gpu.temp), meta: gpu.util !== undefined ? tr('tile.gpu.util', { n: gpu.util }) : '' },
+      { label: tr('tile.cpu.power'), value: fmt(pkg && pkg.value, 0), unit: 'W', meta: tr('tile.cpu.package') },
+      { label: tr('tile.gpu.power'), value: fmt(gpu.power, 0), unit: 'W', meta: gpu.powerLimit ? tr('tile.gpu.limit', { n: gpu.powerLimit }) : '' },
     ];
-    $('tiles').innerHTML = tiles.map((t) =>
-      `<div class="tile"><div class="label">${t.label}</div>` +
-      `<div class="value">${t.value}<small>${t.unit}</small></div>` +
-      `<div class="meta">${t.status ? `<span class="badge ${t.status.cls}">${t.status.label}</span>` : ''}${t.meta ? '<span>' + t.meta + '</span>' : ''}</div>` +
-      (t.hint ? `<div class="tile-hint">${esc(t.hint)}</div>` : '') + '</div>'
+    $('tiles').innerHTML = tiles.map((tile) =>
+      `<div class="tile"><div class="label">${tile.label}</div>` +
+      `<div class="value">${tile.value}<small>${tile.unit}</small></div>` +
+      `<div class="meta">${tile.status ? `<span class="badge ${tile.status.cls}">${tile.status.label}</span>` : ''}${tile.meta ? '<span>' + esc(tile.meta) + '</span>' : ''}</div>` +
+      (tile.hint ? `<div class="tile-hint">${esc(tile.hint)}</div>` : '') + '</div>'
     ).join('');
   }
+
+  // FanPilot names some readings itself ("CPU · pacote"): those come with a key to translate; the hardware's own
+  // names (LibreHardwareMonitor, the GCC) are shown as they are.
+  const sensorTitle = (s) => (s.titleKey ? tr(s.titleKey, null, s.title) : s.title);
+  const sensorHint = (s) => (s.hintKey ? tr(s.hintKey, null, s.hint) : s.hint);
 
   // ---------- time-series charts (temperatures, fan RPM) ----------
   // state.history = { t: [ms...], series: { cpu, gpu, 'fan-0'.. : values aligned with t } }
@@ -212,9 +220,9 @@ import { cpuMain } from './js/sensors.mjs';
     // A label every 2 minutes, or every 5 when that would crowd the axis.
     const stepMin = g.X(now) - g.X(now - 2 * 60000) < 44 ? 5 : 2;
     for (let m = 10; m >= 0; m -= stepMin) {
-      if (m > 0 && g.X(now) - g.X(now - m * 60000) < 46) continue; // would collide with "agora"
+      if (m > 0 && g.X(now) - g.X(now - m * 60000) < 46) continue; // would collide with "now"
       const tx = el('text', { x: g.X(now - m * 60000), y: g.h - 6, 'text-anchor': m === 0 ? 'end' : 'middle' }, axis);
-      tx.textContent = m === 0 ? 'agora' : '-' + m + ' min';
+      tx.textContent = m === 0 ? tr('chart.now') : tr('chart.minutesAgo', { n: m });
     }
     el('line', { class: 'baseline', x1: g.l, x2: g.w - g.r, y1: g.h - g.b, y2: g.h - g.b }, svg);
 
@@ -250,11 +258,11 @@ import { cpuMain } from './js/sensors.mjs';
     $('rpmLegend').innerHTML = fans.map((s) => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join('');
     if (!fans.length) {
       $('rpmNote').textContent = state.fans && state.fans.supported === false
-        ? (state.fans.notice || 'Esta placa-mãe não informa fans para o FanPilot.')
-        : 'Nenhum fan com leitura de RPM no momento.';
+        ? (msg(state.fans.notice) || tr('chart.rpm.noFans'))
+        : tr('chart.rpm.none');
     } else if (state.fans) {
       const silent = state.fans.fans.filter((f, i) => !fans.some((s) => s.key === 'fan-' + i)).map(fanName);
-      $('rpmNote').textContent = silent.length ? `Sem leitura de RPM (0): ${silent.join(', ')} — não aparecem no gráfico.` : '';
+      $('rpmNote').textContent = silent.length ? tr('chart.rpm.silent', { fans: silent.join(', ') }) : '';
     }
   }
 
@@ -271,7 +279,7 @@ import { cpuMain } from './js/sensors.mjs';
     const x = g.X(h.t[best]);
     g.cross.setAttribute('x1', x); g.cross.setAttribute('x2', x); g.cross.setAttribute('visibility', 'visible');
     const tip = $(def.tip);
-    tip.innerHTML = `<div>${new Date(h.t[best]).toLocaleTimeString('pt-BR')}</div>` + g.series.map((s) => {
+    tip.innerHTML = `<div>${time(h.t[best])}</div>` + g.series.map((s) => {
       const v = h.series[s.key][best];
       return `<div class="row"><i style="background:${s.color}"></i>${esc(s.name || s.label)} <b>${v === null ? '–' : (def.unit === 'RPM' ? Math.round(v) : fmt(v))} ${def.unit}</b></div>`;
     }).join('');
@@ -291,24 +299,32 @@ import { cpuMain } from './js/sensors.mjs';
   // false on those boards: closing FanPilot hands every fan back to the BIOS, and the panel says so.
   const hardwareCurves = () => !state.fans || state.fans.hardwareCurves !== false;
   // How a curve FanPilot runs follows the temperature (SoftwareCurveEngine.Responses); a chip curve has none.
+  // Name and description of each response.
   const RESPONSES = {
-    fast: ['Rápida', 'segue a temperatura quase na hora e desacelera depois de esfriar 1 °C.'],
-    balanced: ['Equilibrada', 'ignora picos de poucos segundos e só desacelera depois de esfriar 2 °C.'],
-    smooth: ['Suave', 'ignora picos de uns 10 s, muda de velocidade devagar e só desacelera depois de esfriar 4 °C.'],
+    fast: ['response.fast', 'response.fast.desc'],
+    balanced: ['response.balanced', 'response.balanced.desc'],
+    smooth: ['response.smooth', 'response.smooth.desc'],
   };
+  // The presets by key (FanPresets.cs, which also sends a name of its own, used for a key the panel doesn't know).
+  const PRESETS = { quiet: 'preset.quiet', standard: 'preset.standard', performance: 'preset.performance', max: 'preset.max' };
+  function presetName(key) {
+    const p = (state.fans.presets || {})[key];
+    const fallback = p ? p.name : key;
+    return PRESETS[key] ? tr(PRESETS[key], null, fallback) : fallback;
+  }
 
   function fanDescription(f, snap) {
     const req = f.request;
     let mode;
-    if (state.fans.turbo) mode = 'Turbo 100%';
-    else if (f.managed && f.role === 'pump' && f.pumpPolicy === 'full') mode = 'Bomba: sempre 100%';
-    else if (f.managed && req && req.profile) mode = 'Perfil ' + ((state.fans.presets || {})[req.profile] || { name: req.profile }).name;
-    else if (f.managed && req && req.mode === 'fixed') mode = `Fixo ${Math.max(req.percent, f.role === 'pump' ? f.pumpMinPercent : 0)}%`;
-    else if (f.managed && !hardwareCurves()) mode = 'Curva personalizada, resposta ' + RESPONSES[(req && req.response) || 'balanced'][0].toLowerCase();
-    else if (f.managed) mode = 'Curva personalizada';
-    else if (f.mode === BIOS) mode = 'Controle da BIOS';
-    else if (f.points.every((p) => p[1] >= 255)) mode = 'Velocidade máxima (perfil do GCC)';
-    else mode = 'Curva original';
+    if (state.fans.turbo) mode = tr('fan.turbo');
+    else if (f.managed && f.role === 'pump' && f.pumpPolicy === 'full') mode = tr('fan.pumpFull');
+    else if (f.managed && req && req.profile) mode = tr('fan.profile', { name: presetName(req.profile) });
+    else if (f.managed && req && req.mode === 'fixed') mode = tr('fan.fixed', { n: Math.max(req.percent, f.role === 'pump' ? f.pumpMinPercent : 0) });
+    else if (f.managed && !hardwareCurves()) mode = tr('fan.customResponse', { response: tr(RESPONSES[(req && req.response) || 'balanced'][0]).toLocaleLowerCase() });
+    else if (f.managed) mode = tr('fan.custom');
+    else if (f.mode === BIOS) mode = tr('fan.bios');
+    else if (f.points.every((p) => p[1] >= 255)) mode = tr('fan.gccMax');
+    else mode = tr('fan.original');
     const temps = snap && snap.tempInputs;
     const srcT = temps ? temps[f.tempInput] : null;
     const srcName = state.fans.tempInputs[f.tempInput] || '?';
@@ -325,12 +341,11 @@ import { cpuMain } from './js/sensors.mjs';
     $('fanMode').hidden = hardwareCurves() || !state.fans.fans.length;
     if (!state.fans.supported) {
       box.innerHTML = '<p class="hint"></p>';
-      box.firstChild.textContent = (state.fans.notice ||
-        `Esta placa-mãe (${state.fans.board || 'desconhecida'}) não oferece controle de fans pelo caminho que o FanPilot usa.`) +
-        ' O monitoramento continua funcionando.';
+      box.firstChild.textContent = (msg(state.fans.notice) ||
+        tr('fans.unsupported', { board: state.fans.board || tr('fans.unknownBoard') })) + ' ' + tr('fans.monitoringOnly');
       return;
     }
-    if (!state.fans.fans.length) { box.innerHTML = '<p class="hint">Controle de fans indisponível.</p>'; return; }
+    if (!state.fans.fans.length) { box.innerHTML = '<p class="hint"></p>'; box.firstChild.textContent = tr('fans.unavailable'); return; }
     const snap = state.snap || {};
     if (box.querySelectorAll('.fan').length !== state.fans.fans.length) {
       box.innerHTML = '';
@@ -346,20 +361,20 @@ import { cpuMain } from './js/sensors.mjs';
     }
     const turbo = !!state.fans.turbo;
     $('turboBtn').setAttribute('aria-pressed', turbo);
-    $('turboBtn').textContent = turbo ? '⚡ Turbo ligado' : '⚡ Turbo 100%';
+    $('turboBtn').textContent = tr(turbo ? 'turbo.on' : 'turbo.off');
     $('turboBanner').hidden = !turbo;
     state.fans.fans.forEach((f, i) => {
       const b = box.children[i];
       const rpm = snap.fanRpm ? snap.fanRpm[i] : null;
       const duty = commandedPercent(f, snap);
       b.querySelector('.name').innerHTML = esc(fanName(f)) + (f.label ? `<span class="orig">${esc(f.title)}</span>` : '') +
-        (turbo ? '<span class="pill">Turbo</span>' : f.managed ? '<span class="pill">FanPilot</span>' : '') +
-        (f.role === 'pump' ? '<span class="pill pump">Bomba</span>' : '');
-      b.querySelector('.rpm').innerHTML = rpm ? `${rpm}<small> RPM</small>` : '<small>sem leitura</small>';
+        (turbo ? `<span class="pill">${esc(tr('fan.pill.turbo'))}</span>` : f.managed ? '<span class="pill">FanPilot</span>' : '') +
+        (f.role === 'pump' ? `<span class="pill pump">${esc(tr('fan.pill.pump'))}</span>` : '');
+      b.querySelector('.rpm').innerHTML = rpm ? `${rpm}<small> RPM</small>` : `<small>${esc(tr('fan.noReading'))}</small>`;
       const meter = b.querySelector('.duty');
       meter.firstChild.style.transform = `scaleX(${(duty === null ? 0 : duty) / 100})`;
       meter.setAttribute('aria-valuenow', duty === null ? 0 : duty);
-      meter.title = 'Velocidade comandada: ' + (duty === null ? '–' : duty + '%');
+      meter.title = tr('fan.commanded', { value: duty === null ? '–' : duty + '%' });
       b.querySelector('.desc').textContent = fanDescription(f, snap);
     });
   }
@@ -380,13 +395,13 @@ import { cpuMain } from './js/sensors.mjs';
       const row = document.createElement('div');
       row.className = 'notice-banner orphan';
       const text = document.createElement('span');
-      text.textContent = `A configuração salva para "${o.title || o.key}" não corresponde a nenhum fan desta placa e não foi aplicada.`;
+      text.textContent = tr('orphan.text', { name: o.title || o.key });
       const discard = document.createElement('button');
       discard.className = 'btn';
-      discard.textContent = 'Descartar';
+      discard.textContent = tr('orphan.discard');
       discard.onclick = async () => {
         discard.disabled = true;
-        try { await api('/api/fans/orphans', { key: o.key }); toast('Configuração descartada'); await loadFans(); }
+        try { await api('/api/fans/orphans', { key: o.key }); toast(tr('orphan.discarded')); await loadFans(); }
         catch (e) { toast(e.message, true); discard.disabled = false; }
       };
       row.append(text, discard);
@@ -397,14 +412,14 @@ import { cpuMain } from './js/sensors.mjs';
   async function loadFans() {
     try { state.fans = await api('/api/fans'); renderFans(); renderOrphans(); renderCharts(); }
     catch (e) {
-      $('fans').innerHTML = `<p class="hint">Fans indisponíveis: ${esc(e.message)}</p>`;
+      $('fans').innerHTML = `<p class="hint">${esc(tr('fans.error', { error: e.message }))}</p>`;
       $('turboBtn').hidden = true;
       $('fanSub').hidden = true;
     }
   }
 
   // ---------- global profiles (item 18) ----------
-  const profileName = (mode) => mode && mode !== 'custom' ? state.fans.presets[mode.slice('profile:'.length)].name : null;
+  const profileName = (mode) => mode && mode !== 'custom' ? presetName(mode.slice('profile:'.length)) : null;
 
   function renderProfiles() {
     const seg = $('profileSeg');
@@ -419,7 +434,7 @@ import { cpuMain } from './js/sensors.mjs';
     try {
       const r = await api('/api/fans/mode', { mode });
       const name = profileName(mode);
-      toast(r.turbo ? 'Vale quando o Turbo desligar' : name ? `Perfil ${name} em todos os fans (menos as bombas)` : 'Configuração pessoal de volta');
+      toast(r.turbo ? tr('profiles.afterTurbo') : name ? tr('profiles.applied', { name }) : tr('profiles.customBack'));
       await loadFans();
     } catch (e) { toast(e.message, true); }
     finally { buttons.forEach((b) => { b.disabled = false; }); }
@@ -431,7 +446,7 @@ import { cpuMain } from './js/sensors.mjs';
     $('turboBtn').disabled = true;
     try {
       await api('/api/fans/turbo', { on });
-      toast(on ? 'Turbo: fans da placa-mãe em 100%' : 'Turbo desligado: configurações anteriores restauradas');
+      toast(tr(on ? 'turbo.toast.on' : 'turbo.toast.off'));
       await loadFans();
     } catch (e) { toast(e.message, true); }
     finally { $('turboBtn').disabled = false; }
@@ -464,7 +479,7 @@ import { cpuMain } from './js/sensors.mjs';
   }
 
   function openEditor(i) {
-    if (state.fans.turbo) { toast('Desligue o Turbo para ajustar um fan individualmente.', true); return; }
+    if (state.fans.turbo) { toast(tr('ed.turboOn'), true); return; }
     const f = state.fans.fans[i];
     const limits = state.fans.limits;
     const req = f.managed ? f.request : null;
@@ -483,7 +498,7 @@ import { cpuMain } from './js/sensors.mjs';
     renderPresetChips();
     const profile = profileName(state.fans.mode);
     $('edProfileNote').hidden = !profile;
-    $('edProfileNote').textContent = profile ? `O perfil ${profile} está ativo: aplicar ou restaurar aqui desliga o perfil, e os outros fans ficam com a curva dele como configuração pessoal.` : '';
+    $('edProfileNote').textContent = profile ? tr('ed.profileNote', { profile }) : '';
     $('edMeta').open = false;
     $('edLabel').value = f.label || '';
     $('edLabel').placeholder = f.title;
@@ -502,16 +517,13 @@ import { cpuMain } from './js/sensors.mjs';
     $('edFixedSlider').min = limits.minDutyPercent;
     $('edFixedSlider').value = state.editor.percent;
     const hw = hardwareCurves();
-    $('edFixedHint').textContent = `Proteção: ${hw ? 'o chip' : 'o FanPilot'} ainda vai a 100% se o sensor passar de ${limits.fixedModeSafetyTemp} °C.`;
-    $('edLimits').textContent = `Mínimo ${limits.minDutyPercent}% em qualquer ponto; 100% no máximo a ${limits.maxFullSpeedTemp} °C. ` + (hw
-      ? 'A curva roda no chip da placa-mãe (continua valendo mesmo se o PC/FanPilot fechar).'
-      : 'A curva é executada pelo FanPilot a cada segundo. Se ele fechar, ou o sensor de referência parar de responder, o fan volta ao controle da BIOS.');
+    $('edFixedHint').textContent = tr(hw ? 'ed.fixedHint.chip' : 'ed.fixedHint.app', { temp: limits.fixedModeSafetyTemp });
+    const socket = hw && state.snap && (state.snap.sensors || []).some((s) => s.role === 'cpu-socket');
+    $('edLimits').textContent = [tr('ed.limits', { min: limits.minDutyPercent, max: limits.maxFullSpeedTemp }),
+      tr(hw ? 'ed.limits.chip' : 'ed.limits.app'), socket ? tr('ed.limits.socket') : ''].filter(Boolean).join(' ');
     $('edResponseBox').hidden = hw;
     $('edResponse').value = state.editor.response;
-    if (hw && state.snap && (state.snap.sensors || []).some((s) => s.role === 'cpu-socket')) {
-      $('edLimits').textContent += ' A curva segue o sensor da placa (o "CPU" dela é o do socket); o card da CPU mostra a temperatura dos núcleos.';
-    }
-    $('edRestore').textContent = hw ? 'Restaurar original' : 'Devolver à BIOS';
+    $('edRestore').textContent = tr(hw ? 'ed.restore.chip' : 'ed.restore.bios');
     $('edRestore').disabled = !f.hasBackup || (!hw && !f.managed);
     state.editor.savedCurve = curveDraft(state.editor);
     state.editor.savedMeta = metaDraft();
@@ -527,7 +539,7 @@ import { cpuMain } from './js/sensors.mjs';
   }
 
   function renderEditorTitle(f) {
-    $('edTitle').textContent = (f.role === 'pump' ? 'Bomba · ' : 'Fan · ') + fanName(f);
+    $('edTitle').textContent = tr(f.role === 'pump' ? 'ed.title.pump' : 'ed.title.fan', { name: fanName(f) });
     $('edPumpNote').hidden = !(f.role === 'pump' && f.pumpPolicy === 'full');
   }
 
@@ -591,7 +603,7 @@ import { cpuMain } from './js/sensors.mjs';
     $('edCurveBox').hidden = e.mode !== 'curve';
     $('edFixedBox').hidden = e.mode !== 'fixed';
     $('edFixedValue').textContent = e.percent + '%';
-    $('edResponseHint').textContent = `${RESPONSES[e.response][0]}: ${RESPONSES[e.response][1]} Em qualquer resposta, no último ponto da curva o fan vai a 100% na hora.`;
+    $('edResponseHint').textContent = tr('ed.response.hint', { name: tr(RESPONSES[e.response][0]), desc: tr(RESPONSES[e.response][1]) });
 
     const svg = $('edSvg');
     const pts = e.points;
@@ -612,7 +624,7 @@ import { cpuMain } from './js/sensors.mjs';
     const now = svg.querySelector('.now');
     now.toggleAttribute('hidden', !hasT);
     if (hasT) { now.setAttribute('x1', exX(srcT)); now.setAttribute('x2', exX(srcT)); }
-    $('edNow').textContent = hasT ? `agora: ${fmt(srcT)} °C → ${pct(curveAt(pts.map(([t, p]) => [t, p * 2.55]), e.style, srcT))}%` : '';
+    $('edNow').textContent = hasT ? tr('ed.now', { t: fmt(srcT), p: pct(curveAt(pts.map(([t, p]) => [t, p * 2.55]), e.style, srcT)) }) : '';
 
     const limits = state.fans.limits;
     svg.querySelectorAll('.point').forEach((g, i) => {
@@ -649,7 +661,7 @@ import { cpuMain } from './js/sensors.mjs';
     for (let i = 0; i < n; i++) {
       const g = el('g', {
         class: 'point', tabindex: 0, role: 'slider', 'aria-orientation': 'vertical',
-        'aria-label': `Ponto ${i + 1} de ${n}`, 'aria-valuemax': 100, 'data-i': i,
+        'aria-label': tr('ed.point', { i: i + 1, n }), 'aria-valuemax': 100, 'data-i': i,
       }, svg);
       el('circle', { class: 'ring', r: 11 }, g);
       el('circle', { class: 'pt' + (i === 0 || i === n - 1 ? ' fixed' : ''), r: 6 }, g);
@@ -663,8 +675,8 @@ import { cpuMain } from './js/sensors.mjs';
     $('edTune').hidden = i === null;
     $('edTuneHint').hidden = i !== null;
     if (i === null) return;
-    const [t, p] = e.points[i];
-    $('edTuneLabel').textContent = `Ponto ${i + 1} de ${e.points.length}: ${t} °C, ${p}%`;
+    const [temp, p] = e.points[i];
+    $('edTuneLabel').textContent = tr('ed.tune.label', { i: i + 1, n: e.points.length, t: temp, p });
     // The first point's temperature and the last one's speed don't move.
     $('edTuneTMinus').disabled = $('edTuneTPlus').disabled = i === 0;
     $('edTunePMinus').disabled = $('edTunePPlus').disabled = i === e.points.length - 1;
@@ -830,7 +842,7 @@ import { cpuMain } from './js/sensors.mjs';
     $('edApply').disabled = true;
     try {
       await api('/api/fans/' + e.index, body);
-      toast(hardwareCurves() ? 'Aplicado no chip da placa-mãe' : 'Aplicado: o FanPilot está controlando este fan');
+      toast(tr(hardwareCurves() ? 'ed.applied.chip' : 'ed.applied.app'));
       await loadFans();
       closeEditor();
     } catch (err) { toast(err.message, true); }
@@ -853,7 +865,7 @@ import { cpuMain } from './js/sensors.mjs';
     $('edMetaSave').disabled = true;
     try {
       await api('/api/fans/' + e.index + '/meta', body);
-      toast('Nome e função salvos');
+      toast(tr('ed.meta.saved'));
       await loadFans();
       // A curve not applied yet keeps the sheet open: saving the name doesn't throw it away.
       if (state.editor === e && curveDraft(e) !== e.savedCurve) {
@@ -871,7 +883,7 @@ import { cpuMain } from './js/sensors.mjs';
     $('edRestore').disabled = true;
     try {
       await api('/api/fans/' + e.index + '/restore', {});
-      toast(hardwareCurves() ? 'Curva original restaurada' : 'Fan devolvido ao controle da BIOS');
+      toast(tr(hardwareCurves() ? 'ed.restored.chip' : 'ed.restored.bios'));
       await loadFans();
       closeEditor();
     } catch (err) { toast(err.message, true); }
@@ -913,7 +925,7 @@ import { cpuMain } from './js/sensors.mjs';
     $('edPresets').replaceChildren(...Object.entries(state.fans.presets || {}).map(([key, preset]) => {
       const b = document.createElement('button');
       b.className = 'btn';
-      b.textContent = preset.name;
+      b.textContent = presetName(key);
       b.onclick = () => morphPoints(presetPoints(key, state.fans.limits, state.editor.pointCount));
       return b;
     }));
@@ -923,22 +935,23 @@ import { cpuMain } from './js/sensors.mjs';
   function renderGpu(gpu) {
     if (!gpu || !gpu.ok) {
       $('gpuName').textContent = 'GPU';
-      $('gpuGrid').innerHTML = `<p class="hint">GPU indisponível${gpu && gpu.error ? ': ' + esc(gpu.error) : ''}</p>`;
+      $('gpuGrid').innerHTML = '<p class="hint"></p>';
+      $('gpuGrid').firstChild.textContent = gpu && gpu.error ? tr('gpu.unavailableWhy', { error: msg(gpu.error) }) : tr('gpu.unavailable');
       $('gpuControls').hidden = true;
       $('gpuFixedBox').hidden = true;
       return;
     }
     $('gpuControls').hidden = false;
     $('gpuName').textContent = gpu.name;
-    $('gpuSub').textContent = gpu.fanMode === 'fixed' ? 'fan manual' : 'fan automático';
+    $('gpuSub').textContent = tr(gpu.fanMode === 'fixed' ? 'gpu.sub.fixed' : 'gpu.sub.auto');
     const kv = [
-      ['Temperatura', fmt(gpu.temp) + ' °C'], ['Uso', fmt(gpu.util) + '%'], ['Potência', fmt(gpu.power, 0) + ' W'],
-      ['Clock', fmt(gpu.clock) + ' MHz'], ['Memória', fmt(gpu.memClock) + ' MHz'],
-      ['VRAM', gpu.memTotal ? fmt(gpu.memUsed / 1024, 1) + '/' + fmt(gpu.memTotal / 1024, 0) + ' GB' : '–'],
+      ['gpu.temp', fmt(gpu.temp) + ' °C'], ['gpu.util', fmt(gpu.util) + '%'], ['gpu.power', fmt(gpu.power, 0) + ' W'],
+      ['gpu.clock', fmt(gpu.clock) + ' MHz'], ['gpu.memClock', fmt(gpu.memClock) + ' MHz'],
+      ['gpu.vram', gpu.memTotal ? fmt(gpu.memUsed / 1024, 1) + '/' + fmt(gpu.memTotal / 1024, 0) + ' GB' : '–'],
     ];
-    $('gpuGrid').innerHTML = kv.map(([k, v]) => `<div class="kv"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+    $('gpuGrid').innerHTML = kv.map(([k, v]) => `<div class="kv"><div class="k">${esc(tr(k))}</div><div class="v">${v}</div></div>`).join('');
     const fanPct = gpu.fans && gpu.fans.length ? gpu.fans.join(' / ') + '%' : '–';
-    $('gpuFanValue').textContent = 'fan ' + fanPct;
+    $('gpuFanValue').textContent = tr('gpu.fanValue', { value: fanPct });
     if (!state.gpuDirty) {
       const fixed = gpu.fanMode === 'fixed';
       $('gpuAuto').setAttribute('aria-pressed', !fixed);
@@ -948,15 +961,15 @@ import { cpuMain } from './js/sensors.mjs';
       $('gpuSlider').max = gpu.fanMax || 100;
       if (fixed && gpu.fanTarget) $('gpuSlider').value = gpu.fanTarget;
     }
-    $('gpuSafety').textContent = `${$('gpuSlider').value}% · volta ao automático se ≥ ${gpu.safetyTemp} °C`;
+    $('gpuSafety').textContent = tr('gpu.safety', { n: Number($('gpuSlider').value), temp: gpu.safetyTemp });
     $('gpuNote').hidden = !gpu.safetyNote;
-    $('gpuNote').textContent = gpu.safetyNote || '';
+    $('gpuNote').textContent = msg(gpu.safetyNote);
   }
 
   function wireGpu() {
     $('gpuAuto').onclick = async () => {
       state.gpuDirty = false;
-      try { await api('/api/gpu/fan', { mode: 'auto' }); toast('Fan da GPU em automático'); } catch (e) { toast(e.message, true); }
+      try { await api('/api/gpu/fan', { mode: 'auto' }); toast(tr('gpu.toast.auto')); } catch (e) { toast(e.message, true); }
     };
     $('gpuFixed').onclick = () => {
       state.gpuDirty = true;
@@ -969,29 +982,33 @@ import { cpuMain } from './js/sensors.mjs';
       try {
         await api('/api/gpu/fan', { mode: 'fixed', percent: Number($('gpuSlider').value) });
         state.gpuDirty = false;
-        toast('Fan da GPU fixado em ' + $('gpuSlider').value + '%');
+        toast(tr('gpu.toast.fixed', { n: Number($('gpuSlider').value) }));
       } catch (e) { toast(e.message, true); }
     };
   }
 
   // ---------- alerts (item 16) ----------
-  const hhmm = (ms) => new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const hhmm = (ms) => time(ms, { hour: '2-digit', minute: '2-digit' });
+
+  // An alert's words: by its code when FanPilot sends one (<code>.title and <code>.detail), else its own text.
+  const alertTitle = (a) => (a.code ? tr(a.code + '.title', a.params, a.title) : a.title);
+  const alertDetail = (a) => (a.code ? tr(a.code + '.detail', a.params, a.detail) : a.detail);
 
   function alertItem(a, onAck) {
     const row = document.createElement('div');
     row.className = 'alert-item ' + (a.resolved ? 'resolved' : a.severity);
     const text = document.createElement('div');
     const title = document.createElement('strong');
-    title.textContent = a.title;
+    title.textContent = alertTitle(a);
     const detail = document.createElement('span');
-    detail.textContent = a.detail + ' · ' + (a.resolved ? 'resolvido às ' + hhmm(a.resolved) : 'desde ' + hhmm(a.since));
+    detail.textContent = alertDetail(a) + ' · ' + (a.resolved ? tr('alerts.resolvedAt', { time: hhmm(a.resolved) }) : tr('alerts.since', { time: hhmm(a.since) }));
     text.append(title, detail);
     row.append(text);
     if (onAck) {
       const ok = document.createElement('button');
       ok.className = 'btn';
-      ok.textContent = 'OK';
-      ok.setAttribute('aria-label', 'Dispensar: ' + a.title);
+      ok.textContent = tr('alerts.ack');
+      ok.setAttribute('aria-label', tr('alerts.ack.aria', { title: alertTitle(a) }));
       ok.onclick = () => onAck(a, ok);
       row.append(ok);
     }
@@ -1025,8 +1042,8 @@ import { cpuMain } from './js/sensors.mjs';
     try {
       const { active, recent } = await api('/api/alerts');
       $('alertList').replaceChildren(...active.map((a) => alertItem(a)), ...recent.map((a) => alertItem(a)));
-      $('alertsSub').textContent = active.length ? `${active.length} ativo${active.length > 1 ? 's' : ''}` : 'nenhum alerta ativo';
-    } catch (e) { $('alertsSub').textContent = 'indisponíveis: ' + e.message; }
+      $('alertsSub').textContent = active.length ? tr('alerts.active', { count: active.length }) : tr('alerts.none');
+    } catch (e) { $('alertsSub').textContent = tr('alerts.error', { error: e.message }); }
   }
 
   async function loadAlertSettings() {
@@ -1038,8 +1055,8 @@ import { cpuMain } from './js/sensors.mjs';
       $('alNtfy').value = '';
       $('alTgToken').value = '';
       $('alTgChat').value = s.telegramChatId || '';
-      $('alNtfyState').textContent = s.ntfy ? `configurado (${s.ntfy})` : 'não configurado';
-      $('alTgState').textContent = s.telegram ? `Telegram configurado (token ${s.telegram})` : 'Telegram não configurado';
+      $('alNtfyState').textContent = s.ntfy ? tr('alerts.ntfy.set', { value: s.ntfy }) : tr('alerts.ntfy.unset');
+      $('alTgState').textContent = s.telegram ? tr('alerts.telegram.set', { value: s.telegram }) : tr('alerts.telegram.unset');
     } catch (e) { toast(e.message, true); }
   }
 
@@ -1054,7 +1071,7 @@ import { cpuMain } from './js/sensors.mjs';
     }
     try {
       await api('/api/alerts/settings', body);
-      toast(clear ? 'Destinos removidos' : 'Alertas salvos');
+      toast(tr(clear ? 'alerts.cleared' : 'alerts.saved'));
       await loadAlertSettings();
     } catch (e) { toast(e.message, true); }
   }
@@ -1063,7 +1080,7 @@ import { cpuMain } from './js/sensors.mjs';
     $('alTest').disabled = true;
     try {
       const r = await api('/api/alerts/test', {});
-      toast(r.ok ? 'Teste enviado' : 'Não chegou: ' + r.errors.join('; '), !r.ok);
+      toast(r.ok ? tr('alerts.testSent') : tr('alerts.testFailed', { errors: r.errors.join('; ') }), !r.ok);
     } catch (e) { toast(e.message, true); }
     finally { $('alTest').disabled = false; }
   }
@@ -1084,17 +1101,17 @@ import { cpuMain } from './js/sensors.mjs';
   }
 
   // ---------- sensors table ----------
-  const GROUPS = { Temperature: 'Temperaturas', Fan: 'Fans', Voltage: 'Tensões', Frequency: 'Clocks', Power: 'Potência' };
+  const GROUPS = { Temperature: 'sensors.group.Temperature', Fan: 'sensors.group.Fan', Voltage: 'sensors.group.Voltage', Frequency: 'sensors.group.Frequency', Power: 'sensors.group.Power' };
   function renderSensors(snap) {
     if (!snap.sensors || !$('sensorTable').closest('details').open) return;
     let html = '';
     Object.keys(GROUPS).forEach((type) => {
       const rows = snap.sensors.filter((s) => s.type === type);
       if (!rows.length) return;
-      html += `<tr class="group"><td colspan="2">${GROUPS[type]}</td></tr>`;
+      html += `<tr class="group"><td colspan="2">${esc(tr(GROUPS[type]))}</td></tr>`;
       rows.forEach((s) => {
         const digits = s.unit === 'V' ? 3 : (s.unit === 'W' || (s.unit === 'MHz' && s.value < 1000)) ? 1 : 0;
-        html += `<tr><td>${esc(s.title)}</td><td>${fmt(s.value, digits)} ${esc(s.unit)}</td></tr>`;
+        html += `<tr><td>${esc(sensorTitle(s))}</td><td>${fmt(s.value, digits)} ${esc(s.unit)}</td></tr>`;
       });
     });
     $('sensorTable').innerHTML = html;
@@ -1109,7 +1126,7 @@ import { cpuMain } from './js/sensors.mjs';
   // Problems with config.json or the state files, reported by the server; textContent, so nothing is markup.
   function renderNotices(list) {
     const box = $('notices');
-    const text = (list || []).join('\n');
+    const text = (list || []).map(msg).join('\n');
     if (box.textContent !== text) box.textContent = text;
     box.hidden = !text;
   }
@@ -1119,7 +1136,7 @@ import { cpuMain } from './js/sensors.mjs';
     state.snap = snap;
     pushHistory(snap);
     const svc = snap.service || {};
-    setStatus(svc.ok, svc.ok ? 'ao vivo' : 'sensores da placa indisponíveis');
+    setStatus(svc.ok, tr(svc.ok ? 'status.live' : 'status.boardDown'));
     renderNotices(svc.notices);
     state.alerts = snap.alerts || [];
     renderAlertBanner(state.alerts);
@@ -1143,10 +1160,10 @@ import { cpuMain } from './js/sensors.mjs';
     };
     // A snapshot arrives every second: 5 s of silence on an open stream means the readings are stuck, not live.
     const stall = setInterval(() => {
-      if (es.readyState === EventSource.OPEN && Date.now() - lastFrame > 5000) setStatus(false, 'dados atrasados');
+      if (es.readyState === EventSource.OPEN && Date.now() - lastFrame > 5000) setStatus(false, tr('status.stale'));
     }, 1000);
     es.onerror = async () => {
-      setStatus(false, 'reconectando…');
+      setStatus(false, tr('status.reconnecting'));
       if (es.readyState === EventSource.CLOSED) {
         clearInterval(stall);
         setTimeout(connect, RECONNECT_MS);
@@ -1157,6 +1174,10 @@ import { cpuMain } from './js/sensors.mjs';
   }
 
   async function init() {
+    // Words first: everything below writes text.
+    await loadLanguage();
+    translatePage();
+    wireLanguageSelect($('langSelect'));
     wireEditor();
     wireGpu();
     wireAlerts();
@@ -1169,7 +1190,7 @@ import { cpuMain } from './js/sensors.mjs';
     $('profileSeg').querySelectorAll('button').forEach((b) => { b.onclick = () => setProfile(b.dataset.mode); });
     $('sensorTable').closest('details').addEventListener('toggle', () => state.snap && renderSensors(state.snap));
     $('logout').onclick = async () => {
-      if (!confirm('Desparear este aparelho? Será preciso escanear o QR code de novo.')) return;
+      if (!confirm(tr('top.logout.confirm'))) return;
       await api('/api/logout', {}).catch(() => {});
       location.reload();
     };

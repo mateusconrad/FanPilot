@@ -53,6 +53,8 @@ Primeira versão publicada (será a 0.1.0).
 - `FanPilot.exe --version`; a versão também aparece na primeira linha do log, no `--diagnose` e no rodapé do painel.
 - Releases no GitHub com o zip, o `SHA256SUMS.txt` e estas notas; CI compilando e testando cada push.
 - Texto secundário do painel com contraste de pelo menos 4,5:1 nos temas claro e escuro (conferido pelo axe-core).
+- Painel em inglês e em português: o idioma segue o do navegador e pode ser trocado no rodapé (a escolha fica no
+  aparelho); números e horas seguem o idioma.
 
 ### Segurança
 

@@ -226,7 +226,9 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 .big-value { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .hint { font-size: 12px; color: var(--muted); }
 /* Which FanPilot is answering: the first thing a bug report needs. */
-.app-footer { text-align: center; overflow-wrap: anywhere; }
+.app-footer { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 16px; text-align: center; overflow-wrap: anywhere; }
+/* The language, kept on this device (item 21). */
+.lang-switch { display: inline-flex; align-items: center; gap: 6px; }
 
 .btn { border: 1px solid var(--border); background: var(--surface-2); border-radius: 10px; padding: 9px 14px; cursor: pointer; transition: transform 160ms var(--ease-out); }
 .btn:active:not(:disabled), .seg button:active { transform: scale(0.97); }

@@ -38,5 +38,25 @@ for (const scenario of ['demo', 'worst']) {
         });
       }
     }
+
+    // English words have other lengths (item 21): the narrowest phone in English too.
+    test.describe('em inglês', () => {
+      test.use({ locale: 'en-US' });
+
+      test('320 px', async ({ page }, testInfo) => {
+        await page.setViewportSize({ width: 320, height: 900 });
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await page.goto(fp.url + '/');
+        await expect(page.locator('#statusText')).toHaveText('live');
+        await expect(page.locator('#chart path.series')).not.toHaveCount(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+        await shot(page, testInfo, `${scenario}-painel-320-en`, { fullPage: true });
+
+        await page.locator('#fans .fan').nth(1).click();
+        await expect(page.locator('#sheet')).toBeVisible();
+        expect(await page.evaluate(() => document.getElementById('sheet').scrollWidth)).toBeLessThanOrEqual(320);
+        await shot(page, testInfo, `${scenario}-editor-320-en`);
+      });
+    });
   });
 }
