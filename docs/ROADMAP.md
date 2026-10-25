@@ -8,7 +8,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 - **Testes:** testes automatizados do item: `a fazer` · `ok` (commitados com o item; rodam na [CI](https://github.com/mateusconrad/FanPilot/actions) a cada push)
 - **Esforço**, em dias de trabalho focado: P ≈ 1 · P–M ≈ 2 · M ≈ 3 · G ≈ 10
 
-**Concluídos: 13 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 27 (veja a seção própria)
+**Concluídos: 14 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 27 (veja a seção própria)
 
 ## Andamento
 
@@ -26,7 +26,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 | 10 | [Ponte Gigabyte sem dependência de compilação](specs/10-gigabyte-sem-compilacao.md) | 2 | M | 09 | concluído | ok | [#10](https://github.com/mateusconrad/FanPilot/issues/10) | contrato conferido com o GCC 8.0.8.2 instalado; falta a verificação em hardware |
 | 11 | [CI, versão e releases](specs/11-ci-versao-release.md) | 2 | P–M | 08, 09, 10 | concluído | ok | [#11](https://github.com/mateusconrad/FanPilot/issues/11) | CI verde (138 testes, sem ignorados) e ensaio da release aprovado; SDK fixado pelo `global.json`; a tag `v0.1.0` espera a verificação em hardware |
 | 12 | [Assinatura de código](specs/12-assinatura.md) | 2 | P + aprovação | 11 | a fazer | a fazer | [#12](https://github.com/mateusconrad/FanPilot/issues/12) | |
-| 13 | [Relatos de compatibilidade](specs/13-compatibilidade.md) | 2 | P | — | a fazer | a fazer | [#13](https://github.com/mateusconrad/FanPilot/issues/13) | |
+| 13 | [Relatos de compatibilidade](specs/13-compatibilidade.md) | 2 | P | — | concluído | ok | [#13](https://github.com/mateusconrad/FanPilot/issues/13) | `--diagnose` sem números de série nem GUIDs e com o link do formulário; falta ver o formulário no GitHub logado |
 | 14 | [Serviço, bandeja e instalador](specs/14-servico-bandeja-instalador.md) | 3 | G | 03, 05, 06 | a fazer | a fazer | [#14](https://github.com/mateusconrad/FanPilot/issues/14) | |
 | 15 | [Curvas por software suaves](specs/15-curvas-suaves.md) | 3 | M | 08 | a fazer | a fazer | [#15](https://github.com/mateusconrad/FanPilot/issues/15) | |
 | 16 | [Alertas de fan parado e temperatura](specs/16-alertas.md) | 3 | M | 02 | a fazer | a fazer | [#16](https://github.com/mateusconrad/FanPilot/issues/16) | |
