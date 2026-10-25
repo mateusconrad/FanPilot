@@ -1,0 +1,57 @@
+// FanPilot.exe --service: the same FanPilot under the Service Control Manager, as LocalSystem in session 0, from boot
+// and with no console. The installer (item 14c) registers it with --data %ProgramData%\FanPilot and the recovery
+// actions (restart after 1 s, 5 s and 60 s), so Windows brings it back if it dies.
+using System;
+using System.Diagnostics;
+using System.ServiceProcess;
+using System.Threading;
+
+sealed class FanPilotService : ServiceBase
+{
+    public const string Name = "FanPilot";
+    readonly FanPilotHost _host;
+
+    public FanPilotService(FanPilotHost host)
+    {
+        _host = host;
+        ServiceName = Name;
+        CanStop = true;
+        CanShutdown = true;
+        CanHandlePowerEvent = true;
+        AutoLog = true; // started and stopped, in the Windows event log
+    }
+
+    public static int Run(FanPilotHost host)
+    {
+        // Warnings and errors also go to the event log ("FanPilot" in Application): there is no console to see them.
+        Log.Mirror = (level, text) =>
+        {
+            if (level == "INFO") return;
+            try { EventLog.WriteEntry(Name, text, level == "ERROR" ? EventLogEntryType.Error : EventLogEntryType.Warning); } catch { }
+        };
+        ServiceBase.Run(new FanPilotService(host));
+        return 0;
+    }
+
+    protected override void OnStart(string[] args)
+    {
+        // Opening the board can take seconds (the Gigabyte service over IPC): Windows is answered at once.
+        new Thread(() =>
+        {
+            int code = _host.Start();
+            if (code == 0) return;
+            ExitCode = code;
+            Stop();
+        }) { IsBackground = true, Name = "start" }.Start();
+    }
+
+    protected override void OnStop() { _host.Stop(); }
+
+    protected override void OnShutdown() { _host.Stop(); }
+
+    protected override bool OnPowerEvent(PowerBroadcastStatus status)
+    {
+        if (status == PowerBroadcastStatus.ResumeSuspend || status == PowerBroadcastStatus.ResumeAutomatic) _host.Resumed();
+        return true;
+    }
+}

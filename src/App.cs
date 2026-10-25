@@ -16,6 +16,8 @@ static class Log
 
     // data\fanpilot.log; null (the tests) = console only.
     public static string FilePath { get { return Writer.FilePath; } set { Writer.FilePath = value; } }
+    // Also called with every line written (level, text): the service copies warnings and errors to the event log.
+    public static Action<string, string> Mirror { get { return Writer.Mirror; } set { Writer.Mirror = value; } }
 
     public static void Info(string msg) { Writer.Write("INFO", msg); }
     public static void Warn(string msg) { Writer.Write("WARN", msg); }
@@ -39,6 +41,7 @@ sealed class LogWriter
 
     public string FilePath;
     public bool ToConsole = true;
+    public Action<string, string> Mirror;
 
     public LogWriter() : this(() => DateTime.Now, 5 * 1024 * 1024) { }
 
@@ -81,6 +84,8 @@ sealed class LogWriter
     {
         string line = now.ToString("yyyy-MM-dd HH:mm:ss") + " [" + level + "] " + text;
         if (ToConsole) Console.WriteLine(line);
+        var mirror = Mirror;
+        if (mirror != null) try { mirror(level, text); } catch { }
         if (FilePath == null) return;
         try
         {
@@ -127,14 +132,21 @@ static class App
 {
     public static int Run(string[] args)
     {
-        Console.OutputEncoding = System.Text.Encoding.UTF8;
-        if (args.Contains("--version"))
+        try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch (IOException) { } // a service has no console
+        AppOptions o;
+        try { o = AppOptions.Parse(args, FakeBoardAllowed); }
+        catch (ArgumentException ex)
+        {
+            Console.WriteLine(ex.Message);
+            return 1;
+        }
+        if (o.Version)
         {
             Console.WriteLine("FanPilot " + AppVersion.Text);
             return 0;
         }
-        string scenario = FakeBoardScenario(args);
-        bool fake = scenario != null;
+        string scenario = o.FakeScenario;
+        bool fake = o.Fake;
         if (fake && !FakeBoard.Scenarios.Contains(scenario))
         {
             Console.WriteLine("Cenário da placa de teste desconhecido: " + scenario + ". Use um destes: " + string.Join(", ", FakeBoard.Scenarios) + ".");
@@ -142,38 +154,38 @@ static class App
         }
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
         // The fake board writes its own curves, backup and pairings: never into the real board's data\.
-        string dataDir = Path.Combine(baseDir, fake ? "data-fake" : "data");
-        Directory.CreateDirectory(dataDir);
+        string dataDir = DataDirectory.Resolve(o.DataDir, baseDir, fake);
+        if (o.Service) DataDirectory.Restrict(dataDir); else Directory.CreateDirectory(dataDir);
         Log.FilePath = Path.Combine(dataDir, "fanpilot.log");
-        Log.Info("FanPilot " + AppVersion.Text + (fake ? " (placa de teste: " + scenario + ")" : ""));
+        Log.Info("FanPilot " + AppVersion.Text + (fake ? " (placa de teste: " + scenario + ")" : "") + (o.Service ? " como serviço" : "") +
+                 "; dados em " + dataDir);
 
-        bool diagnose = args.Contains("--diagnose");
-        bool interactive = !args.Contains("--no-browser");
         // The fake board touches no hardware, so it also runs without Administrator, on localhost only (phones need
         // the "+" prefix, which needs Administrator): that is how the end-to-end tests run on a developer's PC.
         bool admin = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
-        if (!admin && (!fake || diagnose))
+        if (!admin && (!fake || o.Diagnose))
         {
             Console.WriteLine("FanPilot precisa rodar como Administrador (o acesso aos sensores e fans da placa-mãe exige).");
             return 2;
         }
+        if (o.ImportFrom != null) return DataImport.Run(o.ImportFrom, dataDir, SingleInstance.IsRunning(fake));
         // One FanPilot at a time: a second one would fight the first over the fans. --diagnose only reads.
-        if (!diagnose && !SingleInstance.TryAcquire(fake))
+        if (!o.Diagnose && !SingleInstance.TryAcquire(fake))
         {
-            if (args.Contains("--hardware-test"))
+            if (o.HardwareTest)
             {
                 Console.WriteLine("Feche o FanPilot antes do teste em hardware: os dois disputariam os fans.");
                 return 4;
             }
             string panel = "http://localhost:" + AppConfig.Load(Path.Combine(dataDir, "config.json")).Port + "/";
             Console.WriteLine("O FanPilot já está rodando. Painel: " + panel);
-            if (interactive) try { Process.Start(panel); } catch { }
+            if (o.Interactive) try { Process.Start(panel); } catch { }
             return 4;
         }
         MachineData.Check(dataDir);
         var cfg = AppConfig.Load(Path.Combine(dataDir, "config.json"));
-        if (diagnose) return Diagnose.Run(dataDir, cfg, SingleInstance.IsRunning(fake), interactive);
-        if (args.Contains("--hardware-test"))
+        if (o.Diagnose) return Diagnose.Run(dataDir, cfg, SingleInstance.IsRunning(fake), o.Interactive);
+        if (o.HardwareTest)
         {
             // The fake board must survive the test's "open the board again" step, as a chip would.
             var fakeBoard = fake ? FakeBoard.Scenario(scenario) : null;
@@ -181,63 +193,29 @@ static class App
                                     fake ? FakeGpu.Scenario(scenario, cfg.GpuSafetyTemp) : GpuMonitor.Create(cfg.GpuSafetyTemp));
         }
 
-        // The port before the hardware: a port taken by another program must fail before anything touches the fans.
-        var server = new WebServer(cfg, Path.Combine(baseDir, "wwwroot")) { ListenHost = admin ? "+" : "localhost" };
-        try { server.Start(); }
-        catch (HttpListenerException ex)
-        {
-            Console.WriteLine(WebServer.PortProblem(cfg.Port, ex));
-            Log.Warn(WebServer.PortProblem(cfg.Port, ex));
-            return 5;
-        }
-
-        IBoard bridge;
-        if (!admin) Log.Info("Sem Administrador: o painel só abre em http://localhost:" + cfg.Port + "/ (nenhum celular pareia).");
-        try { bridge = fake ? FakeBoard.Scenario(scenario) : Boards.Create(cfg, interactive); }
-        catch (InvalidOperationException ex) { Console.WriteLine(ex.Message); return 3; }
-        Log.Info("Placa-mãe via " + bridge.BackendName + (bridge.HardwareCurves ? " (curvas no chip)" : " (curvas executadas pelo FanPilot)"));
-        if (bridge.Notice != null) Log.Warn(bridge.Notice);
-
-        var fans = new FanManager(bridge, cfg, dataDir);
-        var gpu = fake ? FakeGpu.Scenario(scenario, cfg.GpuSafetyTemp) : GpuMonitor.Create(cfg.GpuSafetyTemp);
-        var auth = new AuthManager(dataDir, cfg);
-        var sampler = new Sampler(bridge, gpu);
-
+        var host = new FanPilotHost(cfg, Path.Combine(baseDir, "wwwroot"), dataDir,
+            () => fake ? FakeBoard.Scenario(scenario) : Boards.Create(cfg, o.Interactive),
+            () => fake ? (GpuMonitor)FakeGpu.Scenario(scenario, cfg.GpuSafetyTemp) : GpuMonitor.Create(cfg.GpuSafetyTemp),
+            o.Interactive, admin);
         var stop = new ManualResetEvent(false);
-        // Software-curve boards must get their fans back on every way out: hook all the ones Windows tells us about.
-        Exit.Register(stop, () => { server.Stop(); bridge.Shutdown(); gpu.Stop(); gpu.Shutdown(); });
-
-        try { fans.Start(); } catch (Exception ex) { Log.Warn("Fan manager: " + ex.Message); }
-        gpu.Start();
-        sampler.Start();
-        // Only now: until Start() has saved the original curves, no request may change a fan.
-        server.Attach(auth, sampler, fans, gpu);
-
-        string pairUrl = "http://localhost:" + cfg.Port + "/pair";
-        Log.Info("FanPilot rodando na porta " + cfg.Port + ". Endereços na rede: " + string.Join(", ", NetworkInfo.CandidateHosts(cfg).Select(h => "http://" + h + ":" + cfg.Port)));
-        Log.Info("Para parear o celular, abra " + pairUrl + " neste PC e escaneie o QR code.");
-        if (interactive) try { Process.Start(pairUrl); } catch { }
-
+        // Software-curve boards must get their fans back on every way out: hook all the ones Windows tells us about,
+        // before anything starts.
+        Exit.Register(stop, host.Stop);
+        if (o.Service) return FanPilotService.Run(host);
+        int code = host.Start();
+        if (code != 0) return code;
         stop.WaitOne();
-        Log.Info(bridge.HardwareCurves
-            ? "Encerrando: fan da GPU volta para automático; curvas da placa-mãe permanecem no chip (com ponto de segurança)."
-            : "Encerrando: fans da placa-mãe e da GPU voltam ao controle automático (BIOS/driver).");
         Exit.Cleanup();
         return 0;
     }
 
-    // Debug builds only: the whole app on FakeBoard/FakeGpu, for the end-to-end tests and UI work without hardware.
-    // "--fake-board" is the demo board, "--fake-board=<name>" one of FakeBoard.Scenarios; null = the real board.
-    static string FakeBoardScenario(string[] args)
-    {
+    // --fake-board: the whole app on FakeBoard/FakeGpu, for the end-to-end tests and UI work without hardware. Debug
+    // builds only.
 #if DEBUG
-        string arg = args.FirstOrDefault(a => a == "--fake-board" || a.StartsWith("--fake-board="));
-        if (arg == null) return null;
-        return arg == "--fake-board" ? "demo" : arg.Substring("--fake-board=".Length);
+    const bool FakeBoardAllowed = true;
 #else
-        return null;
+    const bool FakeBoardAllowed = false;
 #endif
-    }
 }
 
 static class Boards
