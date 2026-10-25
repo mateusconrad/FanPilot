@@ -15,6 +15,7 @@ sealed class FakeBoard : IBoard
         public FanCurve Curve;      // what the "chip" holds right now
         public bool HasTach = true; // like CPU and System 3 on the B760M: nothing with a tachometer plugged in
         public int MaxRpm = 2400;
+        public float? StuckRpm;     // a fan that ignores its PWM (wired to a fixed-speed hub, broken)
     }
 
     readonly object _sync = new object();
@@ -125,6 +126,7 @@ sealed class FakeBoard : IBoard
         return Headers.Select(h =>
         {
             if (!h.HasTach) return 0.0;
+            if (h.StuckRpm.HasValue) return h.StuckRpm.Value;
             double pwm = h.Curve.IsBios ? 128 : h.Curve.PwmAt(h.Curve.TempInput < temps.Length ? temps[h.Curve.TempInput] : 0);
             return Math.Round(h.MaxRpm * pwm / 255);
         }).ToList();

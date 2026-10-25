@@ -48,12 +48,19 @@ node --test "tests/js/*.test.mjs"  # testes do painel (Node 22+)
 .\scripts\autostart.ps1         # (admin, opcional) inicia elevado no logon, sem UAC
 .\scripts\package.ps1           # gera dist\FanPilot-<data>-<commit>.zip para distribuir (sem data\)
 .\bin\FanPilot.exe --diagnose   # relatório só de leitura da placa (para placas ainda não testadas)
+.\bin\FanPilot.exe --hardware-test [--fan N]   # (FanPilot fechado) roteiro de verificação na placa real, ~2 min
 ```
 
 Compilar exige o [.NET SDK](https://dotnet.microsoft.com/download) 8 ou mais novo. Para **rodar**, basta o Windows: o
 FanPilot usa o .NET Framework 4.7.2 que já vem nele.
 
 Compilar sem o GCC instalado também funciona: o build avisa e gera um FanPilot só com o LibreHardwareMonitor.
+
+O `--hardware-test` passa por velocidade fixa, uma curva vigiada pelo watchdog, Turbo, o fan da GPU e um "fechar e
+abrir de novo", e grava `data\hwtest-<data>.md`. Ele só mexe no fan escolhido (e em todos no Turbo, a 100%), nunca
+abaixo de 40%, recusa o fan da CPU e bombas, para se a CPU ou a GPU passarem de 80 °C e devolve tudo como estava,
+inclusive com Ctrl+C (fechar a janela no meio é a única saída que ele não intercepta). Código de saída: 0 passou,
+6 falhou, 7 interrompido, 8 não executado.
 
 Builds Debug aceitam `--fake-board`: o FanPilot inteiro roda com uma placa e uma GPU falsas, guardando os dados em
 `data-fake\` (nunca no `data\` da placa real). É o que os testes de ponta a ponta usam. Para mexer só no visual, sem

@@ -146,6 +146,11 @@ static class App
         // One FanPilot at a time: a second one would fight the first over the fans. --diagnose only reads.
         if (!diagnose && !SingleInstance.TryAcquire(fake))
         {
+            if (args.Contains("--hardware-test"))
+            {
+                Console.WriteLine("Feche o FanPilot antes do teste em hardware: os dois disputariam os fans.");
+                return 4;
+            }
             string panel = "http://localhost:" + AppConfig.Load(Path.Combine(dataDir, "config.json")).Port + "/";
             Console.WriteLine("O FanPilot já está rodando. Painel: " + panel);
             if (interactive) try { Process.Start(panel); } catch { }
@@ -154,6 +159,13 @@ static class App
         MachineData.Check(dataDir);
         var cfg = AppConfig.Load(Path.Combine(dataDir, "config.json"));
         if (diagnose) return Diagnose.Run(dataDir, cfg, SingleInstance.IsRunning(fake));
+        if (args.Contains("--hardware-test"))
+        {
+            // The fake board must survive the test's "open the board again" step, as a chip would.
+            var fakeBoard = fake ? FakeBoard.Demo() : null;
+            return HardwareTest.Run(args, cfg, dataDir, () => fake ? fakeBoard : Boards.Create(cfg, false),
+                                    fake ? new FakeGpu(cfg.GpuSafetyTemp) : GpuMonitor.Create(cfg.GpuSafetyTemp));
+        }
 
         // The port before the hardware: a port taken by another program must fail before anything touches the fans.
         var server = new WebServer(cfg, Path.Combine(baseDir, "wwwroot"));
