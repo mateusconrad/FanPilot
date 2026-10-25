@@ -21,22 +21,8 @@
     <OutputPath>..\bin\</OutputPath>
   </PropertyGroup>
 
-  <!-- Gigabyte Control Center's client DLLs are referenced only when GCC is installed, never copied: Program.cs
-       resolves them at runtime from the GCC folder. Without GCC this is a LibreHardwareMonitor-only FanPilot. -->
-  <PropertyGroup>
-    <GccLibDir Condition="'$(GccLibDir)' == ''">$(ProgramW6432)\GIGABYTE\Control Center\Lib\MBEasyTune</GccLibDir>
-    <HasGcc Condition="Exists('$(GccLibDir)\Gigabyte.Engine.EnvironmentControl.dll')">true</HasGcc>
-    <DefineConstants Condition="'$(HasGcc)' != 'true'">$(DefineConstants);NO_GIGABYTE</DefineConstants>
-  </PropertyGroup>
-  <ItemGroup Condition="'$(HasGcc)' == 'true'">
-    <Reference Include="Gigabyte.Engine" HintPath="$(GccLibDir)\Gigabyte.Engine.dll" Private="false" />
-    <Reference Include="Gigabyte.Engine.EnvironmentControl" HintPath="$(GccLibDir)\Gigabyte.Engine.EnvironmentControl.dll" Private="false" />
-    <Reference Include="Gigabyte.EnvironmentControl.Common" HintPath="$(GccLibDir)\Gigabyte.EnvironmentControl.Common.dll" Private="false" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(HasGcc)' != 'true'">
-    <Compile Remove="GigabyteBridge.cs" />
-  </ItemGroup>
-
+  <!-- No reference to Gigabyte Control Center: GigabyteApi loads its client DLLs at runtime from the GCC install,
+       so one build (on any machine, the CI included) serves Gigabyte and every other board. -->
   <ItemGroup>
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
     <Reference Include="System.Web.Extensions" />

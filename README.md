@@ -54,7 +54,8 @@ node --test "tests/js/*.test.mjs"  # testes do painel (Node 22+)
 Compilar exige o [.NET SDK](https://dotnet.microsoft.com/download) 8 ou mais novo. Para **rodar**, basta o Windows: o
 FanPilot usa o .NET Framework 4.7.2 que já vem nele.
 
-Compilar sem o GCC instalado também funciona: o build avisa e gera um FanPilot só com o LibreHardwareMonitor.
+O build não depende do Gigabyte Control Center: o FanPilot carrega as DLLs do GCC instalado só na hora de rodar, então
+um mesmo build (ou zip) atende as placas Gigabyte e as outras.
 
 O `--hardware-test` passa por velocidade fixa, uma curva vigiada pelo watchdog, Turbo, o fan da GPU e um "fechar e
 abrir de novo", e grava `data\hwtest-<data>.md`. Ele só mexe no fan escolhido (e em todos no Turbo, a 100%), nunca
@@ -65,7 +66,6 @@ inclusive com Ctrl+C (fechar a janela no meio é a única saída que ele não in
 Builds Debug aceitam `--fake-board`: o FanPilot inteiro roda com uma placa e uma GPU falsas, guardando os dados em
 `data-fake\` (nunca no `data\` da placa real). É o que os testes de ponta a ponta usam. Para mexer só no visual, sem
 Administrador, use o `tools/ui-mock`.
-Para distribuir, gere o zip num PC com GCC, assim ele atende os dois tipos de placa.
 
 No celular (mesma rede Wi-Fi): escaneie o QR da página `/pair`. O código vale ~3 min e é de uso único;
 o aparelho fica pareado por 30 dias de inatividade. A página `/pair` (só acessível no próprio PC) lista e
@@ -98,8 +98,9 @@ confirmada. Se testar, siga [docs/TESTANDO-OUTRAS-PLACAS.md](docs/TESTANDO-OUTRA
 com o modelo, o arquivo do `--diagnose` e o resultado.
 
 Para forçar um caminho, use `"backend"` no `config.json`: `"auto"` (padrão: GCC se instalado, senão
-LibreHardwareMonitor), `"gigabyte"` ou `"lhm"`. Uma atualização do GCC pode mudar a API interna que o FanPilot
-usa e quebrar o caminho Gigabyte até ele ser ajustado.
+LibreHardwareMonitor), `"gigabyte"` ou `"lhm"`. Se uma atualização do GCC mudar a API interna que o FanPilot usa,
+ele avisa no painel o que mudou e segue com o LibreHardwareMonitor (com `"gigabyte"`, ele para com a mensagem). O
+`--diagnose` mostra a versão do GCC e se ela é compatível.
 
 ## Proteções de hardware
 

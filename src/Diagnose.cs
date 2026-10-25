@@ -10,6 +10,14 @@ using LibreHardwareMonitor.Hardware;
 
 static class Diagnose
 {
+    // Where GCC is, its version, and whether this FanPilot can use it (what an update broke, if anything).
+    static string GccLine()
+    {
+        if (!File.Exists(Path.Combine(Program.GccLibDir, GigabyteApi.EngineDll))) return "não encontrado";
+        var api = GigabyteApi.Load(Program.GccLibDir);
+        return Program.GccLibDir + ", versão " + api.Version + (api.Compatible ? ", compatível" : ", NÃO compatível: " + api.Problem);
+    }
+
     // otherInstance: a FanPilot is running and may be driving the fans while this reads them.
     public static int Run(string dataDir, AppConfig cfg, bool otherInstance)
     {
@@ -19,7 +27,7 @@ static class Diagnose
         if (otherInstance) sb.AppendLine("Atenção: outro FanPilot está rodando agora; as leituras abaixo podem refletir o controle dele.");
         sb.AppendLine("Windows: " + Environment.OSVersion.VersionString + (Environment.Is64BitOperatingSystem ? " x64" : ""));
         sb.AppendLine("Placa-mãe (registro): " + MachineData.Board);
-        sb.AppendLine("Gigabyte Control Center: " + (Directory.Exists(Program.GccLibDir) ? Program.GccLibDir : "não encontrado"));
+        sb.AppendLine("Gigabyte Control Center: " + GccLine());
         sb.AppendLine("backend no config.json: " + cfg.Backend);
         bool pawnIo = false;
         try { pawnIo = LibreHardwareMonitor.PawnIo.PawnIo.IsInstalled; sb.AppendLine("PawnIO: " + (pawnIo ? "instalado, versão " + LibreHardwareMonitor.PawnIo.PawnIo.Version : "NÃO instalado")); }

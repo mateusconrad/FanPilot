@@ -1,5 +1,5 @@
 # Builds a release zip in dist\: FanPilot.exe + DLLs + wwwroot + scripts + licenses, without any data\.
-# Build it on a PC with Gigabyte Control Center installed so the zip supports both Gigabyte (GCC) and other boards.
+# Any machine will do: Gigabyte Control Center is loaded at runtime, so the zip serves Gigabyte and other boards.
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot
 $stamp = Get-Date -Format 'yyyyMMdd'
