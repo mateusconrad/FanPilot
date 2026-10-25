@@ -131,6 +131,8 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
   // "SYS_FAN5_PUMP" -> "Sys 5 pump", "CPU_FAN" -> "CPU".
   const shortFanName = (title) => title.replace(/^(System|SYS_FAN)\s*/i, 'Sys ').replace(/^CPU_FAN$/i, 'CPU')
     .replace(/_PUMP$/i, ' pump').replace(/_/g, ' ');
+  // The name the user gave the header (item 17), or the chip's.
+  const fanName = (f) => f.label || f.title;
   const fmtRpm = (v) => v >= 1000 ? fmt(v / 1000, 1) + 'k' : String(Math.round(v));
 
   // Fans whose tachometer reads 0 for the whole window have nothing to plot.
@@ -157,7 +159,7 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
       svg: 'rpmChart', wrap: 'rpmWrap', tip: 'rpmTip', unit: 'RPM',
       tick: fmtRpm, endText: (s, v) => `${s.label} ${Math.round(v)}`,
       domain: (vals) => [0, niceCeil(Math.max(...vals, 1000) * 1.1)],
-      series: () => spinningFans().map(({ f, i }) => ({ key: 'fan-' + i, label: shortFanName(f.title), name: f.title, color: fanColor(i) })),
+      series: () => spinningFans().map(({ f, i }) => ({ key: 'fan-' + i, label: f.label || shortFanName(f.title), name: fanName(f), color: fanColor(i) })),
     },
   };
 
@@ -246,7 +248,7 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
         ? (state.fans.notice || 'Esta placa-mãe não informa fans para o FanPilot.')
         : 'Nenhum fan com leitura de RPM no momento.';
     } else if (state.fans) {
-      const silent = state.fans.fans.filter((f, i) => !fans.some((s) => s.key === 'fan-' + i)).map((f) => f.title);
+      const silent = state.fans.fans.filter((f, i) => !fans.some((s) => s.key === 'fan-' + i)).map(fanName);
       $('rpmNote').textContent = silent.length ? `Sem leitura de RPM (0): ${silent.join(', ')} — não aparecem no gráfico.` : '';
     }
   }
@@ -294,7 +296,8 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     const req = f.request;
     let mode;
     if (state.fans.turbo) mode = 'Turbo 100%';
-    else if (f.managed && req && req.mode === 'fixed') mode = `Fixo ${req.percent}%`;
+    else if (f.managed && f.role === 'pump' && f.pumpPolicy === 'full') mode = 'Bomba: sempre 100%';
+    else if (f.managed && req && req.mode === 'fixed') mode = `Fixo ${Math.max(req.percent, f.role === 'pump' ? f.pumpMinPercent : 0)}%`;
     else if (f.managed && !hardwareCurves()) mode = 'Curva personalizada, resposta ' + RESPONSES[(req && req.response) || 'balanced'][0].toLowerCase();
     else if (f.managed) mode = 'Curva personalizada';
     else if (f.mode === BIOS) mode = 'Controle da BIOS';
@@ -342,7 +345,9 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
       const b = box.children[i];
       const rpm = snap.fanRpm ? snap.fanRpm[i] : null;
       const duty = commandedPercent(f, snap);
-      b.querySelector('.name').innerHTML = esc(f.title) + (turbo ? '<span class="pill">Turbo</span>' : f.managed ? '<span class="pill">FanPilot</span>' : '');
+      b.querySelector('.name').innerHTML = esc(fanName(f)) + (f.label ? `<span class="orig">${esc(f.title)}</span>` : '') +
+        (turbo ? '<span class="pill">Turbo</span>' : f.managed ? '<span class="pill">FanPilot</span>' : '') +
+        (f.role === 'pump' ? '<span class="pill pump">Bomba</span>' : '');
       b.querySelector('.rpm').innerHTML = rpm ? `${rpm}<small> RPM</small>` : '<small>sem leitura</small>';
       const meter = b.querySelector('.duty');
       meter.firstChild.style.transform = `scaleX(${(duty === null ? 0 : duty) / 100})`;
@@ -443,7 +448,15 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
       points: toEditorPoints(f.points, limits, f.pointCount),
       response: (req && RESPONSES[req.response] && req.response) || 'balanced',
     };
-    $('edTitle').textContent = 'Fan · ' + f.title;
+    $('edTitle').textContent = (f.role === 'pump' ? 'Bomba · ' : 'Fan · ') + fanName(f);
+    $('edPumpNote').hidden = !(f.role === 'pump' && f.pumpPolicy === 'full');
+    $('edMeta').open = false;
+    $('edLabel').value = f.label || '';
+    $('edLabel').placeholder = f.title;
+    $('edRole').value = f.role || 'fan';
+    $('edPumpPolicy').value = f.pumpPolicy || 'full';
+    $('edPumpMin').value = f.pumpMinPercent || 70;
+    renderMeta();
     const sel = $('edTempInput');
     sel.innerHTML = '';
     state.fans.tempInputs.forEach((name, k) => {
@@ -616,6 +629,29 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     finally { $('edApply').disabled = false; }
   }
 
+  // The pump fields only matter for a pump, the minimum only for that policy.
+  function renderMeta() {
+    $('edPumpBox').hidden = $('edRole').value !== 'pump';
+    $('edPumpMinField').hidden = $('edPumpPolicy').value !== 'min';
+  }
+
+  async function saveMeta() {
+    const e = state.editor;
+    const body = { label: $('edLabel').value.trim(), role: $('edRole').value };
+    if (body.role === 'pump') {
+      body.pumpPolicy = $('edPumpPolicy').value;
+      body.pumpMinPercent = Number($('edPumpMin').value);
+    }
+    $('edMetaSave').disabled = true;
+    try {
+      await api('/api/fans/' + e.index + '/meta', body);
+      toast('Nome e função salvos');
+      await loadFans();
+      closeEditor();
+    } catch (err) { toast(err.message, true); }
+    finally { $('edMetaSave').disabled = false; }
+  }
+
   async function restoreEditor() {
     const e = state.editor;
     $('edRestore').disabled = true;
@@ -639,6 +675,9 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     $('edFixedSlider').oninput = (ev) => { state.editor.percent = Number(ev.target.value); renderEditor(); };
     $('edApply').onclick = applyEditor;
     $('edRestore').onclick = restoreEditor;
+    $('edRole').onchange = renderMeta;
+    $('edPumpPolicy').onchange = renderMeta;
+    $('edMetaSave').onclick = saveMeta;
     const chips = $('edPresets');
     Object.keys(PRESETS).forEach((name) => {
       const b = document.createElement('button');

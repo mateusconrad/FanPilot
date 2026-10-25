@@ -20,7 +20,13 @@ sealed class HardwareTest
     static readonly double[][] TestCurve = {
         new[] { 0.0, 40 }, new[] { 35.0, 40 }, new[] { 45.0, 50 }, new[] { 55.0, 60 },
         new[] { 62.0, 70 }, new[] { 68.0, 80 }, new[] { 74.0, 90 }, new[] { 82.0, 100 } };
-    static readonly Regex NotForTests = new Regex(@"^CPU|PUMP|BOMBA|\bAIO\b", RegexOptions.IgnoreCase);
+    static readonly Regex CpuHeader = new Regex(@"^CPU", RegexOptions.IgnoreCase);
+
+    // The CPU's header and pumps (by name, or marked by the user: the "role" FanManager reports) are never tested.
+    static bool NotForTests(Dictionary<string, object> fan)
+    {
+        return CpuHeader.IsMatch((string)fan["title"]) || (string)fan["role"] == "pump";
+    }
 
     sealed class StepFailed : Exception { public StepFailed(string message) : base(message) { } }
     sealed class AbortedException : Exception { public AbortedException(string message) : base(message) { } }
@@ -156,7 +162,7 @@ sealed class HardwareTest
     int PickFan(List<Dictionary<string, object>> fans)
     {
         var rpm = Rpms();
-        var candidates = Enumerable.Range(0, fans.Count).Where(i => !NotForTests.IsMatch((string)fans[i]["title"])).ToList();
+        var candidates = Enumerable.Range(0, fans.Count).Where(i => !NotForTests(fans[i])).ToList();
         return candidates.Where(i => i < rpm.Count && rpm[i] > 0).DefaultIfEmpty(candidates.DefaultIfEmpty(-1).First()).First();
     }
 
@@ -165,7 +171,7 @@ sealed class HardwareTest
         if (fans.Count == 0) return "Esta placa não oferece controle de fans pelo FanPilot: não há o que testar.";
         if (index < 0 || index >= fans.Count) return "Fan inexistente. Escolha um entre 0 e " + (fans.Count - 1) + " com --fan.";
         string title = (string)fans[index]["title"];
-        if (NotForTests.IsMatch(title))
+        if (NotForTests(fans[index]))
             return "'" + title + "' parece ser o fan da CPU ou uma bomba: o teste não mexe nele. Escolha um fan de gabinete com --fan.";
         if (_fans.TurboActive) return "Desligue o Turbo antes do teste.";
         if (!(bool)fans[index]["managed"] && !(bool)fans[index]["hasBackup"])

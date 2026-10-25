@@ -8,7 +8,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 - **Testes:** testes automatizados do item: `a fazer` · `ok` (commitados com o item; rodam na [CI](https://github.com/mateusconrad/FanPilot/actions) a cada push)
 - **Esforço**, em dias de trabalho focado: P ≈ 1 · P–M ≈ 2 · M ≈ 3 · G ≈ 10
 
-**Concluídos: 15 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 15, 27 (veja a seção própria)
+**Concluídos: 16 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 15, 17, 27 (veja a seção própria)
 
 ## Andamento
 
@@ -30,7 +30,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 | 14 | [Serviço, bandeja e instalador](specs/14-servico-bandeja-instalador.md) | 3 | G | 03, 05, 06 | a fazer | a fazer | [#14](https://github.com/mateusconrad/FanPilot/issues/14) | |
 | 15 | [Curvas por software suaves](specs/15-curvas-suaves.md) | 3 | M | 08 | concluído | ok | [#15](https://github.com/mateusconrad/FanPilot/issues/15) | `SoftwareCurveEngine` com resposta Rápida/Equilibrada/Suave; falta a carga real numa placa no caminho LHM |
 | 16 | [Alertas de fan parado e temperatura](specs/16-alertas.md) | 3 | M | 02 | a fazer | a fazer | [#16](https://github.com/mateusconrad/FanPilot/issues/16) | |
-| 17 | [Nomes dos fans e papel "bomba"](specs/17-nomes-e-bomba.md) | 3 | P–M | 04 | a fazer | a fazer | [#17](https://github.com/mateusconrad/FanPilot/issues/17) | |
+| 17 | [Nomes dos fans e papel "bomba"](specs/17-nomes-e-bomba.md) | 3 | P–M | 04 | concluído | ok | [#17](https://github.com/mateusconrad/FanPilot/issues/17) | política da bomba no `BuildCurve`, por onde passam editor, Turbo, reaplicação e os perfis do 18; falta conferir na B760M |
 | 18 | [Perfis globais](specs/18-perfis.md) | 3 | P–M | 07, 17 | a fazer | a fazer | [#18](https://github.com/mateusconrad/FanPilot/issues/18) | |
 | 19 | [Temperatura dos núcleos na Gigabyte](specs/19-temperatura-cpu-gigabyte.md) | 3 | P–M | — | a fazer | a fazer | [#19](https://github.com/mateusconrad/FanPilot/issues/19) | |
 | 20 | [Editor acessível e com ajuste fino](specs/20-acessibilidade-editor.md) | 3 | P | — | a fazer | a fazer | [#20](https://github.com/mateusconrad/FanPilot/issues/20) | |
@@ -110,6 +110,7 @@ Itens já na `main` cujo comportamento na placa real ainda não foi conferido. P
 |---|---|
 | 10 | `--hardware-test` passa com o exe compilado sem referência ao GCC; o log mostra "Gigabyte Control Center 8.0.8.2 em …"; `--diagnose` mostra a versão e "compatível" |
 | 11 | O zip feito pela CI (artefato `FanPilot-0.1.0-win-x64.zip` da última execução em [Actions](https://github.com/mateusconrad/FanPilot/actions)), extraído numa pasta nova com uma cópia da `data\` do `bin\`, passa no `--hardware-test`; o log começa com "FanPilot 0.1.0+<commit>" e o rodapé do painel mostra a mesma versão. A `data\` do `bin\` não é tocada, e a pasta de teste pode ser apagada depois. É esse zip que a `v0.1.0` vai publicar |
+| 17 | Na B760M: marcar como bomba, em "Nome e função", o header em que ela estiver (o README desconfia do System 1): ele vai a 100%, o card mostra o selo "Bomba", e o Turbo ligado e desligado não o muda. Dar um nome a outro fan e reiniciar o FanPilot: nome e bomba continuam. O `--hardware-test` sem `--fan` não escolhe a bomba |
 | 15 | Numa placa no caminho LHM (a B760M com `"backend": "lhm"`, se o LibreHardwareMonitor controlar o IT8689E): uma curva com resposta Equilibrada e carga intermitente (um benchmark em rajadas de poucos segundos) não faz o fan subir e descer audivelmente; com a Rápida, faz. Se precisar, ajustar τ, H e as rampas em `SoftwareCurveEngine.Responses` |
 | 27 | A primeira execução do `--hardware-test` na B760M passa (`--fan 1`, o System 1) e devolve as 4 curvas suas como estavam |
 | 01 | `curl.exe -H "Host: exemplo.invalid:8787" http://127.0.0.1:8787/api/fans` → `421`; sem o header → `200`; POST com `X-FanPilot: 1` e `Origin: http://exemplo.invalid:8787` em `/api/logout` → `403`; `/pair`, o painel no PC e o celular pareado funcionam como antes; o log registra a recusa uma vez só |

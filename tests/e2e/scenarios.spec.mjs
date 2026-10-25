@@ -24,7 +24,7 @@ test.describe('pior caso: placa grande, nomes longos, sensor desconectado', () =
     await page.goto(fp().url + '/');
     await expect(page.locator('#statusText')).toHaveText('ao vivo');
     await expect(page.locator('#fans .fan')).toHaveCount(8);
-    await expect(page.locator('#fans .fan .name').last()).toHaveText('SYS_FAN6_PUMP · bomba do watercooler ligada no conector de 4 pinos');
+    await expect(page.locator('#fans .fan .name').last()).toHaveText('SYS_FAN6_PUMP · bomba do watercooler ligada no conector de 4 pinosBomba');
     await expect(page.locator('#gpuName')).toHaveText('NVIDIA GeForce RTX 5090 D v2 Laptop GPU');
     await expect(page.locator('#notices')).toContainText('turbo.json estava ilegível');
     // Nothing wider than a 320 px phone.
@@ -35,6 +35,43 @@ test.describe('pior caso: placa grande, nomes longos, sensor desconectado', () =
     await expect(page.locator('#sensorTable')).toContainText('-128 °C');
   });
 
+  // Item 17: pumps are recognized by name and protected; any header can get a name of its own.
+  test('a bomba é reconhecida pelo nome e fica em 100% com qualquer pedido', async ({ page }) => {
+    await page.goto(fp().url + '/');
+    const pump = page.locator('#fans .fan').nth(6);
+    await expect(pump.locator('.pill.pump')).toHaveText('Bomba');
+    await expect(page.locator('#fans .fan').nth(2).locator('.pill.pump')).toHaveCount(0);
+    await pump.click();
+    await expect(page.locator('#edTitle')).toHaveText('Bomba · SYS_FAN5_PUMP');
+    await expect(page.locator('#edPumpNote')).toBeVisible();
+    await page.locator('#edModeFixed').click();
+    await page.locator('#edFixedSlider').fill('30');
+    await page.locator('#edApply').click();
+    await expect(pump.locator('.desc')).toContainText('Bomba: sempre 100%');
+    const fan = (await (await page.request.get(fp().url + '/api/fans')).json()).fans[6];
+    expect(fan.points.every(([, pwm]) => pwm === 255)).toBe(true);
+  });
+
+  test('um nome dado aparece no card e nos gráficos e sobrevive a um reinício', async ({ page }) => {
+    await page.goto(fp().url + '/');
+    await page.locator('#fans .fan').nth(2).click();
+    await page.locator('#edMeta summary').click();
+    await expect(page.locator('#edLabel')).toHaveAttribute('placeholder', 'SYS_FAN1');
+    await expect(page.locator('#edPumpBox')).toBeHidden();
+    await page.locator('#edLabel').fill('Frente do gabinete');
+    await page.locator('#edMetaSave').click();
+    await expect(page.locator('#toast')).toHaveText('Nome e função salvos');
+    const card = page.locator('#fans .fan').nth(2);
+    await expect(card.locator('.name')).toContainText('Frente do gabinete');
+    await expect(card.locator('.name .orig')).toHaveText('SYS_FAN1');
+    await expect(page.locator('#rpmLegend')).toContainText('Frente do gabinete');
+    expect(fp().readJson('fan-meta.json').fans['fake/2'].label).toBe('Frente do gabinete');
+
+    await fp().restart('worst');
+    await page.reload();
+    await expect(page.locator('#fans .fan').nth(2).locator('.name')).toContainText('Frente do gabinete');
+  });
+
   test('a configuração órfã pode ser descartada', async ({ page }) => {
     await page.goto(fp().url + '/');
     const orphan = page.locator('#orphans .orphan');
@@ -42,7 +79,7 @@ test.describe('pior caso: placa grande, nomes longos, sensor desconectado', () =
     await orphan.getByRole('button', { name: 'Descartar' }).click();
     await expect(page.locator('#toast')).toHaveText('Configuração descartada');
     await expect(orphan).toHaveCount(0);
-    expect(fp().readJson('desired-curves.json').fans).toEqual({});
+    expect(Object.keys(fp().readJson('desired-curves.json').fans)).not.toContain('fake/9');
   });
 });
 

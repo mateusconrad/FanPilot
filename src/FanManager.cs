@@ -19,7 +19,7 @@ sealed class FanManager
 
     readonly IBoard _bridge;
     readonly AppConfig _cfg;
-    readonly string _backupPath, _desiredPath, _turboPath;
+    readonly string _backupPath, _desiredPath, _turboPath, _metaPath;
     readonly object _sync = new object();
     // Everything that changes fans runs under this lock, one operation at a time: Turbo, editing a fan, Restore, the
     // watchdog and the re-apply never interleave (two quick taps on Turbo used to be able to save a wrong "previous"
@@ -37,6 +37,8 @@ sealed class FanManager
     // What the user asked for, plus the hardware readback signature we expect to keep seeing. An entry whose key no
     // header has any more is an orphan: kept, shown in the panel, never applied.
     Dictionary<string, Dictionary<string, object>> _desired = new Dictionary<string, Dictionary<string, object>>();
+    // Names and roles the user gave (FanMeta), by key; a header without an entry uses FanMeta.Default.
+    readonly Dictionary<string, Dictionary<string, object>> _meta = new Dictionary<string, Dictionary<string, object>>();
     Timer _watchdog;
     // How many times the watchdog found a curve overwritten (by GCC, the BIOS…) and put it back; --hardware-test
     // expects none while it watches a curve.
@@ -49,10 +51,16 @@ sealed class FanManager
         _backupPath = Path.Combine(dataDir, "backup-curves.json");
         _desiredPath = Path.Combine(dataDir, "desired-curves.json");
         _turboPath = Path.Combine(dataDir, "turbo.json");
+        _metaPath = Path.Combine(dataDir, "fan-meta.json");
         _rawBackup = DataFile.Read(_backupPath);
         _rawDesired = DataFile.Read(_desiredPath);
         _rawTurbo = DataFile.Read(_turboPath);
         _turbo = _rawTurbo != null && Json.Get(_rawTurbo, "active") is bool active && active;
+        // Written by this version on: keyed from the start, nothing to migrate.
+        var meta = Json.Get(DataFile.Read(_metaPath), "fans") as Dictionary<string, object>;
+        if (meta != null)
+            foreach (var kv in meta)
+                if (kv.Value is Dictionary<string, object> entry) _meta[kv.Key] = entry;
     }
 
     public bool TurboActive { get { lock (_sync) return _turbo; } }
@@ -251,6 +259,7 @@ sealed class FanManager
                 d["managed"] = _desired.TryGetValue(key, out desired);
                 d["request"] = desired == null ? null : Json.Get(desired, "request");
                 d["hasBackup"] = _backup.ContainsKey(key);
+                foreach (var kv in MetaFor(key, c.Title).ToDictionary()) d[kv.Key] = kv.Value;
                 fans.Add(d);
             }
             foreach (var kv in _desired)
@@ -325,12 +334,22 @@ sealed class FanManager
         string mode = Json.GetString(request, "mode", "");
         int tempInput = Json.GetInt(request, "tempInput", current.TempInput);
         if (tempInput < 0 || tempInput >= _bridge.TempInputTitles.Length) throw new ArgumentException("Sensor de temperatura inválido.");
-        int minPwm = (int)Math.Ceiling(_cfg.MinDutyPercent * 2.55);
+        // A pump's protection holds for every request (editor, Turbo, profiles, re-applying): "full" is 100% whatever
+        // was asked, "min" raises the floor.
+        FanMeta meta;
+        lock (_sync) meta = MetaFor(key, current.Title);
+        int floor = meta.IsPump && meta.PumpPolicy == "min" ? Math.Max(_cfg.MinDutyPercent, meta.PumpMinPercent) : _cfg.MinDutyPercent;
+        if (meta.IsPump && meta.PumpPolicy == "full")
+        {
+            mode = "fixed";
+            request = new Dictionary<string, object> { { "mode", "fixed" }, { "percent", 100 } };
+        }
+        int minPwm = (int)Math.Ceiling(floor * 2.55);
         var curve = new FanCurve { Index = current.Index, Key = key, Title = current.Title, TempInput = tempInput, DeltaT = Math.Max(1, current.DeltaT) };
 
         if (mode == "fixed")
         {
-            int percent = AppConfig.Clamp(Json.GetInt(request, "percent", 100), _cfg.MinDutyPercent, 100);
+            int percent = AppConfig.Clamp(Json.GetInt(request, "percent", 100), floor, 100);
             int pwm = Math.Max(minPwm, (int)Math.Round(percent * 2.55));
             curve.Mode = "SmartFanMode";
             foreach (double t in FixedModeTemps(pointCount)) curve.Points.Add(new[] { t, (double)pwm });
@@ -386,6 +405,36 @@ sealed class FanManager
         return result;
     }
 
+    // POST /api/fans/{i}/meta. A new role or pump protection is written to the header at once (its saved request
+    // again, or 100% for a pump that FanPilot did not manage yet); a new name only shows.
+    public Dictionary<string, object> SetMeta(int index, Dictionary<string, object> body)
+    {
+        lock (_opLock)
+        {
+            string key = KeyAt(index);
+            string title = _titles[index];
+            var meta = FanMeta.Parse(body, title);
+            FanMeta before;
+            Dictionary<string, object> desired;
+            lock (_sync)
+            {
+                before = MetaFor(key, title);
+                if (!meta.SameProtection(before) && _turbo) throw new ArgumentException("Desligue o Turbo para mudar a função ou a proteção da bomba.");
+                _meta[key] = meta.ToDictionary();
+                SaveMeta();
+                _desired.TryGetValue(key, out desired);
+            }
+            Log.Info("Fan " + index + " (" + title + "): " + Json.Serialize(meta.ToDictionary()));
+            if (!meta.SameProtection(before))
+            {
+                var request = Json.Get(desired, "request") as Dictionary<string, object>;
+                if (request != null) ApplyCore(index, request);
+                else if (meta.IsPump && meta.PumpPolicy == "full") ApplyCore(index, new Dictionary<string, object> { { "mode", "fixed" }, { "percent", 100 } });
+            }
+            return meta.ToDictionary();
+        }
+    }
+
     // A saved configuration whose header is gone is forgotten on request (it was never applied).
     public void DiscardOrphan(string key)
     {
@@ -422,6 +471,25 @@ sealed class FanManager
     }
 
     void SaveDesired() { DataFile.WriteAtomic(_desiredPath, Versioned(_desired.ToDictionary(kv => kv.Key, kv => (object)kv.Value))); }
+
+    void SaveMeta()
+    {
+        DataFile.WriteAtomic(_metaPath, new Dictionary<string, object> {
+            { "version", 1 }, { "fans", _meta.ToDictionary(kv => kv.Key, kv => (object)kv.Value) } });
+    }
+
+    // The name and role the user gave this header, or the default for its title. Call with _sync held.
+    FanMeta MetaFor(string key, string title)
+    {
+        Dictionary<string, object> saved;
+        if (!_meta.TryGetValue(key, out saved)) return FanMeta.Default(title);
+        try { return FanMeta.Parse(saved, title); }
+        catch (ArgumentException ex)
+        {
+            Log.Warn("fan-meta.json: a configuração de '" + title + "' é inválida (" + ex.Message + "); usando o padrão.");
+            return FanMeta.Default(title);
+        }
+    }
 
     void SaveBackup() { DataFile.WriteAtomic(_backupPath, Versioned(_backup.ToDictionary(kv => kv.Key, kv => (object)kv.Value.ToDictionary()))); }
 

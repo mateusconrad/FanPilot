@@ -36,5 +36,4 @@ Cada teste numa placa nova vira um dado comparável, e a lista de placas confirm
 
 ## Testes
 
-- Automatizados (`DiagnoseTests`): a remoção de números de série, etiquetas e UUIDs com linhas no formato do LibreHardwareMonitor (`
-`, como no arquivo real: um primeiro filtro com `$` em modo multilinha não removia nada, e o teste pegou), o modelo preservado e o link com placa, versão e título.
+- Automatizados (`DiagnoseTests`): a remoção de números de série, etiquetas e UUIDs com linhas no formato do LibreHardwareMonitor (`\r\n`, como no arquivo real: um primeiro filtro com `$` em modo multilinha não removia nada, e o teste pegou), o modelo preservado e o link com placa, versão e título.
