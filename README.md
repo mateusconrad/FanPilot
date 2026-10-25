@@ -10,8 +10,8 @@
 Monitor de temperatura e controle de fans pelo celular.
 
 Painel web servido pelo próprio PC: temperaturas de CPU/placa-mãe/GPU, potência, clocks, gráfico dos últimos
-10 minutos, curvas de fan da placa-mãe (editor com arrastar pontos) e fan da GPU. Acesso pela LAN só
-depois de parear o celular escaneando um QR code exibido no PC.
+10 minutos, curvas de fan da placa-mãe (editor de arrastar pontos, com ajuste fino de 1 em 1 e uso pelo teclado e
+pelo leitor de tela) e fan da GPU. Acesso pela LAN só depois de parear o celular escaneando um QR code exibido no PC.
 
 Como funciona por baixo: veja [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEERING.md).
 
@@ -80,7 +80,8 @@ placa falsa não precisa de Administrador: sem ele, o painel só abre em `localh
 `tools/ui-mock`.
 
 Os testes de ponta a ponta (`tests/e2e`, Playwright) abrem o painel no Edge contra esse FanPilot, um cenário de cada
-vez: dados, editor de curvas (arraste com as restrições, predefinições, aplicar, restaurar), Turbo, GPU, reconexão do
+vez: dados, editor de curvas (arraste com as restrições, teclado, ajuste fino, foco e Esc, alvos de toque de 44 px,
+predefinições, aplicar, restaurar), Turbo, GPU, reconexão do
 painel quando o FanPilot reinicia, acessibilidade (axe-core) e screenshots em 320, 390 e 1024 px nos dois temas. Sem
 Administrador, os testes que fazem o papel do celular na rede são pulados. A CI roda tudo como Administrador, mais o
 smoke do zip da release (o exe do zip sobe, responde, `--version` e `--diagnose`), e guarda o relatório e os

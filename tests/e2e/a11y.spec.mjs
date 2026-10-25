@@ -28,6 +28,12 @@ for (const colorScheme of ['light', 'dark']) {
       await page.goto(fp.url + '/');
       await page.locator('#fans .fan').nth(1).click();
       await expect(page.locator('#sheet')).toBeVisible();
+      // With the points as sliders, the fine-tune bar, the name fields and the question about a change not applied.
+      await page.getByRole('slider', { name: 'Ponto 4 de 8' }).focus();
+      await page.keyboard.press('ArrowUp');
+      await page.locator('#edMeta summary').click();
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#edDiscard')).toBeVisible();
       expect(await seriousViolations(page)).toEqual([]);
     });
 

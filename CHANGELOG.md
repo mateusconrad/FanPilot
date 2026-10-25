@@ -40,6 +40,10 @@ Primeira versão publicada (será a 0.1.0).
 - Perfis globais Silencioso, Padrão e Performance, com volta exata à configuração pessoal; o Turbo funciona por cima
   de qualquer perfil, e as bombas ficam de fora. O `turbo.json` vira `global-mode.json` sozinho.
 - Um nome seu para cada fan, mostrado no painel e nos gráficos com o original ao lado.
+- Editor de curvas pelo teclado e pelo leitor de tela: cada ponto é anunciado com a temperatura e a velocidade e anda
+  pelas setas (com Shift, de 5 em 5). Tocar num ponto abre o ajuste fino, de 1 °C ou 1% por toque (segurar repete).
+  Esc fecha o editor e o foco volta ao fan; fechar com uma mudança não aplicada pergunta antes. Botões e pontos do
+  editor com pelo menos 44 px para o dedo.
 - Bombas de watercooler reconhecidas pelo nome (ou marcadas no editor) e protegidas: sempre 100% ou uma velocidade
   mínima, valendo para o editor, o Turbo e as curvas salvas.
 - Formulários de relato de compatibilidade e de problemas no GitHub, e a lista das placas testadas
