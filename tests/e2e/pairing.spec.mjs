@@ -25,7 +25,8 @@ test.describe('celular na rede', () => {
     const info = await (await page.request.get(fp.url + '/api/pair/info')).json();
     const pairUrl = info.urls[0];
     const lan = new URL(pairUrl).origin;
-    const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    // In Portuguese, like the other specs: the lock screen follows the phone's language (item 21).
+    const phone = await browser.newContext({ locale: 'pt-BR', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     try {
       const mobile = await phone.newPage();
       await mobile.goto(lan + '/');
@@ -40,7 +41,7 @@ test.describe('celular na rede', () => {
       await expect(mobile.locator('#fans .fan')).toHaveCount(4);
 
       // Single use: the same QR on another phone is turned away.
-      const other = await browser.newContext();
+      const other = await browser.newContext({ locale: 'pt-BR' });
       const second = await other.newPage();
       await second.goto(pairUrl);
       await expect(second.locator('body')).toContainText('Código inválido ou expirado');
