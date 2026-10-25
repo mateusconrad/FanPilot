@@ -5,16 +5,16 @@ Os 27 itens de melhoria aprovados em 24/10/2026: os 25 da análise inicial e mai
 Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estado por labels (veja "Como o andamento é registrado").
 
 - **Status:** `a fazer` · `em andamento` · `concluído` · `bloqueado` (motivo em Notas)
-- **Testes:** testes automatizados do item: `a fazer` · `ok` (commitados com o item; rodam na CI quando ela existir)
+- **Testes:** testes automatizados do item: `a fazer` · `ok` (commitados com o item; rodam na [CI](https://github.com/mateusconrad/FanPilot/actions) a cada push)
 - **Esforço**, em dias de trabalho focado: P ≈ 1 · P–M ≈ 2 · M ≈ 3 · G ≈ 10
 
-**Concluídos: 11 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 27 (veja a seção própria)
+**Concluídos: 12 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 27 (veja a seção própria)
 
 ## Andamento
 
 | # | Item | Onda | Esforço | Depende de | Status | Testes | Issue | Notas |
 |---|---|---|---|---|---|---|---|---|
-| 01 | [Validar o header Host](specs/01-validar-host.md) | 1 | P | — | concluído | ok | [#1](https://github.com/mateusconrad/FanPilot/issues/1) | falta a verificação em hardware; testes de regressão no 08 |
+| 01 | [Validar o header Host](specs/01-validar-host.md) | 1 | P | — | concluído | ok | [#1](https://github.com/mateusconrad/FanPilot/issues/1) | falta a verificação em hardware; testes de regressão no 08, e os 2 que exigem Administrador passam na CI |
 | 02 | [SSE e proteção da GPU fora do laço de amostragem](specs/02-sse-e-protecao-gpu.md) | 1 | P–M | — | concluído | ok | [#2](https://github.com/mateusconrad/FanPilot/issues/2) | falta a verificação em hardware |
 | 03 | [Leitura tolerante e gravação atômica](specs/03-arquivos-atomicos.md) | 1 | P | — | concluído | ok | [#3](https://github.com/mateusconrad/FanPilot/issues/3) | faixa de avisos nova no painel (`AppNotices`) |
 | 04 | [Chave estável para cada header](specs/04-identidade-dos-headers.md) | 1 | P–M | 03 | concluído | ok | [#4](https://github.com/mateusconrad/FanPilot/issues/4) | migração v1→v2 testada numa cópia dos dados reais da B760M; falta a verificação em hardware |
@@ -24,7 +24,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 | 08 | [Testes automatizados (unitários e integração)](specs/08-testes.md) | 1 | M | 09 | concluído | ok | [#8](https://github.com/mateusconrad/FanPilot/issues/8) | 65 testes C# + 4 JS; 2 de integração só rodam como Administrador (CI); painel conferido num navegador headless |
 | 09 | [Projeto SDK-style (net472)](specs/09-projeto-sdk.md) | 1 | M | — | concluído | ok | [#9](https://github.com/mateusconrad/FanPilot/issues/9) | falta a verificação em hardware |
 | 10 | [Ponte Gigabyte sem dependência de compilação](specs/10-gigabyte-sem-compilacao.md) | 2 | M | 09 | concluído | ok | [#10](https://github.com/mateusconrad/FanPilot/issues/10) | contrato conferido com o GCC 8.0.8.2 instalado; falta a verificação em hardware |
-| 11 | [CI, versão e releases](specs/11-ci-versao-release.md) | 2 | P–M | 08, 09, 10 | a fazer | a fazer | [#11](https://github.com/mateusconrad/FanPilot/issues/11) | Incluir na CI a checagem de BOM nos `.ps1` com acento (achado no item 09) |
+| 11 | [CI, versão e releases](specs/11-ci-versao-release.md) | 2 | P–M | 08, 09, 10 | concluído | ok | [#11](https://github.com/mateusconrad/FanPilot/issues/11) | CI verde (138 testes, sem ignorados) e ensaio da release aprovado; SDK fixado pelo `global.json`; a tag `v0.1.0` espera a verificação em hardware |
 | 12 | [Assinatura de código](specs/12-assinatura.md) | 2 | P + aprovação | 11 | a fazer | a fazer | [#12](https://github.com/mateusconrad/FanPilot/issues/12) | |
 | 13 | [Relatos de compatibilidade](specs/13-compatibilidade.md) | 2 | P | — | a fazer | a fazer | [#13](https://github.com/mateusconrad/FanPilot/issues/13) | |
 | 14 | [Serviço, bandeja e instalador](specs/14-servico-bandeja-instalador.md) | 3 | G | 03, 05, 06 | a fazer | a fazer | [#14](https://github.com/mateusconrad/FanPilot/issues/14) | |
@@ -92,8 +92,8 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 ## Como cada item é entregue
 
 - Direto na `main`, sem branches nem PRs: um ou mais commits por item, todos com `(#N)` na mensagem; o último fecha a issue com `Closes #N`.
-- Antes de cada push: build e `dotnet test` passando localmente. A partir do 11, a CI confere de novo a cada push, e um build vermelho é corrigido antes do próximo item.
-- Código, testes automatizados e documentação quando o usuário percebe a mudança (README e, a partir do 11, CHANGELOG).
+- Antes de cada push: build e `dotnet test` passando localmente. A CI confere de novo a cada push, e um build vermelho é corrigido antes do próximo item.
+- Código, testes automatizados e documentação quando o usuário percebe a mudança: README e uma linha em "Não lançado" no `CHANGELOG.md`.
 - Item que mexe em fans, GPU, ponte da placa ou build: rodar `FanPilot.exe --hardware-test` na B760M e anexar o relatório (`data\hwtest-*.md`) na issue. Enquanto isso não acontecer, o item entra em "Verificação em hardware pendente".
 
 ## Como o andamento é registrado
@@ -109,6 +109,7 @@ Itens já na `main` cujo comportamento na placa real ainda não foi conferido. P
 | Item | O que conferir |
 |---|---|
 | 10 | `--hardware-test` passa com o exe compilado sem referência ao GCC; o log mostra "Gigabyte Control Center 8.0.8.2 em …"; `--diagnose` mostra a versão e "compatível" |
+| 11 | O zip feito pela CI (artefato `FanPilot-0.1.0-win-x64.zip` da última execução em [Actions](https://github.com/mateusconrad/FanPilot/actions)), extraído numa pasta nova com uma cópia da `data\` do `bin\`, passa no `--hardware-test`; o log começa com "FanPilot 0.1.0+<commit>" e o rodapé do painel mostra a mesma versão. A `data\` do `bin\` não é tocada, e a pasta de teste pode ser apagada depois. É esse zip que a `v0.1.0` vai publicar |
 | 27 | A primeira execução do `--hardware-test` na B760M passa (`--fan 1`, o System 1) e devolve as 4 curvas suas como estavam |
 | 01 | `curl.exe -H "Host: exemplo.invalid:8787" http://127.0.0.1:8787/api/fans` → `421`; sem o header → `200`; POST com `X-FanPilot: 1` e `Origin: http://exemplo.invalid:8787` em `/api/logout` → `403`; `/pair`, o painel no PC e o celular pareado funcionam como antes; o log registra a recusa uma vez só |
 | 02 | GPU: Fixo 50% → Automático pelo painel. Painel aberto no celular por 10 min, com a tela apagando e voltando: continua atualizando, sem "dados atrasados". O log não mostra "Leitura dos sensores lenta" |
@@ -138,7 +139,8 @@ Placa de referência: B760M GAMING X AX com Gigabyte Control Center 26.03.26.01.
 | 24/10/2026 | Testes automatizados obrigatórios em todo item; infraestrutura de testes (09 → 08) logo depois do 01; novos itens 26 e 27 | 08, 26, 27 | aprovada |
 | 24/10/2026 | Uma branch e um PR por item; issues controladas por labels de status | todos | substituída pela de baixo |
 | 24/10/2026 | Trabalho direto na `main`, sem branches nem PRs; commits com `(#N)` e o último com `Closes #N`; issues controladas por labels | todos | aprovada |
-| 24/10/2026 | Primeira versão com tag: `v0.1.0` | 11 | proposta |
+| 24/10/2026 | Primeira versão com tag: `v0.1.0`, criada depois da verificação em hardware dos itens pendentes | 11 | proposta |
+| 24/10/2026 | SDK do .NET fixado pelo `global.json` (8.0), para o PC e a CI compilarem igual; passar para o SDK 10 antes do fim do suporte do 8 (10/11/2026) | 11 | proposta |
 | 24/10/2026 | Assinatura pelo SignPath Foundation (Azure Trusted Signing como alternativa) | 12 | proposta |
 | 24/10/2026 | Instalador com Inno Setup; dados da versão instalada em `%ProgramData%\FanPilot` | 14 | proposta |
 | 24/10/2026 | Resposta "Equilibrada" como padrão, inclusive nas curvas por software já salvas | 15 | proposta |
@@ -157,3 +159,4 @@ Placa de referência: B760M GAMING X AX com Gigabyte Control Center 26.03.26.01.
 | Chamadas IPC do GCC sem timeout | O item 02 isola a GPU e o HTTP delas; o risco fica registrado no item 10 |
 | Testes em hardware exigem Administrador | O `--hardware-test` (27) roda na B760M pelo dono do repositório (ou numa sessão elevada) e o relatório vai na issue; até lá, os itens ficam em "Verificação em hardware pendente" |
 | Sem PR, nada bloqueia um commit ruim na `main` | Build e testes locais antes de cada push; CI a cada push (item 11); verificação em hardware registrada |
+| O suporte do SDK 8 termina em 10/11/2026 | O FanPilot roda no .NET Framework 4.7.2, que não muda; trocar o SDK é atualizar o `global.json` e instalar o SDK 10 no PC que compila (veja Decisões) |
