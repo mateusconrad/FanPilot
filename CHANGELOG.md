@@ -20,6 +20,10 @@ Primeira versão publicada (será a 0.1.0).
 - Placas Gigabyte pelo Gigabyte Control Center, com as curvas gravadas no chip; as outras placas (ASUS, MSI,
   ASRock…) pelo LibreHardwareMonitor e o driver PawnIO, que o FanPilot oferece instalar pelo `winget`.
 - GPU NVIDIA pelo driver (NVML); AMD e Intel Arc pelo LibreHardwareMonitor.
+- Nas placas em que o FanPilot executa as curvas (LibreHardwareMonitor), a resposta de cada curva: Rápida,
+  Equilibrada ou Suave. A temperatura é suavizada, o fan só desacelera depois de o PC esfriar alguns graus e a
+  velocidade muda aos poucos, sem o sobe e desce a cada pico de carga. Curvas salvas antes disso ficam com a
+  Equilibrada. No último ponto da curva, o fan vai a 100% na hora.
 - `FanPilot.exe --diagnose`: relatório só de leitura para placas ainda não testadas, com a versão do GCC e se ela é
   compatível. Sai sem números de série nem UUIDs, pronto para anexar numa issue, e começa com o link do formulário
   de relato já preenchido.

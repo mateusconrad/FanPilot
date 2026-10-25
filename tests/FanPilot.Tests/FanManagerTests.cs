@@ -315,4 +315,53 @@ public sealed class FanManagerTests : IDisposable
         m.Restore(1);
         Assert.True(board.GetCurve(1).IsBios);
     }
+
+    // Item 15: how a software curve follows the temperature travels with it to the board and back to the panel.
+    [Fact]
+    public void TheResponseGoesWithTheCurve()
+    {
+        var board = new FakeBoard(4, hardwareCurves: false);
+        var m = new FanManager(board, _cfg, _dir.Path);
+        m.Describe();
+        var smooth = Curve(Standard);
+        smooth["response"] = "smooth";
+        m.Apply(1, smooth);
+        Assert.Equal("smooth", board.GetCurve(1).Response);
+        var fan = (Dictionary<string, object>)((List<object>)m.Describe()["fans"])[1];
+        Assert.Equal("smooth", Json.GetString((Dictionary<string, object>)fan["request"], "response", null));
+
+        m.Apply(2, Curve(Standard));
+        Assert.Equal("balanced", board.GetCurve(2).Response);
+        m.Apply(3, Fixed(40));
+        Assert.Null(board.GetCurve(3).Response); // a fixed speed is never smoothed
+    }
+
+    [Fact]
+    public void AnUnknownResponseIsRefused()
+    {
+        var bad = Curve(Standard);
+        bad["response"] = "turbo";
+        var ex = Assert.Throws<ArgumentException>(() => Manager().Apply(1, bad));
+        Assert.Contains("Resposta", ex.Message);
+    }
+
+    [Fact]
+    public void CurvesSavedBeforeResponsesExistedGetTheBalancedOne()
+    {
+        var board = new FakeBoard(4, hardwareCurves: false);
+        var m = new FanManager(board, _cfg, _dir.Path);
+        m.Describe();
+        m.Apply(1, Curve(Standard));
+        m.Apply(2, Fixed(40));
+        // As an older FanPilot wrote it: no "response" anywhere.
+        var saved = Json.ParseObject(System.IO.File.ReadAllText(_dir.File("desired-curves.json")));
+        foreach (var entry in ((Dictionary<string, object>)saved["fans"]).Values.Cast<Dictionary<string, object>>())
+            ((Dictionary<string, object>)entry["curve"]).Remove("response");
+        System.IO.File.WriteAllText(_dir.File("desired-curves.json"), Json.Serialize(saved));
+
+        var fresh = new FakeBoard(4, hardwareCurves: false);
+        new FanManager(fresh, _cfg, _dir.Path).ReapplyDesired();
+        Assert.Equal("balanced", fresh.GetCurve(1).Response);
+        Assert.Null(fresh.GetCurve(2).Response);
+    }
 }

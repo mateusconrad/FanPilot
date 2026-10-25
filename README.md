@@ -169,8 +169,16 @@ ele avisa no painel o que mudou e segue com o LibreHardwareMonitor (com `"gigaby
 ### Placas sem GCC: curvas executadas pelo FanPilot
 
 O LibreHardwareMonitor só consegue fixar uma porcentagem num header ou devolvê-lo à BIOS; o chip não guarda a
-curva. Por isso o FanPilot lê a temperatura e ajusta cada fan **uma vez por segundo**, com estas proteções:
+curva. Por isso o FanPilot lê a temperatura e ajusta cada fan **uma vez por segundo**.
 
+Para o fan não ficar subindo e descendo a cada pico de carga da CPU, cada curva tem uma **resposta** (no editor):
+**Rápida**, **Equilibrada** (o padrão, também para as curvas salvas antes dela existir) ou **Suave**. Ela define
+quanto a temperatura é suavizada antes de virar velocidade, quantos graus o PC precisa esfriar para o fan
+desacelerar (1, 2 ou 4 °C) e a velocidade máxima de subida e de descida. O modo Fixo não é suavizado. As proteções
+valem em qualquer resposta:
+
+- **Último ponto da curva:** com a temperatura (sem suavização) no último ponto ou acima dele, o fan vai a 100% na
+  hora.
 - **Fans que você não alterou ficam com a BIOS** ("Controle da BIOS" no painel). "Devolver à BIOS" desfaz uma
   curva sua.
 - **Ao fechar** (janela, Ctrl+C, logoff, desligar o PC) ou **se o FanPilot der erro fatal**, todos os fans voltam
