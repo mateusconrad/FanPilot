@@ -741,6 +741,9 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
     if (state.editor) renderEditor();
   }
 
+  // EventSource retries by itself only after a network error. A stream the server refuses (FanPilot still starting,
+  // or too many panels open: both 503) is closed for good, so a new one is opened a little later.
+  const RECONNECT_MS = 3000;
   function connect() {
     const es = new EventSource('/api/stream');
     let lastFrame = Date.now();
@@ -749,11 +752,15 @@ import { curveAt, resample, normalize } from './js/curve.mjs';
       try { onSnapshot(JSON.parse(m.data)); } catch (e) { /* ignore malformed frame */ }
     };
     // A snapshot arrives every second: 5 s of silence on an open stream means the readings are stuck, not live.
-    setInterval(() => {
+    const stall = setInterval(() => {
       if (es.readyState === EventSource.OPEN && Date.now() - lastFrame > 5000) setStatus(false, 'dados atrasados');
     }, 1000);
     es.onerror = async () => {
       setStatus(false, 'reconectando…');
+      if (es.readyState === EventSource.CLOSED) {
+        clearInterval(stall);
+        setTimeout(connect, RECONNECT_MS);
+      }
       // EventSource hides the status code; check whether we lost the pairing.
       try { const r = await fetch('/api/state'); if (r.status === 401) location.reload(); } catch (e) { /* offline */ }
     };

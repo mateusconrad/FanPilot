@@ -26,6 +26,7 @@ Primeira versão publicada (será a 0.1.0).
   `data\hwtest-<data>.md` e devolve tudo como estava.
 - `FanPilot.exe --version`; a versão também aparece na primeira linha do log, no `--diagnose` e no rodapé do painel.
 - Releases no GitHub com o zip, o `SHA256SUMS.txt` e estas notas; CI compilando e testando cada push.
+- Texto secundário do painel com contraste de pelo menos 4,5:1 nos temas claro e escuro (conferido pelo axe-core).
 
 ### Segurança
 
@@ -41,8 +42,9 @@ Primeira versão publicada (será a 0.1.0).
   continua no seu, e a de um fan que sumiu não vai para outro (o painel oferece descartá-la). Os arquivos do formato
   antigo são convertidos sozinhos e ficam como `.v1`.
 - Um FanPilot por vez; se a porta estiver ocupada, ele avisa e fecha antes de mexer em qualquer fan.
-- A proteção da GPU e a transmissão ao vivo do painel não dependem mais do laço de leitura dos sensores, e o painel
-  avisa quando os dados estão atrasados.
+- A proteção da GPU e a transmissão ao vivo do painel não dependem mais do laço de leitura dos sensores; o painel
+  avisa quando os dados estão atrasados e volta sozinho quando o FanPilot reinicia, mesmo se ele ainda estiver
+  iniciando ou com painéis demais abertos.
 - Log com rotação a cada 5 MB (até 3 arquivos antigos) e sem a mesma mensagem repetida milhares de vezes.
 - Turbo e edição de fans não se atropelam mais em toques rápidos; o painel diz se a curva foi gravada no chip ou é
   executada pelo FanPilot; erros do pareamento aparecem na página.
@@ -54,4 +56,6 @@ Primeira versão publicada (será a 0.1.0).
 - O build não depende mais do Gigabyte Control Center: as DLLs do GCC são carregadas só na hora de rodar, e um mesmo
   zip atende todas as placas.
 - Testes automatizados (`dotnet test`, `node --test`) e uma placa falsa para rodar o FanPilot inteiro sem hardware
-  (`--fake-board`, builds Debug).
+  e sem Administrador (`--fake-board[=<cenário>]`, builds Debug).
+- Testes de ponta a ponta (Playwright, no Edge) do painel contra o FanPilot com a placa falsa, e o smoke do zip da
+  release antes de publicar.

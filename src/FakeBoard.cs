@@ -29,6 +29,8 @@ sealed class FakeBoard : IBoard
     public Func<FanCurve, FanCurve> Readback;
     // Thrown once, by the next call, like the Gigabyte service going away.
     public Exception NextFailure;
+    // Set: every call fails with this message, like the Gigabyte service stopped (GigabyteBridge reports it so).
+    public string DownReason;
     // Every sensor read (ReadDelayMs) or curve write (WriteDelayMs) takes this long, like the Gigabyte service
     // answering slowly over IPC; the write delay also widens the windows a race would need.
     public int ReadDelayMs, WriteDelayMs;
@@ -49,6 +51,29 @@ sealed class FakeBoard : IBoard
             });
     }
 
+    // The boards the panel has to cope with, as tools/ui-mock shows them: "--fake-board=<name>" picks one, and the
+    // end-to-end tests (tests/e2e) run on each.
+    public static readonly string[] Scenarios = { "demo", "worst", "unsupported", "down", "lhm", "slow" };
+
+    public static FakeBoard Scenario(string name)
+    {
+        switch (name)
+        {
+            case "demo": return Demo();
+            case "worst": return Worst();
+            // Monitoring only: no header FanPilot can control.
+            case "unsupported": return new FakeBoard(0) { Animated = true };
+            case "down": return new FakeBoard(4) { DownReason = "EasyTuneEngineService indisponível: Falha ao se conectar a uma porta de IPC" };
+            // LibreHardwareMonitor: FanPilot runs the curves, and every header starts on the BIOS.
+            case "lhm": return new FakeBoard(4, hardwareCurves: false) { Animated = true };
+            // The demo board taking 4 s to open, as the Gigabyte service can: a panel meets FanPilot still starting.
+            case "slow":
+                System.Threading.Thread.Sleep(4000);
+                return Demo();
+            default: throw new ArgumentException("Cenário da placa de teste desconhecido: " + name);
+        }
+    }
+
     // The board FanPilot was developed on (B760M GAMING X AX), moving a little so the panel looks alive.
     public static FakeBoard Demo()
     {
@@ -56,6 +81,32 @@ sealed class FakeBoard : IBoard
         b.Headers[0].HasTach = false;
         b.Headers[3].HasTach = false;
         return b;
+    }
+
+    // A big board under load: 8 headers (two pumps at full speed, one with a long name), a disconnected thermistor
+    // (127 and -128 °C are what an open input reads) and values at the top of their ranges.
+    static FakeBoard Worst()
+    {
+        var b = new FakeBoard(8) { Animated = true };
+        string[] titles = { "CPU_FAN", "CPU_OPT", "SYS_FAN1", "SYS_FAN2", "SYS_FAN3", "SYS_FAN4", "SYS_FAN5_PUMP",
+                            "SYS_FAN6_PUMP · bomba do watercooler ligada no conector de 4 pinos" };
+        for (int i = 0; i < titles.Length; i++) b.Headers[i].Title = titles[i];
+        b.TempInputTitles = new[] { "System 1", "PCH", "CPU", "PCIEX16", "VRM MOS", "System 2", "PCIEX8", "EC_TEMP1", "EC_TEMP2" };
+        b.Temps = new float[] { 41, 71.5f, 98, 62, 104, 127, -128, 55, 0 };
+        b.Headers[1].Curve = FullSpeed(1, 2, "StairStepMode");
+        b.Headers[3].HasTach = false;
+        b.Headers[4].MaxRpm = 7300;
+        b.Headers[6].Curve = FullSpeed(6, 2, "SmartFanMode");
+        b.Headers[7].Curve = FullSpeed(7, 2, "SmartFanMode");
+        b.Headers[7].StuckRpm = 4815;
+        return b;
+    }
+
+    static FanCurve FullSpeed(int index, int tempInput, string mode)
+    {
+        var c = new FanCurve { Index = index, TempInput = tempInput, Mode = mode, DeltaT = 1 };
+        foreach (double t in new double[] { 0, 20, 30, 40, 50, 60, 70, 75 }) c.Points.Add(new[] { t, 255.0 });
+        return c;
     }
 
     // 8 points, 25% until 35 °C and 100% from 82 °C.
@@ -117,7 +168,8 @@ sealed class FakeBoard : IBoard
     {
         if (!Animated) return Temps.ToArray();
         double s = (DateTime.UtcNow - _started).TotalSeconds;
-        return Temps.Select((v, i) => (float)(v + 4 * Math.Sin(s / 20 + i))).ToArray();
+        // A disconnected input keeps reading the same impossible value.
+        return Temps.Select((v, i) => v > -100 && v < 120 ? (float)(v + 4 * Math.Sin(s / 20 + i)) : v).ToArray();
     }
 
     // Duty from the curve at its reference temperature; a header left to the BIOS spins at half speed.
@@ -188,6 +240,7 @@ sealed class FakeBoard : IBoard
 
     void Fail()
     {
+        if (DownReason != null) throw new InvalidOperationException(DownReason);
         if (NextFailure == null) return;
         var ex = NextFailure;
         NextFailure = null;

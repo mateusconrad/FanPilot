@@ -1,6 +1,7 @@
-# Every push to main (and every pull request, Dependabot's included): the encoding check, the build, the tests and
-# the release zip, kept as the run's artifact. Work goes straight to main, so nothing waits on this check: a red
-# build is fixed before the next item.
+# Every push to main (and every pull request, Dependabot's included): the encoding check, the build, the tests, the
+# release zip, and the end-to-end tests with the zip's smoke test. The zip, the Playwright report and the screenshots
+# are kept as the run's artifacts. Work goes straight to main, so nothing waits on this check: a red build is fixed
+# before the next item.
 name: CI
 
 on:
@@ -52,3 +53,27 @@ jobs:
         with:
           path: dist/FanPilot-*-win-x64.zip
           archive: false
+
+      # The panel in Edge against FanPilot.exe on the fake board (a Debug build), then the zip's own exe.
+      - name: Compilar (Debug, para a placa falsa)
+        run: dotnet build src/FanPilot.csproj -c Debug --no-restore
+      - name: Instalar o Playwright
+        working-directory: tests/e2e
+        run: npm ci
+      - name: Testes de ponta a ponta e smoke do zip
+        working-directory: tests/e2e
+        run: |
+          $env:FANPILOT_ZIP = (Resolve-Path ../../dist/FanPilot-*-win-x64.zip).Path
+          npx playwright test
+      - name: Guardar o relatório do Playwright
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: tests/e2e/playwright-report
+      - name: Guardar os screenshots
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: screenshots
+          path: tests/e2e/screens

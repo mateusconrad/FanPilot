@@ -43,6 +43,7 @@ Como funciona por baixo: veja [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEE
 .\build.ps1                     # .NET SDK 8; pacotes do NuGet fixados (com hash) pelo src\packages.lock.json
 dotnet test                     # testes automatizados (sem hardware nem Administrador)
 node --test "tests/js/*.test.mjs"  # testes do painel (Node 22+)
+dotnet build src\FanPilot.csproj -c Debug; cd tests\e2e; npm ci; npx playwright test   # ponta a ponta, no Edge
 .\bin\FanPilot.exe              # pede UAC, abre http://localhost:8787/pair
 .\scripts\firewall.ps1          # (admin, uma vez) libera a porta 8787 no perfil de rede Privado
 .\scripts\autostart.ps1         # (admin, opcional) inicia elevado no logon, sem UAC
@@ -66,8 +67,18 @@ inclusive com Ctrl+C (fechar a janela no meio é a única saída que ele não in
 6 falhou, 7 interrompido, 8 não executado.
 
 Builds Debug aceitam `--fake-board`: o FanPilot inteiro roda com uma placa e uma GPU falsas, guardando os dados em
-`data-fake\` (nunca no `data\` da placa real). É o que os testes de ponta a ponta usam. Para mexer só no visual, sem
-Administrador, use o `tools/ui-mock`.
+`data-fake\` (nunca no `data\` da placa real). `--fake-board=<cenário>` escolhe a placa: `demo` (o padrão, a B760M),
+`worst` (8 fans, nomes longos, sensor desconectado), `unsupported` (sem controle de fans nem GPU), `down` (serviço da
+placa fora do ar), `lhm` (curvas executadas pelo FanPilot) e `slow` (demora 4 s para abrir, como o GCC às vezes). A
+placa falsa não precisa de Administrador: sem ele, o painel só abre em `localhost`. Para mexer só no visual, use o
+`tools/ui-mock`.
+
+Os testes de ponta a ponta (`tests/e2e`, Playwright) abrem o painel no Edge contra esse FanPilot, um cenário de cada
+vez: dados, editor de curvas (arraste com as restrições, predefinições, aplicar, restaurar), Turbo, GPU, reconexão do
+painel quando o FanPilot reinicia, acessibilidade (axe-core) e screenshots em 320, 390 e 1024 px nos dois temas. Sem
+Administrador, os testes que fazem o papel do celular na rede são pulados. A CI roda tudo como Administrador, mais o
+smoke do zip da release (o exe do zip sobe, responde, `--version` e `--diagnose`), e guarda o relatório e os
+screenshots como artefatos de cada execução.
 
 No celular (mesma rede Wi-Fi): escaneie o QR da página `/pair`. O código vale ~3 min e é de uso único;
 o aparelho fica pareado por 30 dias de inatividade. A página `/pair` (só acessível no próprio PC) lista e
@@ -246,7 +257,7 @@ Não fazem parte do projeto: compile cada um com o `csc.exe` do .NET Framework, 
 ```
 src/        C# (.NET Framework 4.7.2, FanPilot.csproj): IBoard + pontes Gigabyte (GCC) e LibreHardwareMonitor,
             NVML, servidor HTTP/SSE, auth, política de fans, --diagnose
-tests/      testes automatizados (xUnit; rodar com dotnet test)
+tests/      testes automatizados: xUnit (dotnet test), painel (tests/js, node --test) e ponta a ponta (tests/e2e, Playwright)
 wwwroot/    painel (index.html/app.js), pareamento (pair.html/pair.js), qrcode-generator (MIT)
 tools/      probes usados na engenharia reversa
 assets/     identidade visual: SVGs-fonte, ícone do .exe, banners (regenerar: python assets/brand/build.py)
