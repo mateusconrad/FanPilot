@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { expect, test } from '@playwright/test';
-import { freePort, hasExited, isAdmin, scratchRoot } from './fanpilot.mjs';
+import { freePort, hasExited, isAdmin, powershell, scratchRoot } from './fanpilot.mjs';
 
 const zip = process.env.FANPILOT_ZIP;
 test.skip(!zip, 'FANPILOT_ZIP não definido: o smoke do zip roda na CI');
@@ -33,8 +33,7 @@ function stateFiles() {
 test.beforeAll(async () => {
   fs.mkdirSync(scratchRoot, { recursive: true });
   dir = fs.mkdtempSync(path.join(scratchRoot, 'zip-'));
-  execFileSync('powershell', ['-NoProfile', '-Command', 'Expand-Archive -LiteralPath $env:ZIP -DestinationPath $env:DEST'],
-    { env: { ...process.env, ZIP: zip, DEST: dir } });
+  powershell('Expand-Archive -LiteralPath $env:ZIP -DestinationPath $env:DEST', { ZIP: zip, DEST: dir });
   port = await freePort();
   fs.mkdirSync(path.join(dir, 'data'));
   fs.writeFileSync(path.join(dir, 'data', 'config.json'), JSON.stringify({ port }));
