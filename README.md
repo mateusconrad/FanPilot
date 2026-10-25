@@ -93,6 +93,14 @@ On the phone (same Wi-Fi network): scan the QR code on the `/pair` page. The cod
 once; the device stays paired until it goes 30 days unused. The `/pair` page (reachable on the PC itself only) lists
 paired devices and unpairs them.
 
+**Panel mode** (`/panel`, the "Panel mode" link in the panel's footer): a read-only, full-screen view for an old phone
+or tablet next to the monitor, or a small screen inside the case — the CPU and GPU temperatures in large type, power,
+the GPU's load, every fan's RPM and a minigraph, in a layout for each screen shape (800×480 and 1280×400 case screens
+included). Nothing on it changes a fan. Its buttons show for a few seconds after a touch: full screen, and "Keep the
+screen on" (the Wake Lock API where the browser offers it, else a muted video playing in a loop, which is what works
+over the LAN's plain HTTP). For screens set up once: `/panel?scale=1.3&theme=light` (`theme=auto` follows the device;
+dark is the default). On OLED screens everything shifts a few pixels every 3 minutes.
+
 ## Versions and releases
 
 - **Download:** every version comes out on the [Releases](https://github.com/mateusconrad/FanPilot/releases) page as

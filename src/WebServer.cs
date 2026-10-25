@@ -27,7 +27,8 @@ sealed class WebServer
     static readonly Dictionary<string, string> ContentTypes = new Dictionary<string, string> {
         { ".html", "text/html; charset=utf-8" }, { ".js", "text/javascript; charset=utf-8" }, { ".mjs", "text/javascript; charset=utf-8" },
         { ".css", "text/css; charset=utf-8" }, { ".svg", "image/svg+xml" }, { ".png", "image/png" },
-        { ".json", "application/json; charset=utf-8" }, { ".webmanifest", "application/manifest+json" }
+        { ".json", "application/json; charset=utf-8" }, { ".webmanifest", "application/manifest+json" },
+        { ".mp4", "video/mp4" } // the panel mode's keep-the-screen-on video (item 22)
     };
 
     public WebServer(AppConfig cfg, string root)
@@ -176,6 +177,8 @@ sealed class WebServer
                 return ServeFile(r.Ctx, "pair.html");
             }
             if (p == "/" || p == "/index.html") return ServeFile(r.Ctx, r.Authenticated ? "index.html" : "locked.html");
+            // Panel mode (item 22): read only, behind the same pairing as the panel.
+            if (p == "/panel" || p == "/painel" || p == "/panel.html") return ServeFile(r.Ctx, r.Authenticated ? "panel.html" : "locked.html");
             if (!p.StartsWith("/api/")) return ServeFile(r.Ctx, p.TrimStart('/'));
         }
 

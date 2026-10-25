@@ -199,6 +199,17 @@
   "sensors.group.Frequency": "Clocks",
   "sensors.group.Power": "Power",
 
+  "panel.pageTitle": "FanPilot · panel mode",
+  "panel.link": "Panel mode",
+  "panel.bar.aria": "Panel mode options",
+  "panel.fullscreen": "Full screen",
+  "panel.exitFullscreen": "Exit full screen",
+  "panel.keepAwake": "Keep the screen on",
+  "panel.awake.on": "The screen won't turn off while this page is open.",
+  "panel.awake.video": "The screen is kept on by a muted video: without HTTPS, the browser offers no other way. If it still turns off, set the device not to turn the screen off.",
+  "panel.awake.failed": "The browser didn't allow keeping the screen on: set the device not to turn the screen off.",
+  "panel.back": "Back to the panel",
+
   "pair.pageTitle": "FanPilot · pairing",
   "pair.title": "Pair a phone",
   "pair.openPanel": "Open the panel here",

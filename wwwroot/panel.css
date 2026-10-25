@@ -1,0 +1,114 @@
+/* Panel mode (item 22, panel.html): a read-only screen next to the monitor or inside the case, readable from across the
+   room. Sizes follow the screen (vmin) times --s, the ?scale= of the URL; the colours are style.css's tokens. */
+.dash { --s: 1; margin: 0; overflow: hidden; height: 100vh; height: 100dvh; background: var(--page); }
+.dash-main {
+  /* Not the panel's main column (style.css): the whole screen. */
+  max-width: none; margin: 0;
+  height: 100%;
+  padding: calc(var(--s) * 2.5vmin);
+  padding-left: max(calc(var(--s) * 2.5vmin), env(safe-area-inset-left));
+  padding-right: max(calc(var(--s) * 2.5vmin), env(safe-area-inset-right));
+  display: grid; gap: calc(var(--s) * 2vmin);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "cpu gpu" "chart chart" "fans fans";
+  /* The OLED guard moves everything a few pixels every few minutes (panel.js). */
+  transition: transform 1.5s ease;
+}
+#cpuTile { grid-area: cpu; }
+#gpuTile { grid-area: gpu; }
+.dash-chart { grid-area: chart; }
+.dash-fans { grid-area: fans; }
+/* Wide and short, like the 1280×400 screens made for cases: everything in one row. */
+@media (min-aspect-ratio: 12/5) {
+  .dash-main {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1.1fr);
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-areas: "cpu gpu chart fans";
+  }
+}
+/* Portrait phones and tablets: one column. */
+@media (orientation: portrait) {
+  .dash-main {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-areas: "cpu" "gpu" "chart" "fans";
+  }
+}
+
+.dash-tile {
+  min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: calc(var(--s) * 0.6vmin);
+  background: var(--surface); border: 1px solid var(--border); border-radius: calc(var(--s) * 2vmin);
+  border-left: calc(var(--s) * 0.9vmin) solid var(--grid);
+  padding: calc(var(--s) * 2vmin) calc(var(--s) * 2.5vmin);
+}
+.dash-tile.good { border-left-color: var(--good); }
+.dash-tile.warning { border-left-color: var(--warning); }
+.dash-tile.serious { border-left-color: var(--serious); }
+.dash-tile.critical { border-left-color: var(--critical); }
+.dash-label { font-size: calc(var(--s) * 3.4vmin); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dash-value {
+  font-size: calc(var(--s) * 15vmin); font-weight: 600; line-height: 1; letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink);
+}
+.dash-value small { font-size: 0.35em; font-weight: 500; color: var(--ink-2); margin-left: 0.08em; }
+.dash-sub {
+  font-size: calc(var(--s) * 3.2vmin); color: var(--ink-2); font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.dash-chart {
+  position: relative; min-width: 0; min-height: 0;
+  background: var(--surface); border: 1px solid var(--border); border-radius: calc(var(--s) * 2vmin);
+  padding: calc(var(--s) * 5vmin) calc(var(--s) * 2vmin) calc(var(--s) * 2vmin);
+}
+.dash-chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.dash-chart path { fill: none; stroke-width: calc(var(--s) * 3px); vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+.dash-chart path.cpu { stroke: var(--series-cpu); }
+.dash-chart path.gpu { stroke: var(--series-gpu); }
+.dash-legend {
+  position: absolute; top: calc(var(--s) * 1.4vmin); left: calc(var(--s) * 2vmin);
+  display: flex; gap: calc(var(--s) * 2.5vmin); font-size: calc(var(--s) * 2.8vmin); font-weight: 600;
+}
+/* The text in the page's colour (contrast), the series' colour on the mark beside it, as in the panel's legend. */
+.dash-legend span { display: inline-flex; align-items: center; gap: 0.4em; color: var(--ink-2); }
+.dash-legend span::before { content: ""; width: 1.1em; height: 0.22em; border-radius: 0.11em; }
+.dash-legend .cpu::before { background: var(--series-cpu); }
+.dash-legend .gpu::before { background: var(--series-gpu); }
+.dash-axis { position: absolute; right: calc(var(--s) * 2vmin); font-size: calc(var(--s) * 2.4vmin); color: var(--muted); font-variant-numeric: tabular-nums; }
+.dash-axis.hi { top: calc(var(--s) * 1.4vmin); }
+.dash-axis.lo { bottom: calc(var(--s) * 0.6vmin); }
+
+.dash-fans {
+  min-width: 0; display: flex; flex-wrap: wrap; align-content: center; gap: calc(var(--s) * 1vmin) calc(var(--s) * 3vmin);
+  font-size: calc(var(--s) * 3.2vmin); color: var(--ink-2);
+}
+@media (min-aspect-ratio: 12/5) {
+  .dash-fans { flex-direction: column; flex-wrap: nowrap; justify-content: center; overflow: hidden; }
+}
+.dash-fan { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dash-fan b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Live or not, in a corner: no words on a screen meant to be glanced at. */
+.dash-status { position: fixed; top: max(calc(var(--s) * 1vmin), env(safe-area-inset-top)); right: max(calc(var(--s) * 1vmin), env(safe-area-inset-right)); }
+.dash-status .dot { display: block; width: calc(var(--s) * 1.4vmin); height: calc(var(--s) * 1.4vmin); min-width: 8px; min-height: 8px; }
+
+/* The options show for a few seconds after a touch, a click or a key, then fade away. */
+.dash-bar {
+  position: fixed; left: 50%; bottom: max(2vmin, env(safe-area-inset-bottom)); transform: translateX(-50%);
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px;
+  max-width: calc(100vw - 32px); padding: 8px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent); border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .35);
+  transition: opacity 300ms var(--ease-out);
+}
+.dash-bar.idle { opacity: 0; pointer-events: none; }
+.dash-bar .btn { min-height: 44px; display: inline-flex; align-items: center; }
+.dash-bar .btn[aria-pressed="true"] { background: var(--accent); border-color: transparent; color: #fff; }
+.dash-hint { font-size: 12px; color: var(--ink-2); max-width: 46ch; }
+.dash-hint:empty { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .dash-main, .dash-bar { transition: none; }
+}
+/* The muted video that keeps the screen on without HTTPS (panel.js): playing, but not seen. */
+.dash-keepawake { position: fixed; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; }
