@@ -47,14 +47,14 @@ sealed class AuthManager
         RotateCode();
     }
 
-    static string RandomToken(int bytes)
+    internal static string RandomToken(int bytes)
     {
         var b = new byte[bytes];
         using (var rng = RandomNumberGenerator.Create()) rng.GetBytes(b);
         return Convert.ToBase64String(b).TrimEnd('=').Replace('+', '-').Replace('/', '_');
     }
 
-    static string Hash(string token)
+    internal static string Hash(string token)
     {
         using (var sha = SHA256.Create())
             return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(token))).Replace("-", "").ToLowerInvariant();

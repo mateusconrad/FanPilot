@@ -1,10 +1,13 @@
-// Pairing console (served to loopback only). Renders the one-time QR and manages paired devices.
+// Pairing console (served to loopback only). Renders the one-time QR and manages paired devices and the integration
+// tokens (item 23).
 import { t, dateTime, loadLanguage, translatePage, wireLanguageSelect } from './js/i18n.mjs';
 
 const $ = (id) => document.getElementById(id);
 let info = null;
 let deadline = 0;
 let selectedHost = null;
+let tokensShown = null; // the token list last drawn: redrawn only when it changes, not every 4 s under the pointer
+let newTokenId = null;  // the token whose value is on screen, the one time it is
 
 async function api(path, body) {
   const opts = body === undefined ? {} : {
@@ -58,11 +61,81 @@ function render() {
   });
 }
 
+function renderTokens() {
+  const key = JSON.stringify(info.tokens);
+  if (key === tokensShown) return;
+  tokensShown = key;
+  const list = $('tokens');
+  list.innerHTML = '';
+  if (!info.tokens.length) {
+    list.innerHTML = '<p class="hint" style="margin:0"></p>';
+    list.firstChild.textContent = t('pair.tokens.none');
+  }
+  info.tokens.forEach((tk) => {
+    const row = document.createElement('div');
+    row.className = 'session';
+    const left = document.createElement('div');
+    left.innerHTML = '<div class="token-name"></div><div class="ua"></div>';
+    left.firstChild.textContent = tk.name;
+    left.lastChild.textContent = t('pair.tokens.meta', {
+      created: dateTime(tk.created),
+      used: tk.lastUsed ? t('pair.tokens.used', { when: dateTime(tk.lastUsed) }) : t('pair.tokens.unused'),
+    });
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.textContent = t('pair.tokens.revoke');
+    btn.setAttribute('aria-label', t('pair.tokens.revoke') + ': ' + tk.name);
+    btn.onclick = () => revokeToken(tk.id);
+    row.append(left, btn);
+    list.appendChild(row);
+  });
+}
+
+function tokenError(e) {
+  $('tokenError').textContent = t('pair.tokens.failed', { error: e.message });
+  $('tokenError').hidden = false;
+}
+
+// The value comes back this once: it stays on screen until the page closes or the token is revoked.
+async function createToken(ev) {
+  ev.preventDefault();
+  $('tokenError').hidden = true;
+  try {
+    const made = await api('/api/pair/tokens', { name: $('tokenName').value });
+    newTokenId = made.id;
+    $('tokenValue').textContent = made.token;
+    $('tokenCopy').textContent = t('pair.tokens.copy');
+    $('tokenNew').hidden = false;
+    $('tokenName').value = '';
+  } catch (e) { tokenError(e); }
+  refresh();
+}
+
+async function revokeToken(id) {
+  $('tokenError').hidden = true;
+  try {
+    await api('/api/pair/tokens/revoke', { id });
+    if (id === newTokenId) { $('tokenNew').hidden = true; $('tokenValue').textContent = ''; newTokenId = null; }
+  } catch (e) { tokenError(e); }
+  refresh();
+}
+
+async function copyToken() {
+  try {
+    await navigator.clipboard.writeText($('tokenValue').textContent);
+    $('tokenCopy').textContent = t('pair.tokens.copied');
+  } catch (e) {
+    // No clipboard (an old browser): the value is selected for Ctrl+C.
+    getSelection().selectAllChildren($('tokenValue'));
+  }
+}
+
 async function refresh() {
   try {
     info = await api('/api/pair/info');
     deadline = Date.now() + info.expiresIn * 1000;
     render();
+    renderTokens();
   } catch (e) {
     $('qr').textContent = t('pair.error', { error: e.message });
   }
@@ -88,6 +161,8 @@ async function init() {
     if (!info || !info.sessions.length) return;
     revoke('*');
   };
+  $('tokenForm').onsubmit = createToken;
+  $('tokenCopy').onclick = copyToken;
 
   setInterval(() => {
     const left = Math.max(0, Math.round((deadline - Date.now()) / 1000));

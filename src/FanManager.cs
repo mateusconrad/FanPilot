@@ -666,3 +666,48 @@ sealed class FanManager
         }
     }
 }
+
+// The headers' curves, names and roles (FanManager.Describe), refreshed every 30 s: what each fan is told to do, for
+// readers that look every second (the alerts) or at every scrape (the integrations, item 23) without asking the board
+// each time.
+sealed class FanListCache
+{
+    static readonly TimeSpan For = TimeSpan.FromSeconds(30);
+
+    readonly FanManager _fans;
+    readonly Func<DateTime> _now;
+    readonly object _sync = new object();
+    List<Dictionary<string, object>> _list;
+    DateTime _at = DateTime.MinValue;
+
+    public FanListCache(FanManager fans) : this(fans, () => DateTime.UtcNow) { }
+
+    internal FanListCache(FanManager fans, Func<DateTime> now) { _fans = fans; _now = now; }
+
+    // null until the board answers once.
+    public List<Dictionary<string, object>> Get()
+    {
+        lock (_sync)
+        {
+            if (_list != null && _now() - _at < For) return _list;
+            try
+            {
+                _list = ((List<object>)_fans.Describe()["fans"]).Cast<Dictionary<string, object>>().ToList();
+                _at = _now();
+            }
+            catch (Exception ex) when (ex is InvalidOperationException || ex is IOException) { }
+            return _list;
+        }
+    }
+
+    // The speed (0..100%) a fan of the list is told to run at now: its curve at the temperature it follows (item 25's
+    // sources included), from a snapshot's tempInputs and GPU reading. null when the BIOS runs it or nothing reads.
+    // Where FanPilot runs the curves, the speed actually set follows this one smoothed (SoftwareCurveEngine).
+    public static double? DutyNow(Dictionary<string, object> fan, IList<double> temps, double? gpu)
+    {
+        var curve = FanCurve.FromDictionary(fan);
+        if (curve.IsBios || temps == null) return null;
+        double t = SoftwareCurveEngine.SourceTemp(curve, temps.Select(v => (float)v).ToList(), gpu);
+        return double.IsNaN(t) ? (double?)null : curve.PwmAt(t) / 2.55;
+    }
+}

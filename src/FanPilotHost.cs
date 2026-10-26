@@ -81,8 +81,10 @@ sealed class FanPilotHost
         gpu.Start();
         sampler.Start();
         alerts.Start();
+        // Prometheus and Home Assistant (item 23): read only, with tokens made on /pair.
+        var feed = new IntegrationFeed(sampler, new FanListCache(fans), () => bridge.BackendName);
         // Only now: until Start() has saved the original curves, no request may change a fan.
-        server.Attach(new AuthManager(_dataDir, _cfg), sampler, fans, gpu, alerts, history);
+        server.Attach(new AuthManager(_dataDir, _cfg), sampler, fans, gpu, alerts, history, new IntegrationTokens(_dataDir), feed);
 
         string pairUrl = "http://localhost:" + _cfg.Port + "/pair";
         Log.Info(new Msg("console.running", "port", _cfg.Port, "urls", string.Join(", ", NetworkInfo.CandidateHosts(_cfg).Select(h => "http://" + h + ":" + _cfg.Port))));

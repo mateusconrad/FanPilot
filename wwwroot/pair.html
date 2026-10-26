@@ -32,6 +32,24 @@
       <p class="notice-banner" id="pairError" role="alert" hidden></p>
       <div class="sessions" id="sessions"></div>
     </section>
+    <!-- Integration tokens (item 23): made here, on the PC, like the pairing. -->
+    <section class="card" style="display:grid;gap:10px">
+      <h2 style="margin:0" data-i18n="pair.tokens.title"></h2>
+      <p class="hint" style="margin:0" data-i18n="pair.tokens.intro"></p>
+      <form class="row token-form" id="tokenForm">
+        <label class="field"><span data-i18n="pair.tokens.name"></span>
+          <input type="text" id="tokenName" maxlength="40" required autocomplete="off" data-i18n-attr="placeholder:pair.tokens.namePlaceholder">
+        </label>
+        <button class="btn" type="submit" data-i18n="pair.tokens.create"></button>
+      </form>
+      <div class="token-new" id="tokenNew" hidden>
+        <p style="margin:0" data-i18n="pair.tokens.copyNow"></p>
+        <div class="row"><code id="tokenValue"></code><button class="btn" type="button" id="tokenCopy" data-i18n="pair.tokens.copy"></button></div>
+      </div>
+      <p class="notice-banner" id="tokenError" role="alert" hidden></p>
+      <div class="sessions" id="tokens"></div>
+      <p class="hint" style="margin:0" data-i18n="pair.tokens.usage"></p>
+    </section>
     <p class="hint" data-i18n="pair.firewall"></p>
     <footer class="app-footer hint">
       <label class="lang-switch"><span data-i18n="footer.language"></span> <select id="langSelect"></select></label>
