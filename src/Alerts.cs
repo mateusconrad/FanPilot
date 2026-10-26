@@ -330,9 +330,8 @@ static class AlertSender
 
 sealed class AlertMonitor
 {
-    static readonly TimeSpan NotifyEvery = TimeSpan.FromMinutes(10), FansFor = TimeSpan.FromSeconds(30);
+    static readonly TimeSpan NotifyEvery = TimeSpan.FromMinutes(10);
     readonly Sampler _sampler;
-    readonly FanManager _fans;
     readonly IBoard _board;
     readonly string _settingsPath;
     readonly Func<DateTime> _now;
@@ -341,8 +340,7 @@ sealed class AlertMonitor
     readonly Dictionary<string, DateTime> _lastSent = new Dictionary<string, DateTime>();
     readonly object _sync = new object();
     AlertSettings _settings;
-    List<Dictionary<string, object>> _fanList;
-    DateTime _fanListAt = DateTime.MinValue;
+    readonly FanListCache _fanList; // what each fan is told to do, for the "stopped" rule
     volatile bool _stopped;
 
     public AlertMonitor(Sampler sampler, FanManager fans, IBoard board, string dataDir)
@@ -351,7 +349,8 @@ sealed class AlertMonitor
     // now and send: the tests move the clock and see what would have left the PC.
     internal AlertMonitor(Sampler sampler, FanManager fans, IBoard board, string dataDir, Func<DateTime> now, Action<AlertSettings, Msg, Msg, bool> send)
     {
-        _sampler = sampler; _fans = fans; _board = board; _now = now; _send = send;
+        _sampler = sampler; _board = board; _now = now; _send = send;
+        _fanList = new FanListCache(fans, now);
         _settingsPath = Path.Combine(dataDir, "alerts.json");
         _settings = AlertSettings.Load(_settingsPath);
     }
@@ -437,34 +436,18 @@ sealed class AlertMonitor
 
         var rpms = Json.Get(snap, "fanRpm") as List<int>;
         var temps = Json.Get(snap, "tempInputs") as List<double>;
-        var fans = FanList();
+        var fans = _fanList.Get();
         if (rpms == null || fans == null) return input;
         for (int i = 0; i < fans.Count && i < rpms.Count; i++)
         {
             var f = fans[i];
-            var curve = FanCurve.FromDictionary(f);
-            int ti = curve.TempInput;
-            double? duty = curve.IsBios || temps == null || ti < 0 || ti >= temps.Count ? (double?)null : curve.PwmAt(temps[ti]) / 2.55;
+            double? duty = FanListCache.DutyNow(f, temps, input.GpuTemp);
             input.Fans.Add(new FanReading {
                 Key = Json.GetString(f, "key", "fan-" + i), Name = Json.GetString(f, "label", null) ?? Json.GetString(f, "title", "?"),
                 Rpm = rpms[i], Duty = duty, IsPump = Json.GetString(f, "role", "fan") == "pump"
             });
         }
         return input;
-    }
-
-    // The headers' curves, names and roles, refreshed every 30 s: what each fan is told to do, without asking the
-    // board every second.
-    List<Dictionary<string, object>> FanList()
-    {
-        if (_fanList != null && _now() - _fanListAt < FansFor) return _fanList;
-        try
-        {
-            _fanList = ((List<object>)_fans.Describe()["fans"]).Cast<Dictionary<string, object>>().ToList();
-            _fanListAt = _now();
-        }
-        catch (Exception ex) when (ex is InvalidOperationException || ex is IOException) { }
-        return _fanList;
     }
 
     public List<Dictionary<string, object>> ActiveForSnapshot()

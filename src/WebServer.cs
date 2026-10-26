@@ -18,6 +18,8 @@ sealed class WebServer
     GpuMonitor _gpu;
     AlertMonitor _alerts;
     HistoryStore _history; // null: historyDays is 0
+    IntegrationTokens _tokens; // null in the tests that don't need them: no token is then valid
+    IntegrationFeed _feed;
     volatile bool _ready;
     readonly HostGuard _hosts;
     readonly SseHub _hub = new SseHub();
@@ -39,9 +41,12 @@ sealed class WebServer
     }
 
     // alerts: null where nobody watches (the tests that do not need them); the alert routes then answer 404.
-    public void Attach(AuthManager auth, Sampler sampler, FanManager fans, GpuMonitor gpu, AlertMonitor alerts = null, HistoryStore history = null)
+    public void Attach(AuthManager auth, Sampler sampler, FanManager fans, GpuMonitor gpu, AlertMonitor alerts = null, HistoryStore history = null,
+                       IntegrationTokens tokens = null, IntegrationFeed feed = null)
     {
         _auth = auth; _sampler = sampler; _fans = fans; _gpu = gpu; _alerts = alerts; _history = history;
+        _tokens = tokens;
+        _feed = feed ?? new IntegrationFeed(sampler, new FanListCache(fans), () => fans.BackendName);
         // The sampler only hands the snapshot over: the hub writes to each client on its own.
         sampler.Subscribe(json => _hub.Publish(Frame(json)));
         _ready = true; // volatile: the fields above are visible to whoever sees this
@@ -84,6 +89,10 @@ sealed class WebServer
         public bool Loopback;
         public Session Session;
         public string Ip;
+        // An integration's (item 23): it reads /metrics and /api/v1/sensors, nothing else. BadToken: one was sent, but
+        // it is unknown or revoked.
+        public IntegrationToken Token;
+        public bool BadToken;
         public bool Authenticated { get { return Loopback || Session != null; } }
     }
 
@@ -132,6 +141,12 @@ sealed class WebServer
         };
         var cookie = ctx.Request.Cookies[AuthManager.CookieName];
         if (cookie != null) r.Session = _auth.Validate(cookie.Value);
+        string bearer = IntegrationTokens.FromHeader(ctx.Request.Headers["Authorization"]);
+        if (bearer != null)
+        {
+            r.Token = _tokens == null ? null : _tokens.Validate(bearer);
+            r.BadToken = r.Token == null;
+        }
 
         try
         {
@@ -180,6 +195,7 @@ sealed class WebServer
             if (p == "/" || p == "/index.html") return ServeFile(r.Ctx, r.Authenticated ? "index.html" : "locked.html");
             // Panel mode (item 22): read only, behind the same pairing as the panel.
             if (p == "/panel" || p == "/painel" || p == "/panel.html") return ServeFile(r.Ctx, r.Authenticated ? "panel.html" : "locked.html");
+            if (p == "/metrics" || p == "/api/v1/sensors") { Integration(r); return true; }
             if (!p.StartsWith("/api/")) return ServeFile(r.Ctx, p.TrimStart('/'));
         }
 
@@ -189,6 +205,7 @@ sealed class WebServer
             if (!r.Loopback) { WriteJson(r.Ctx, 403, Error("err.localOnly")); return true; }
             return PairApi(r);
         }
+        if (!r.Authenticated && r.Token != null) { WriteJson(r.Ctx, 403, Error("err.token.scope")); return true; }
         if (!r.Authenticated) { WriteJson(r.Ctx, 401, Error("err.unpaired")); return true; }
         if (r.Method == "POST" && !SameOriginPost(r)) { WriteJson(r.Ctx, 403, Error("err.origin")); return true; }
 
@@ -296,8 +313,29 @@ sealed class WebServer
         Html(r.Ctx, 200, lang, I18n.T(lang, "server.paired"), "<meta http-equiv=refresh content='1;url=/'>");
     }
 
+    // Prometheus' /metrics and the stable JSON (item 23): for the PC, a paired device or an integration token. A token
+    // that was sent and doesn't hold gets 401 even here, so a revoked one shows up as such in the integration.
+    void Integration(Req r)
+    {
+        if (r.BadToken || (!r.Authenticated && r.Token == null))
+        {
+            // A restricted header for Headers[…]: AddHeader sets it all the same.
+            r.Ctx.Response.AddHeader("WWW-Authenticate", "Bearer realm=\"FanPilot\"");
+            WriteJson(r.Ctx, 401, Error(r.BadToken ? "err.token.invalid" : "err.unpaired"));
+            return;
+        }
+        if (r.Path == "/api/v1/sensors") { WriteJson(r.Ctx, 200, _feed.SensorsV1()); return; }
+        var bytes = Encoding.UTF8.GetBytes(_feed.Metrics());
+        r.Ctx.Response.StatusCode = 200;
+        r.Ctx.Response.ContentType = "text/plain; version=0.0.4; charset=utf-8";
+        r.Ctx.Response.Headers["Cache-Control"] = "no-store";
+        r.Ctx.Response.ContentLength64 = bytes.Length;
+        r.Ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
+    }
+
     bool PairApi(Req r)
     {
+        if (r.Method == "POST" && !SameOriginPost(r)) { WriteJson(r.Ctx, 403, Error("err.origin")); return true; }
         if (r.Method == "GET" && r.Path == "/api/pair/info")
         {
             string code;
@@ -306,17 +344,29 @@ sealed class WebServer
             var urls = NetworkInfo.CandidateHosts(_cfg).Select(h => "http://" + h + ":" + _cfg.Port + "/auth?c=" + code).ToList();
             WriteJson(r.Ctx, 200, new Dictionary<string, object> {
                 { "urls", urls }, { "expiresIn", Math.Max(0, (int)(expires - DateTime.UtcNow).TotalSeconds) },
-                { "sessions", _auth.List() }, { "port", _cfg.Port }
+                { "sessions", _auth.List() }, { "port", _cfg.Port },
+                { "tokens", _tokens == null ? new List<Dictionary<string, object>>() : _tokens.List() }
             });
             return true;
         }
         if (r.Method == "POST" && r.Path == "/api/pair/revoke")
         {
-            if (!SameOriginPost(r)) { WriteJson(r.Ctx, 403, Error("err.origin")); return true; }
             var body = ReadBody(r);
             string id = Json.GetString(body, "id", null);
             if (id == "*") _auth.RevokeAll(); else _auth.RevokeById(id);
             WriteJson(r.Ctx, 200, new Dictionary<string, object> { { "ok", true } });
+            return true;
+        }
+        // Integration tokens (item 23): made and revoked on the PC only, like the pairing.
+        if (r.Method == "POST" && r.Path == "/api/pair/tokens" && _tokens != null)
+        {
+            WriteJson(r.Ctx, 200, _tokens.Create(Json.GetString(ReadBody(r), "name", "")));
+            return true;
+        }
+        if (r.Method == "POST" && r.Path == "/api/pair/tokens/revoke" && _tokens != null)
+        {
+            bool found = _tokens.Revoke(Json.GetString(ReadBody(r), "id", ""));
+            WriteJson(r.Ctx, found ? 200 : 404, found ? new Dictionary<string, object> { { "ok", true } } : Error("err.token.notFound"));
             return true;
         }
         WriteJson(r.Ctx, 404, Error("err.route"));

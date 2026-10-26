@@ -149,6 +149,8 @@ To check that the zip is exactly the one published here (built by the CI from th
   from reaching the local API through DNS rebinding. To use another name (such as the router's DNS), set `publicHost`.
 - POSTs need the `X-FanPilot` header and an `Origin` equal to the host (blocks CSRF). The CSP limits scripts to
   `'self'`.
+- Integration tokens (Prometheus, Home Assistant): 256 bits, made on the PC only, kept as their SHA-256; they only
+  read `/metrics` and `/api/v1/sensors`.
 - **Limitation:** it's plain HTTP on the LAN. Someone on the same network capturing the traffic can copy the cookie.
   Use it only on a trusted home network (the firewall script opens the port on the Private profile only).
 
@@ -277,6 +279,54 @@ Adjustable limits in `bin\data\config.json` (`minDutyPercent`, `fixedModeSafetyT
   FanPilot's watchdog will apply its curve again every 15 s. To go back to the GCC, use "Restore original" on each fan
   you changed (that also takes the fan out of the watchdog). Just monitoring with both open is fine.
 
+## Integrations (Prometheus, Grafana, Home Assistant)
+
+Read only: nothing an integration does changes a fan.
+
+- **Token:** on the PC, open `http://localhost:8787/pair`, "Integrations": give it a name and "Create token". The
+  token (`fp_…`) is shown once; FanPilot keeps only its SHA-256 (`bin\data\integrations.json`), with when it was
+  created and last used. "Revoke" ends it at once (the integration then gets `401`). The integration sends it as
+  `Authorization: Bearer fp_…` and reaches `/metrics` and `/api/v1/sensors` only (anything else gets `403`). From the
+  network it needs the same as a phone: the port open in the firewall and the PC's address (or `publicHost`).
+- **Prometheus** (`/metrics`, the text format): `fanpilot_up`, `fanpilot_info`, `fanpilot_cpu_temperature_celsius`,
+  `fanpilot_cpu_power_watts`, `fanpilot_temperature_celsius{sensor,name}`, `fanpilot_power_watts{sensor,name}`,
+  `fanpilot_fan_rpm{fan,name}`, `fanpilot_fan_duty_percent{fan,name}` (what the fan's curve asks for at the current
+  temperature; absent while the BIOS runs it), `fanpilot_gpu_temperature_celsius`, `fanpilot_gpu_power_watts`,
+  `fanpilot_gpu_utilization_percent`, `fanpilot_gpu_fan_percent` and `fanpilot_alerts_active{severity}`.
+
+  ```yaml
+  scrape_configs:
+    - job_name: fanpilot
+      authorization:
+        credentials: fp_…   # or credentials_file: /etc/prometheus/fanpilot-token
+      static_configs:
+        - targets: ["192.168.0.10:8787"]   # the PC's address and FanPilot's port
+  ```
+
+- **Home Assistant** (REST sensor, `/api/v1/sensors`): a JSON that only ever gains fields (`"version": 1`): `cpu`
+  (`temperature`, `power`), `gpu` (`name`, `temperature`, `power`, `utilization`, `fan`; `null` without a GPU),
+  `fans` (`id`, `name`, `label`, `pump`, `rpm`, `duty`), `temperatures` and `power` (`id`, `name`, `value`), `alerts`
+  (`id`, `severity`, `title`), `board` (`name`, `backend`, `ok`), `time`, `fanpilot` (the version) and `pc`.
+
+  ```yaml
+  # configuration.yaml; in secrets.yaml: fanpilot_auth: "Bearer fp_…"
+  rest:
+    - resource: http://192.168.0.10:8787/api/v1/sensors
+      headers:
+        Authorization: !secret fanpilot_auth
+      scan_interval: 30
+      sensor:
+        - name: PC CPU
+          value_template: "{{ value_json.cpu.temperature }}"
+          unit_of_measurement: "°C"
+          device_class: temperature
+          state_class: measurement
+        - name: PC System 1 fan
+          value_template: "{{ (value_json.fans | selectattr('name', 'eq', 'System 1') | first).rpm }}"
+          unit_of_measurement: RPM
+          state_class: measurement
+  ```
+
 ## Common problems
 
 | Symptom | Likely cause / fix |
@@ -332,6 +382,8 @@ the project: build each one with the .NET Framework's `csc.exe`, passing the GCC
 | GET | `/api/history?range=…` | `10m` (the default): the last 10 minutes, a point a second (temperatures, power, RPM). `1h`, `24h`, `7d`: from the files on disk, at most 600 points, each with the average (`series`), the highest (`max`) and the lowest (`min`) of its 10 s rows; `null` where FanPilot was closed |
 | GET | `/api/fans` | current curves, reference sensors, limits |
 | GET | `/api/info` | FanPilot's version, backend and motherboard, and whether the history on disk is on (`history`) |
+| GET | `/metrics` | the readings in Prometheus' text format; also with an integration token (see Integrations) |
+| GET | `/api/v1/sensors` | the stable JSON for integrations; also with an integration token (see Integrations) |
 | GET | `/api/alerts` | active and recent alerts (the active ones also come in every snapshot, in `alerts`) |
 | POST | `/api/alerts/ack` | `{"id":"…"}` takes the alert off the strip (it stays in the list while it lasts) |
 | GET/POST | `/api/alerts/settings` | limits, the PC's name, the message language and the destinations; secrets come back masked only; `""` removes a destination |

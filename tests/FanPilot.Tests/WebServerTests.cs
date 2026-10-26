@@ -15,6 +15,7 @@ public sealed class WebServerTests : IDisposable
     readonly int _port;
     readonly Sampler _sampler;
     readonly WebServer _server;
+    readonly IntegrationTokens _tokens;
 
     // In App.Run's order: the port first, then the board's side attached.
     public WebServerTests()
@@ -33,7 +34,8 @@ public sealed class WebServerTests : IDisposable
         var fans = new FanManager(_board, cfg, _dir.Path);
         fans.Describe();
         _sampler = new Sampler(_board, gpu);
-        _server.Attach(new AuthManager(_dir.Path, cfg), _sampler, fans, gpu);
+        _tokens = new IntegrationTokens(_dir.Path);
+        _server.Attach(new AuthManager(_dir.Path, cfg), _sampler, fans, gpu, tokens: _tokens);
         _sampler.Start();
     }
 
@@ -215,21 +217,91 @@ public sealed class WebServerTests : IDisposable
         Assert.Equal(421, RawHttp.Send(_port, "GET", "/", host: "exemplo.invalid:" + _port).Status);
     }
 
+    // An IPv4 address of this PC on the network, or null.
+    static string LanAddress()
+    {
+        return NetworkInterface.GetAllNetworkInterfaces()
+            .Where(n => n.OperationalStatus == OperationalStatus.Up && n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+            .SelectMany(n => n.GetIPProperties().UnicastAddresses)
+            .Where(a => a.Address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(a.Address))
+            .Select(a => a.Address.ToString()).FirstOrDefault();
+    }
+
     // Item 01: the PC itself is trusted only under a loopback name; by its LAN address it needs pairing like a phone.
     [SkippableFact]
     public void LanAddressNeedsPairing()
     {
         Skip.IfNot(TestEnv.IsAdministrator, "precisa de Administrador para escutar em todos os endereços, como o FanPilot");
-        string lan = NetworkInterface.GetAllNetworkInterfaces()
-            .Where(n => n.OperationalStatus == OperationalStatus.Up && n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
-            .SelectMany(n => n.GetIPProperties().UnicastAddresses)
-            .Where(a => a.Address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(a.Address))
-            .Select(a => a.Address.ToString()).FirstOrDefault();
+        string lan = LanAddress();
         Skip.If(lan == null, "nenhum endereço IPv4 de rede neste PC");
         Assert.Equal(401, RawHttp.Send(_port, "GET", "/api/fans", host: lan + ":" + _port).Status);
         // The locked page (locked.html), not the panel: its words come from the dictionaries, so look for its script.
         Assert.Contains("/locked.js", RawHttp.Send(_port, "GET", "/", host: lan + ":" + _port).Body);
         // Panel mode too (item 22): read only, but the readings are still behind the pairing.
         Assert.Contains("/locked.js", RawHttp.Send(_port, "GET", "/panel", host: lan + ":" + _port).Body);
+    }
+
+    // Item 23: Prometheus and the stable JSON, for the PC and for a token. A token that doesn't hold gets 401 even
+    // from the PC, so the integration shows a revoked token as such.
+    [Fact]
+    public void TheIntegrationRoutesAnswerThePcAndAToken()
+    {
+        Assert.True(SpinWait(() => RawHttp.Send(_port, "GET", "/metrics").Body.Contains("fanpilot_up 1")), "sem fanpilot_up 1");
+        var metrics = RawHttp.Send(_port, "GET", "/metrics");
+        Assert.Contains("Content-Type: text/plain; version=0.0.4", metrics.Head);
+        Assert.Contains("fanpilot_fan_rpm{fan=", metrics.Body);
+        var made = _tokens.Create("Home Assistant");
+        var auth = new[] { "Authorization: Bearer " + made["token"] };
+        var json = RawHttp.Send(_port, "GET", "/api/v1/sensors", headers: auth);
+        Assert.Equal(200, json.Status);
+        Assert.Contains("\"version\":1", json.Body);
+        _tokens.Revoke((string)made["id"]);
+        var revoked = RawHttp.Send(_port, "GET", "/api/v1/sensors", headers: auth);
+        Assert.Equal(401, revoked.Status);
+        Assert.Contains("WWW-Authenticate: Bearer", revoked.Head);
+        Assert.Contains("err.token.invalid", revoked.Body);
+    }
+
+    // Item 23: tokens are made and revoked on the PC, by the /pair page (same origin).
+    [Fact]
+    public void ThePairPageMakesAndRevokesTokens()
+    {
+        var made = RawHttp.Send(_port, "POST", "/api/pair/tokens", json: "{\"name\":\"Grafana\"}", headers: new[] { "X-FanPilot: 1" });
+        Assert.Equal(200, made.Status);
+        var d = Json.ParseObject(made.Body);
+        Assert.NotNull(_tokens.Validate((string)d["token"]));
+        Assert.Contains("\"name\":\"Grafana\"", RawHttp.Send(_port, "GET", "/api/pair/info").Body);
+        Assert.DoesNotContain((string)d["token"], RawHttp.Send(_port, "GET", "/api/pair/info").Body);
+        // Without the panel's header: another page trying to make one.
+        Assert.Equal(403, RawHttp.Send(_port, "POST", "/api/pair/tokens", json: "{\"name\":\"x\"}").Status);
+        string revoke = "{\"id\":\"" + d["id"] + "\"}";
+        Assert.Equal(200, RawHttp.Send(_port, "POST", "/api/pair/tokens/revoke", json: revoke, headers: new[] { "X-FanPilot: 1" }).Status);
+        Assert.Null(_tokens.Validate((string)d["token"]));
+        Assert.Equal(404, RawHttp.Send(_port, "POST", "/api/pair/tokens/revoke", json: revoke, headers: new[] { "X-FanPilot: 1" }).Status);
+    }
+
+    // Item 23, from the network: no token, 401; a token reads the integration routes and nothing else, and changes
+    // nothing.
+    [SkippableFact]
+    public void ATokenOnlyReadsTheIntegrationRoutes()
+    {
+        Skip.IfNot(TestEnv.IsAdministrator, "precisa de Administrador para escutar em todos os endereços, como o FanPilot");
+        string lan = LanAddress();
+        Skip.If(lan == null, "nenhum endereço IPv4 de rede neste PC");
+        string host = lan + ":" + _port;
+        var made = _tokens.Create("Prometheus");
+        var auth = new[] { "Authorization: Bearer " + made["token"], "X-FanPilot: 1" };
+        Assert.Equal(401, RawHttp.Send(_port, "GET", "/metrics", host: host).Status);
+        Assert.Equal(401, RawHttp.Send(_port, "GET", "/api/v1/sensors", host: host).Status);
+        Assert.Equal(200, RawHttp.Send(_port, "GET", "/metrics", host: host, headers: auth).Status);
+        Assert.Equal(200, RawHttp.Send(_port, "GET", "/api/v1/sensors", host: host, headers: auth).Status);
+        var fans = RawHttp.Send(_port, "GET", "/api/fans", host: host, headers: auth);
+        Assert.Equal(403, fans.Status);
+        Assert.Contains("err.token.scope", fans.Body);
+        Assert.Equal(403, RawHttp.Send(_port, "POST", "/api/fans/turbo", host: host, json: "{\"on\":true}", headers: auth).Status);
+        Assert.Equal(403, RawHttp.Send(_port, "POST", "/api/pair/tokens", host: host, json: "{\"name\":\"x\"}", headers: auth).Status);
+        Assert.Contains("\"turbo\":false", RawHttp.Send(_port, "GET", "/api/fans").Body);
+        _tokens.Revoke((string)made["id"]);
+        Assert.Equal(401, RawHttp.Send(_port, "GET", "/metrics", host: host, headers: auth).Status);
     }
 }
