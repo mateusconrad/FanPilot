@@ -204,8 +204,8 @@ sealed class AlertSettings
         s.TelegramChatId = Json.GetString(d, "telegramChatId", null);
         try
         {
-            s.NtfyUrl = Unprotect(Json.GetString(d, "ntfyUrl", null));
-            s.TelegramToken = Unprotect(Json.GetString(d, "telegramToken", null));
+            s.NtfyUrl = Secrets.Unprotect(Json.GetString(d, "ntfyUrl", null), Entropy);
+            s.TelegramToken = Secrets.Unprotect(Json.GetString(d, "telegramToken", null), Entropy);
         }
         catch (CryptographicException)
         {
@@ -219,7 +219,7 @@ sealed class AlertSettings
     {
         DataFile.WriteAtomic(path, new Dictionary<string, object> {
             { "cpuTemp", CpuTemp }, { "gpuTemp", GpuTemp }, { "pcName", PcName }, { "language", Language },
-            { "ntfyUrl", Protect(NtfyUrl) }, { "telegramToken", Protect(TelegramToken) }, { "telegramChatId", TelegramChatId }
+            { "ntfyUrl", Secrets.Protect(NtfyUrl, Entropy) }, { "telegramToken", Secrets.Protect(TelegramToken, Entropy) }, { "telegramChatId", TelegramChatId }
         });
     }
 
@@ -268,18 +268,6 @@ sealed class AlertSettings
     }
 
     static string Masked(string secret) { return "…" + secret.Substring(Math.Max(0, secret.Length - 4)); }
-
-    static string Protect(string plain)
-    {
-        if (plain == null) return null;
-        return "dpapi:" + Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(plain), Entropy, DataProtectionScope.LocalMachine));
-    }
-
-    static string Unprotect(string stored)
-    {
-        if (stored == null || !stored.StartsWith("dpapi:")) return null;
-        return Encoding.UTF8.GetString(ProtectedData.Unprotect(Convert.FromBase64String(stored.Substring(6)), Entropy, DataProtectionScope.LocalMachine));
-    }
 }
 
 // What leaves the PC: the alert and the name the user gave the PC. No IPs, no serial numbers.

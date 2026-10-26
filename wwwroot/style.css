@@ -196,6 +196,13 @@ main { max-width: 760px; margin: 0 auto; padding: 16px; display: grid; grid-temp
 .alert-list:empty { display: none; }
 #alertSettings { display: grid; gap: 10px; }
 #alertSettings .field input { width: 100%; }
+/* Home Assistant over MQTT (item 23). */
+#mqttSettings { display: grid; gap: 10px; }
+#mqttSettings .field input { width: 100%; }
+#mqttSettings .row .field { flex: 1 1 200px; }
+#mqttSettings .row .mq-port { flex: 0 1 110px; }
+.check { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; min-height: 44px; cursor: pointer; }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); }
 /* A saved configuration for a header the board no longer has, with its "Descartar" button. */
 .orphan { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .orphan .btn { flex: none; }
@@ -223,7 +230,7 @@ main { max-width: 760px; margin: 0 auto; padding: 16px; display: grid; grid-temp
 /* 16px minimum: iOS zooms into smaller form controls on focus and never zooms back out. */
 select { font-size: 16px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; }
 /* 16px: smaller text inputs make iOS zoom the page on focus. */
-input[type=text], input[type=number] { font-size: 16px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; min-width: 0; }
+input[type=text], input[type=number], input[type=password] { font-size: 16px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; min-width: 0; }
 input[type=range] { width: 100%; accent-color: var(--accent); }
 .big-value { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .hint { font-size: 12px; color: var(--muted); }

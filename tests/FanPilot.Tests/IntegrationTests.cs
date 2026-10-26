@@ -89,7 +89,7 @@ public sealed class IntegrationTests : IDisposable
     }
 
     // A snapshot as Sampler.Sample makes it, and the fans as FanManager.Describe lists them.
-    static Dictionary<string, object> Snapshot()
+    internal static Dictionary<string, object> Snapshot()
     {
         Func<string, string, string, double, string, Dictionary<string, object>> sensor = (id, type, title, value, role) =>
         {
@@ -116,7 +116,7 @@ public sealed class IntegrationTests : IDisposable
         };
     }
 
-    static List<Dictionary<string, object>> Fans()
+    internal static List<Dictionary<string, object>> Fans()
     {
         var curve = new FanCurve { Index = 0, Key = "fake/0", Title = "System 1", TempInput = 0, Mode = "SmartFanMode", DeltaT = 1 };
         curve.Points.AddRange(new[] { new[] { 30.0, 76.5 }, new[] { 60.0, 153 }, new[] { 90.0, 255 } });
