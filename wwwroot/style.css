@@ -178,6 +178,8 @@ main { max-width: 760px; margin: 0 auto; padding: 16px; display: grid; grid-temp
 /* Problems from config.json or the state files: one per line, long file names wrap instead of widening the page. */
 .notice-banner { border-left-color: var(--warning); white-space: pre-line; overflow-wrap: anywhere; }
 /* Alerts (item 16): the banner holds the active ones not yet acknowledged; the card lists recent ones too. */
+/* The charts' period (item 24): small, next to the legend. */
+.seg.range button { padding: 4px 10px; font-size: 13px; }
 /* The global profiles (item 18), above the fan list. */
 .seg.profiles { margin-bottom: 10px; }
 .alert-banner { display: grid; gap: 8px; }
