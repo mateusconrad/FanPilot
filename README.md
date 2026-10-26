@@ -11,10 +11,11 @@
 
 Temperature monitoring and fan control from your phone.
 
-A web panel served by the PC itself: CPU, motherboard and GPU temperatures, power, clocks, a chart of the last
-10 minutes, the motherboard's fan curves (a drag-the-points editor, with one-step fine tuning and full keyboard and
-screen reader support) and the GPU fan. On the local network, a phone gets in only after pairing with a QR code shown
-on the PC. The panel speaks English and Portuguese: it follows the browser's language, and the footer switches it.
+A web panel served by the PC itself: CPU, motherboard and GPU temperatures, power, clocks, charts of the last
+10 minutes to 7 days, the motherboard's fan curves (a drag-the-points editor, with one-step fine tuning and full
+keyboard and screen reader support) and the GPU fan. On the local network, a phone gets in only after pairing with a
+QR code shown on the PC. The panel speaks English and Portuguese: it follows the browser's language, and the footer
+switches it.
 
 How it works under the hood: see [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEERING.md) (in Portuguese).
 
@@ -207,6 +208,11 @@ shows the GCC's version and whether it is compatible.
     out at most once every 10 minutes, and again when it ends. Nothing leaves the PC without a destination set, and
     the messages carry only the alert and the PC's name, in the language of the panel the settings were saved from.
     The topic's address and the token are encrypted with DPAPI in `bin\data\alerts.json` (another PC can't read them).
+- **History:** the charts show the last 10 minutes (live, a reading a second) or, from the files FanPilot keeps, the
+  last hour, 24 hours or 7 days, on both charts at once (the choice is kept on the device). Every 10 s, the average and
+  the highest of each reading (CPU and GPU temperature and power, each fan's RPM) go to `bin\data\history\<date>.csv`,
+  about 1 MB a day; days beyond the retention (`historyDays` in `config.json`: 7 by default, up to 90; 0 turns it off)
+  are deleted. A point of the longer charts covers many rows: the tooltip gives their average and their highest.
 
 ### Boards without GCC: FanPilot runs the curves
 
@@ -239,7 +245,7 @@ the fastest the speed may rise and fall. Fixed mode isn't smoothed. The protecti
   so on): the two would fight over the fans. Turn the fan control off there.
 
 Adjustable limits in `bin\data\config.json` (`minDutyPercent`, `fixedModeSafetyTemp`, `maxFullSpeedTemp`,
-`gpuSafetyTemp`, `port`, `publicHost`, `pairCodeTtlSeconds`, `sessionDays`, `backend`).
+`gpuSafetyTemp`, `port`, `publicHost`, `pairCodeTtlSeconds`, `sessionDays`, `backend`, `historyDays`).
 
 ## Operation
 
@@ -323,9 +329,9 @@ the project: build each one with the .NET Framework's `csc.exe`, passing the GCC
 |---|---|---|
 | GET | `/api/state` | current snapshot (sensors, RPM, GPU) |
 | GET | `/api/stream` | Server-Sent Events, one snapshot a second |
-| GET | `/api/history` | the last 10 minutes (temperatures, power, RPM) |
+| GET | `/api/history?range=…` | `10m` (the default): the last 10 minutes, a point a second (temperatures, power, RPM). `1h`, `24h`, `7d`: from the files on disk, at most 600 points, each with the average (`series`), the highest (`max`) and the lowest (`min`) of its 10 s rows; `null` where FanPilot was closed |
 | GET | `/api/fans` | current curves, reference sensors, limits |
-| GET | `/api/info` | FanPilot's version, backend and motherboard |
+| GET | `/api/info` | FanPilot's version, backend and motherboard, and whether the history on disk is on (`history`) |
 | GET | `/api/alerts` | active and recent alerts (the active ones also come in every snapshot, in `alerts`) |
 | POST | `/api/alerts/ack` | `{"id":"…"}` takes the alert off the strip (it stays in the list while it lasts) |
 | GET/POST | `/api/alerts/settings` | limits, the PC's name, the message language and the destinations; secrets come back masked only; `""` removes a destination |

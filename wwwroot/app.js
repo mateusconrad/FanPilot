@@ -17,6 +17,8 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
     editor: null,        // open editor state
     gpuDirty: false,
     alerts: [],          // the active alerts of the last snapshot
+    range: '10m',        // the charts' period (item 24)
+    long: null,          // /api/history?range=… for the periods other than 10 minutes
   };
 
   // ---------- helpers ----------
@@ -151,8 +153,34 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
   // Fans whose tachometer reads 0 for the whole window have nothing to plot.
   function spinningFans() {
     if (!state.fans) return [];
-    const h = state.history;
+    const h = chartData();
     return state.fans.fans.map((f, i) => ({ f, i })).filter(({ i }) => (h.series['fan-' + i] || []).some((v) => v > 0));
+  }
+
+  // The charts' periods (item 24): 10 minutes live from the stream, every second; the others from the 10 s rows
+  // FanPilot keeps on disk. unit and steps: the time axis' labels ("-4 h"), spaced so they don't crowd.
+  const RANGES = {
+    '10m': { ms: 10 * 60e3, unit: 60e3, steps: [2, 5], label: 'chart.minutesAgo', period: 'chart.period.10m' },
+    '1h': { ms: 3600e3, unit: 60e3, steps: [10, 15, 30], label: 'chart.minutesAgo', period: 'chart.period.1h' },
+    '24h': { ms: 86400e3, unit: 3600e3, steps: [3, 4, 6, 12], label: 'chart.hoursAgo', period: 'chart.period.24h' },
+    '7d': { ms: 7 * 86400e3, unit: 86400e3, steps: [1, 2], label: 'chart.daysAgo', period: 'chart.period.7d' },
+  };
+
+  // What the charts draw: { range, t, series, max, span, now }. The long periods' series come by id ("cpu-main"), the
+  // stream's by chart key ("cpu"); max is the highest of each point, for the tooltip. Until a long period arrives
+  // (a fetch, well under a second) the charts keep the 10 minutes.
+  function chartData() {
+    const L = state.range !== '10m' && state.long;
+    if (!L) {
+      const h = state.history;
+      return { range: '10m', t: h.t, series: h.series, max: null, span: HISTORY_MS, now: h.t[h.t.length - 1] };
+    }
+    const rename = (by) => {
+      const out = { cpu: by['cpu-main'] || [], gpu: by['gpu-temp'] || [] };
+      Object.keys(by).filter((k) => k.startsWith('fan-')).forEach((k) => { out[k] = by[k]; });
+      return out;
+    };
+    return { range: state.range, t: L.t, series: rename(L.series), max: rename(L.max), span: RANGES[state.range].ms, now: L.now };
   }
 
   const CHARTS = {
@@ -186,7 +214,7 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
 
   function renderLineChart(def) {
     const svg = $(def.svg);
-    const h = state.history;
+    const h = chartData();
     svg.innerHTML = '';
     def.geo = null;
     const series = def.series().filter((s) => h.series[s.key]);
@@ -202,12 +230,13 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
     const g = { w, l: 38, r, t: 10, b: 24 };
     g.h = g.w < 480 ? 190 : 220;
     svg.setAttribute('viewBox', `0 0 ${g.w} ${g.h}`);
-    const now = h.t[h.t.length - 1];
-    g.t0 = now - HISTORY_MS;
+    const now = h.now;
+    g.t0 = now - h.span;
+    g.span = h.span;
     const vals = [];
     series.forEach((s) => h.series[s.key].forEach((v) => { if (v !== null) vals.push(v); }));
     const [lo, hi] = def.domain(vals);
-    g.X = (t) => g.l + (t - g.t0) / HISTORY_MS * (g.w - g.l - g.r);
+    g.X = (t) => g.l + (t - g.t0) / h.span * (g.w - g.l - g.r);
     g.Y = (v) => g.t + (1 - (v - lo) / (hi - lo)) * (g.h - g.t - g.b);
 
     const grid = el('g', { class: 'grid' }, svg);
@@ -217,12 +246,14 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
       el('line', { x1: g.l, x2: g.w - g.r, y1: g.Y(v), y2: g.Y(v) }, grid);
       el('text', { x: g.l - 6, y: g.Y(v) + 4, 'text-anchor': 'end' }, axis).textContent = def.tick(v);
     }
-    // A label every 2 minutes, or every 5 when that would crowd the axis.
-    const stepMin = g.X(now) - g.X(now - 2 * 60000) < 44 ? 5 : 2;
-    for (let m = 10; m >= 0; m -= stepMin) {
-      if (m > 0 && g.X(now) - g.X(now - m * 60000) < 46) continue; // would collide with "now"
-      const tx = el('text', { x: g.X(now - m * 60000), y: g.h - 6, 'text-anchor': m === 0 ? 'end' : 'middle' }, axis);
-      tx.textContent = m === 0 ? tr('chart.now') : tr('chart.minutesAgo', { n: m });
+    // A label every few units back from now (2 or 5 minutes in the last 10), the first spacing that doesn't crowd.
+    const R = RANGES[h.range];
+    const back = (n) => g.X(now) - g.X(now - n * R.unit);
+    const every = R.steps.find((n) => back(n) >= 44) || R.steps[R.steps.length - 1];
+    for (let n = 0; n <= Math.round(h.span / R.unit); n += every) {
+      if (n > 0 && back(n) < 46) continue; // would collide with "now"
+      const tx = el('text', { x: g.X(now - n * R.unit), y: g.h - 6, 'text-anchor': n === 0 ? 'end' : 'middle' }, axis);
+      tx.textContent = n === 0 ? tr('chart.now') : tr(R.label, { n });
     }
     el('line', { class: 'baseline', x1: g.l, x2: g.w - g.r, y1: g.h - g.b, y2: g.h - g.b }, svg);
 
@@ -248,8 +279,40 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
     ends.forEach((e) => { el('text', { class: 'end-label', x: e.x, y: e.y }, svg).textContent = e.text; });
     g.cross = el('line', { class: 'crosshair', y1: g.t, y2: g.h - g.b, visibility: 'hidden' }, svg);
     g.series = series;
+    g.data = h;
     def.geo = g;
     return series;
+  }
+
+  // The titles and the descriptions screen readers get say the period.
+  function renderChartTitles() {
+    const period = tr(RANGES[state.range].period);
+    $('chartTitle').textContent = tr('chart.temp.title', { period });
+    $('rpmTitle').textContent = tr('chart.rpm.title', { period });
+    $('chart').setAttribute('aria-label', tr('chart.temp.ariaRange', { period }));
+    $('rpmChart').setAttribute('aria-label', tr('chart.rpm.ariaRange', { period }));
+    document.querySelectorAll('.seg.range button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.range === state.range));
+  }
+
+  // The rows on disk for the long periods: fetched when chosen, and again every minute while chosen (quietly: offline,
+  // the status already says so, and the chart keeps what it has).
+  async function loadLongHistory(quiet) {
+    const range = state.range;
+    if (range === '10m') return;
+    try {
+      const data = await api('/api/history?range=' + range);
+      if (state.range === range) { state.long = data; renderCharts(); }
+    } catch (e) { if (!quiet) toast(e.message, true); }
+  }
+
+  function setRange(range) {
+    if (!RANGES[range] || range === state.range) return;
+    state.range = range;
+    state.long = null;
+    try { localStorage.setItem('fanpilot.range', range); } catch (e) { /* only for this visit */ }
+    renderChartTitles();
+    renderCharts();
+    loadLongHistory();
   }
 
   function renderCharts() {
@@ -268,20 +331,26 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
 
   function chartHover(def, ev) {
     const g = def.geo;
-    const h = state.history;
-    if (!g || !h.t.length) return;
+    if (!g) return;
+    const h = g.data;
+    if (!h.t.length) return;
     const svg = $(def.svg);
     const box = svg.getBoundingClientRect();
     const sx = (ev.clientX - box.left) / box.width * g.w;
-    const t = g.t0 + (sx - g.l) / (g.w - g.l - g.r) * HISTORY_MS;
+    const t = g.t0 + (sx - g.l) / (g.w - g.l - g.r) * g.span;
     let best = 0;
     for (let i = 0; i < h.t.length; i++) if (Math.abs(h.t[i] - t) < Math.abs(h.t[best] - t)) best = i;
     const x = g.X(h.t[best]);
     g.cross.setAttribute('x1', x); g.cross.setAttribute('x2', x); g.cross.setAttribute('visibility', 'visible');
     const tip = $(def.tip);
-    tip.innerHTML = `<div>${time(h.t[best])}</div>` + g.series.map((s) => {
+    const value = (v) => (v === null || v === undefined ? '–' : def.unit === 'RPM' ? Math.round(v) : fmt(v));
+    // The long periods: a point is many rows, so the tooltip gives their average and their highest, and the day.
+    const when = g.span > 3600e3 ? time(h.t[best], { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : time(h.t[best]);
+    tip.innerHTML = `<div>${esc(when)}</div>` + g.series.map((s) => {
       const v = h.series[s.key][best];
-      return `<div class="row"><i style="background:${s.color}"></i>${esc(s.name || s.label)} <b>${v === null ? '–' : (def.unit === 'RPM' ? Math.round(v) : fmt(v))} ${def.unit}</b></div>`;
+      const top = h.max && h.max[s.key] ? h.max[s.key][best] : null;
+      const peak = top !== null && top !== undefined && v !== null && top !== v ? ' · ' + esc(tr('chart.tip.max', { v: value(top) })) : '';
+      return `<div class="row"><i style="background:${s.color}"></i>${esc(s.name || s.label)} <b>${value(v)} ${def.unit}</b>${peak}</div>`;
     }).join('');
     tip.style.display = 'block';
     const px = x / g.w * box.width;
@@ -1166,11 +1235,21 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
     state.alerts = snap.alerts || [];
     renderAlertBanner(state.alerts);
     renderTiles(snap);
-    renderCharts();
+    if (state.range === '10m') renderCharts();
     renderFans();
     renderGpu(snap.gpu);
     renderSensors(snap);
     if (state.editor) renderEditor();
+  }
+
+  // The panel's history has the periods only if FanPilot keeps the rows on disk ("historyDays" above 0).
+  function wireRanges(available) {
+    document.querySelectorAll('.seg.range').forEach((seg) => { seg.hidden = !available; });
+    document.querySelectorAll('.seg.range button').forEach((b) => { b.onclick = () => setRange(b.dataset.range); });
+    let saved = null;
+    try { saved = localStorage.getItem('fanpilot.range'); } catch (e) { /* storage blocked */ }
+    if (available && saved && saved !== '10m') setRange(saved);
+    setInterval(() => loadLongHistory(true), 60000);
   }
 
   // EventSource retries by itself only after a network error. A stream the server refuses (FanPilot still starting,
@@ -1203,6 +1282,7 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
     await loadLanguage();
     translatePage();
     wireLanguageSelect($('langSelect'));
+    renderChartTitles();
     wireEditor();
     wireGpu();
     wireAlerts();
@@ -1233,6 +1313,7 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
     try {
       const info = await api('/api/info');
       $('appVersion').textContent = 'FanPilot ' + info.version + (info.backend ? ' · ' + info.backend : '');
+      wireRanges(info.history === true);
     } catch (e) { /* the footer just stays empty */ }
   }
 

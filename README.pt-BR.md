@@ -11,10 +11,10 @@
 
 Monitor de temperatura e controle de fans pelo celular.
 
-Painel web servido pelo próprio PC: temperaturas de CPU/placa-mãe/GPU, potência, clocks, gráfico dos últimos
-10 minutos, curvas de fan da placa-mãe (editor de arrastar pontos, com ajuste fino de 1 em 1 e uso pelo teclado e
-pelo leitor de tela) e fan da GPU. Acesso pela LAN só depois de parear o celular escaneando um QR code exibido no PC.
-O painel fala português e inglês: segue o idioma do navegador e pode ser trocado no rodapé.
+Painel web servido pelo próprio PC: temperaturas de CPU/placa-mãe/GPU, potência, clocks, gráficos dos últimos
+10 minutos a 7 dias, curvas de fan da placa-mãe (editor de arrastar pontos, com ajuste fino de 1 em 1 e uso pelo
+teclado e pelo leitor de tela) e fan da GPU. Acesso pela LAN só depois de parear o celular escaneando um QR code
+exibido no PC. O painel fala português e inglês: segue o idioma do navegador e pode ser trocado no rodapé.
 
 Como funciona por baixo: veja [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEERING.md).
 
@@ -205,6 +205,12 @@ ele avisa no painel o que mudou e segue com o LibreHardwareMonitor (com `"gigaby
     avisa no máximo uma vez a cada 10 min, e avisa de novo quando termina. Nada sai do PC sem um destino
     configurado, e as mensagens levam só o alerta e o nome do PC. O endereço do tópico e o token ficam cifrados com a
     DPAPI em `bin\data\alerts.json` (outro PC não consegue lê-los).
+- **Histórico:** os gráficos mostram os últimos 10 minutos (ao vivo, uma leitura por segundo) ou, pelos arquivos que o
+  FanPilot guarda, a última hora, as últimas 24 horas ou os últimos 7 dias, nos dois gráficos de uma vez (a escolha
+  fica no aparelho). A cada 10 s, a média e o máximo de cada leitura (temperatura e potência da CPU e da GPU, RPM de
+  cada fan) vão para `bin\data\history\<data>.csv`, cerca de 1 MB por dia; os dias além da retenção (`historyDays` no
+  `config.json`: 7 por padrão, até 90; 0 desliga) são apagados. Um ponto dos gráficos longos junta várias linhas: a
+  dica mostra a média e o máximo delas.
 
 ### Placas sem GCC: curvas executadas pelo FanPilot
 
@@ -238,7 +244,7 @@ valem em qualquer resposta:
   etc.): os dois vão disputar os fans. Desative o controle de fans de lá.
 
 Limites ajustáveis em `bin\data\config.json` (`minDutyPercent`, `fixedModeSafetyTemp`, `maxFullSpeedTemp`,
-`gpuSafetyTemp`, `port`, `publicHost`, `pairCodeTtlSeconds`, `sessionDays`, `backend`).
+`gpuSafetyTemp`, `port`, `publicHost`, `pairCodeTtlSeconds`, `sessionDays`, `backend`, `historyDays`).
 
 ## Operação
 
@@ -322,9 +328,9 @@ Não fazem parte do projeto: compile cada um com o `csc.exe` do .NET Framework, 
 |---|---|---|
 | GET | `/api/state` | snapshot atual (sensores, rpm, GPU) |
 | GET | `/api/stream` | Server-Sent Events, 1 snapshot/s |
-| GET | `/api/history` | últimos 10 min (temperaturas, potência, rpm) |
+| GET | `/api/history?range=…` | `10m` (padrão): últimos 10 min, um ponto por segundo (temperaturas, potência, rpm). `1h`, `24h`, `7d`: dos arquivos em disco, no máximo 600 pontos, cada um com a média (`series`), o máximo (`max`) e o mínimo (`min`) das suas linhas de 10 s; `null` onde o FanPilot estava fechado |
 | GET | `/api/fans` | curvas atuais, sensores de referência, limites |
-| GET | `/api/info` | versão do FanPilot, backend e placa-mãe |
+| GET | `/api/info` | versão do FanPilot, backend e placa-mãe, e se o histórico em disco está ligado (`history`) |
 | GET | `/api/alerts` | alertas ativos e recentes (os ativos também vêm em cada snapshot, no campo `alerts`) |
 | POST | `/api/alerts/ack` | `{"id":"…"}` tira o alerta da faixa (ele continua na lista enquanto durar) |
 | GET/POST | `/api/alerts/settings` | limites, nome do PC e destinos; os segredos voltam só mascarados; `""` remove um destino |

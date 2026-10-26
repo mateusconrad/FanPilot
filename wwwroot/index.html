@@ -30,25 +30,37 @@
 
     <section class="card">
       <div class="card-head">
-        <h2 data-i18n="chart.temp.title"></h2>
+        <h2 id="chartTitle"></h2>
         <div class="legend">
           <span><i style="background:var(--series-cpu)"></i>CPU</span>
           <span><i style="background:var(--series-gpu)"></i>GPU</span>
         </div>
+        <div class="seg range" role="group" data-i18n-attr="aria-label:chart.range.aria" hidden>
+          <button data-range="10m" aria-pressed="true" data-i18n="chart.range.10m"></button>
+          <button data-range="1h" aria-pressed="false" data-i18n="chart.range.1h"></button>
+          <button data-range="24h" aria-pressed="false" data-i18n="chart.range.24h"></button>
+          <button data-range="7d" aria-pressed="false" data-i18n="chart.range.7d"></button>
+        </div>
       </div>
       <div class="chart-wrap" id="chartWrap">
-        <svg id="chart" viewBox="0 0 640 220" role="img" data-i18n-attr="aria-label:chart.temp.aria"></svg>
+        <svg id="chart" viewBox="0 0 640 220" role="img"></svg>
         <div class="tip" id="tip"></div>
       </div>
     </section>
 
     <section class="card">
       <div class="card-head">
-        <h2 data-i18n="chart.rpm.title"></h2>
+        <h2 id="rpmTitle"></h2>
         <div class="legend" id="rpmLegend"></div>
+        <div class="seg range" role="group" data-i18n-attr="aria-label:chart.range.aria" hidden>
+          <button data-range="10m" aria-pressed="true" data-i18n="chart.range.10m"></button>
+          <button data-range="1h" aria-pressed="false" data-i18n="chart.range.1h"></button>
+          <button data-range="24h" aria-pressed="false" data-i18n="chart.range.24h"></button>
+          <button data-range="7d" aria-pressed="false" data-i18n="chart.range.7d"></button>
+        </div>
       </div>
       <div class="chart-wrap" id="rpmWrap">
-        <svg id="rpmChart" viewBox="0 0 640 220" role="img" data-i18n-attr="aria-label:chart.rpm.aria"></svg>
+        <svg id="rpmChart" viewBox="0 0 640 220" role="img"></svg>
         <div class="tip" id="rpmTip"></div>
       </div>
       <p class="hint" id="rpmNote"></p>

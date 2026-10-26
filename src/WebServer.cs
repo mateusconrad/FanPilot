@@ -17,6 +17,7 @@ sealed class WebServer
     FanManager _fans;
     GpuMonitor _gpu;
     AlertMonitor _alerts;
+    HistoryStore _history; // null: historyDays is 0
     volatile bool _ready;
     readonly HostGuard _hosts;
     readonly SseHub _hub = new SseHub();
@@ -38,9 +39,9 @@ sealed class WebServer
     }
 
     // alerts: null where nobody watches (the tests that do not need them); the alert routes then answer 404.
-    public void Attach(AuthManager auth, Sampler sampler, FanManager fans, GpuMonitor gpu, AlertMonitor alerts = null)
+    public void Attach(AuthManager auth, Sampler sampler, FanManager fans, GpuMonitor gpu, AlertMonitor alerts = null, HistoryStore history = null)
     {
-        _auth = auth; _sampler = sampler; _fans = fans; _gpu = gpu; _alerts = alerts;
+        _auth = auth; _sampler = sampler; _fans = fans; _gpu = gpu; _alerts = alerts; _history = history;
         // The sampler only hands the snapshot over: the hub writes to each client on its own.
         sampler.Subscribe(json => _hub.Publish(Frame(json)));
         _ready = true; // volatile: the fields above are visible to whoever sees this
@@ -193,12 +194,14 @@ sealed class WebServer
 
         if (r.Method == "GET" && p == "/api/state") { RawJson(r.Ctx, 200, _sampler.LatestJson); return true; }
         if (r.Method == "GET" && p == "/api/stream") return Stream(r);
-        if (r.Method == "GET" && p == "/api/history") { WriteJson(r.Ctx, 200, CompactHistory()); return true; }
+        if (r.Method == "GET" && p == "/api/history") { WriteJson(r.Ctx, 200, History(r.Ctx.Request.QueryString["range"])); return true; }
         if (r.Method == "GET" && p == "/api/fans") { WriteJson(r.Ctx, 200, _fans.Describe()); return true; }
         if (r.Method == "GET" && p == "/api/info")
         {
             WriteJson(r.Ctx, 200, new Dictionary<string, object> {
-                { "version", AppVersion.Text }, { "backend", _fans.BackendName }, { "board", MachineData.Board } });
+                { "version", AppVersion.Text }, { "backend", _fans.BackendName }, { "board", MachineData.Board },
+                // false with "historyDays": 0: the panel then offers only its 10 minutes.
+                { "history", _history != null } });
             return true;
         }
         if (p.StartsWith("/api/alerts") && _alerts != null)
@@ -318,6 +321,16 @@ sealed class WebServer
         }
         WriteJson(r.Ctx, 404, Error("err.route"));
         return true;
+    }
+
+    // ?range=10m (the default: every second, from memory), 1h, 24h or 7d (the rows on disk, item 24).
+    Dictionary<string, object> History(string range)
+    {
+        TimeSpan span;
+        if (string.IsNullOrEmpty(range) || range == "10m") return CompactHistory();
+        if (!HistoryStore.Ranges.TryGetValue(range, out span)) throw new UserError("err.historyRange");
+        if (_history == null) throw new Unavailable("err.historyOff");
+        return _history.Read(span);
     }
 
     Dictionary<string, object> CompactHistory()

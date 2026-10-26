@@ -383,6 +383,8 @@ sealed class Sampler
     Thread _thread;
     // The active alerts (item 16), put in every snapshot so the panel's banner follows them live.
     public Func<List<Dictionary<string, object>>> Alerts;
+    // Also given every snapshot, on the sampler's thread: the history on disk (item 24).
+    public Action<Dictionary<string, object>> OnSample;
 
     public Sampler(IBoard bridge, GpuMonitor gpu) { _bridge = bridge; _gpu = gpu; }
 
@@ -485,5 +487,7 @@ sealed class Sampler
             subs = _subscribers.ToList();
         }
         foreach (var s in subs) s(json);
+        var onSample = OnSample;
+        if (onSample != null) try { onSample(snap); } catch (Exception ex) { Log.Warn("History: " + ex.Message); }
     }
 }

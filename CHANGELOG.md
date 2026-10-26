@@ -57,6 +57,10 @@ Primeira versão publicada (será a 0.1.0).
   do gabinete aceleram quando a GPU esquenta num jogo, mesmo com a CPU folgada.
 - Modo painel (`/panel`): uma tela só de leitura e em tela cheia para um celular ou tablet ao lado do monitor ou uma
   telinha de gabinete, legível de longe, com opção de manter a tela ligada e proteção para telas OLED.
+- Histórico em disco: os gráficos mostram também a última hora, as últimas 24 horas e os últimos 7 dias, e o que
+  foi gravado continua lá depois de reiniciar o FanPilot. Nos períodos longos, a dica mostra a média e o máximo de
+  cada ponto. Ocupa cerca de 1 MB por dia em `data\history\`; a retenção (7 dias por padrão) muda no `config.json`
+  (`historyDays`; 0 desliga).
 - Painel em inglês e em português: o idioma segue o do navegador e pode ser trocado no rodapé (a escolha fica no
   aparelho); números e horas seguem o idioma. Erros, avisos e alertas do FanPilot também, e os alertas enviados ao ntfy
   e ao Telegram saem no idioma do painel em que foram configurados. O console, o `--diagnose` e o `--hardware-test`

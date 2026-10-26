@@ -46,19 +46,25 @@ export function stopLeftovers() {
 }
 
 export class FanPilot {
-  // files: { '<name>': content } written to data-fake\ before the start (state files, a damaged one...).
-  static async start(scenario = 'demo', { files = {} } = {}) {
+  // files: { '<name>': content } written to data-fake\ before the start (state files, a damaged one, history\...).
+  // config: settings for config.json besides the port ({ historyDays: 0 }).
+  static async start(scenario = 'demo', { files = {}, config = {} } = {}) {
     fs.mkdirSync(scratchRoot, { recursive: true });
-    const fp = new FanPilot(fs.mkdtempSync(path.join(scratchRoot, scenario + '-')));
+    const fp = new FanPilot(fs.mkdtempSync(path.join(scratchRoot, scenario + '-')), config);
     fs.cpSync(buildDir, fp.dir, { recursive: true, filter: (src) => !/^[\\/]?data(-fake)?([\\/]|$)/.test(path.relative(buildDir, src)) });
     fs.mkdirSync(fp.dataDir);
-    for (const [name, content] of Object.entries(files)) fs.writeFileSync(path.join(fp.dataDir, name), content);
+    for (const [name, content] of Object.entries(files)) {
+      const file = path.join(fp.dataDir, name);
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, content);
+    }
     await fp.launch(scenario);
     return fp;
   }
 
-  constructor(dir) {
+  constructor(dir, config = {}) {
     this.dir = dir;
+    this.config = config;
     this.output = '';
   }
 
@@ -69,7 +75,7 @@ export class FanPilot {
     for (let attempt = 1; ; attempt++) {
       if (!this.port) {
         this.port = await freePort();
-        fs.writeFileSync(path.join(this.dataDir, 'config.json'), JSON.stringify({ port: this.port }));
+        fs.writeFileSync(path.join(this.dataDir, 'config.json'), JSON.stringify({ ...this.config, port: this.port }));
       }
       // RunAsInvoker: without it Windows would ask for elevation (app.manifest). Elevated, nothing changes.
       this.proc = spawn(path.join(this.dir, 'FanPilot.exe'), ['--fake-board=' + scenario, '--no-browser'], {

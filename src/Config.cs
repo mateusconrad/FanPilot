@@ -23,6 +23,8 @@ sealed class AppConfig
     public int SessionDays = 30;
     // "auto" (Gigabyte Control Center if installed, else LibreHardwareMonitor), "gigabyte" or "lhm".
     public string Backend = "auto";
+    // Days of history kept on disk, 10 s per row (item 24); 0 turns it off (the panel keeps its 10 minutes).
+    public int HistoryDays = 7;
 
     public static AppConfig Load(string path)
     {
@@ -41,6 +43,7 @@ sealed class AppConfig
                 cfg.PairCodeTtlSeconds = Json.GetInt(d, "pairCodeTtlSeconds", cfg.PairCodeTtlSeconds);
                 cfg.SessionDays = Json.GetInt(d, "sessionDays", cfg.SessionDays);
                 cfg.Backend = Json.GetString(d, "backend", cfg.Backend);
+                cfg.HistoryDays = Json.GetInt(d, "historyDays", cfg.HistoryDays);
             }
             catch (Exception ex) when (ex is ArgumentException || ex is FormatException || ex is InvalidOperationException || ex is OverflowException)
             {
@@ -63,6 +66,7 @@ sealed class AppConfig
         cfg.FixedModeSafetyTemp = Clamp(cfg.FixedModeSafetyTemp, 75, 95);
         cfg.MaxFullSpeedTemp = Clamp(cfg.MaxFullSpeedTemp, 50, 100);
         cfg.GpuSafetyTemp = Clamp(cfg.GpuSafetyTemp, 60, 90);
+        cfg.HistoryDays = Clamp(cfg.HistoryDays, 0, 90);
         cfg.Backend = (cfg.Backend ?? "auto").Trim().ToLowerInvariant();
         if (cfg.Backend != "gigabyte" && cfg.Backend != "lhm") cfg.Backend = "auto";
         return cfg;
@@ -74,7 +78,7 @@ sealed class AppConfig
             { "port", Port }, { "publicHost", PublicHost }, { "minDutyPercent", MinDutyPercent },
             { "fixedModeSafetyTemp", FixedModeSafetyTemp }, { "maxFullSpeedTemp", MaxFullSpeedTemp },
             { "gpuSafetyTemp", GpuSafetyTemp }, { "pairCodeTtlSeconds", PairCodeTtlSeconds }, { "sessionDays", SessionDays },
-            { "backend", Backend }
+            { "backend", Backend }, { "historyDays", HistoryDays }
         };
     }
 

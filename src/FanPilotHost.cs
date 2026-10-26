@@ -66,6 +66,9 @@ sealed class FanPilotHost
         if (lhm != null) lhm.GpuTemp = () => gpu.Temperature;
         var fans = new FanManager(bridge, _cfg, _dataDir);
         var sampler = new Sampler(bridge, gpu);
+        // 10 s rows on disk for the 1 h, 24 h and 7 d charts (item 24); historyDays: 0 keeps only the 10 minutes.
+        var history = _cfg.HistoryDays > 0 ? new HistoryStore(Path.Combine(_dataDir, "history"), _cfg.HistoryDays) : null;
+        if (history != null) sampler.OnSample = history.Add;
         var alerts = new AlertMonitor(sampler, fans, bridge, _dataDir);
         sampler.Alerts = alerts.ActiveForSnapshot;
         lock (_sync)
@@ -79,7 +82,7 @@ sealed class FanPilotHost
         sampler.Start();
         alerts.Start();
         // Only now: until Start() has saved the original curves, no request may change a fan.
-        server.Attach(new AuthManager(_dataDir, _cfg), sampler, fans, gpu, alerts);
+        server.Attach(new AuthManager(_dataDir, _cfg), sampler, fans, gpu, alerts, history);
 
         string pairUrl = "http://localhost:" + _cfg.Port + "/pair";
         Log.Info(new Msg("console.running", "port", _cfg.Port, "urls", string.Join(", ", NetworkInfo.CandidateHosts(_cfg).Select(h => "http://" + h + ":" + _cfg.Port))));
