@@ -49,6 +49,15 @@ modificação para a pasta do programa. O código-fonte de cada um está no ende
 | System.Security.Principal.Windows | 5.0.0 | MIT — © Microsoft | https://github.com/dotnet/runtime |
 | System.CodeDom | 10.0.2 | MIT — © Microsoft | https://github.com/dotnet/runtime |
 
+## MQTTnet (distribuído junto com o `FanPilot.exe`)
+
+O cliente MQTT das integrações com o Home Assistant. Baixado do nuget.org no build, em versão fixa (com hash
+conferido pelo `src/packages.lock.json`), e copiado sem modificação para a pasta do programa.
+
+| Componente | Versão | Licença | Código-fonte |
+|---|---|---|---|
+| MQTTnet | 4.3.7.1207 | [MIT](https://licenses.nuget.org/MIT) — Copyright (c) .NET Foundation and Contributors | https://github.com/dotnet/MQTTnet |
+
 ## PawnIO
 
 Driver usado pelo LibreHardwareMonitor para acessar o chip da placa-mãe. **Não é distribuído** com o FanPilot:

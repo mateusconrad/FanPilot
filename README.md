@@ -303,6 +303,14 @@ Read only: nothing an integration does changes a fan.
         - targets: ["192.168.0.10:8787"]   # the PC's address and FanPilot's port
   ```
 
+- **Home Assistant over MQTT** (the easiest way): in the panel, "Home Assistant (MQTT)": the broker's address (the
+  Mosquitto add-on's, for instance), port (1883, or 8883 with TLS), user and password. The entities show up on their
+  own, under a device named after the PC: CPU and GPU temperature and power, GPU utilization and fan, each fan's RPM
+  and requested speed, active alerts and a motherboard problem sensor, named in the panel's language. The state goes
+  to `fanpilot/<pc>/state` every 5 s (the same JSON as `/api/v1/sensors`), and `fanpilot/<pc>/availability` says
+  `online` or `offline`, which the broker also says when FanPilot's connection drops. Read only: Home Assistant
+  controls nothing. The password is kept encrypted with DPAPI in `bin\data\mqtt.json`; with TLS, Windows has to trust
+  the broker's certificate.
 - **Home Assistant** (REST sensor, `/api/v1/sensors`): a JSON that only ever gains fields (`"version": 1`): `cpu`
   (`temperature`, `power`), `gpu` (`name`, `temperature`, `power`, `utilization`, `fan`; `null` without a GPU),
   `fans` (`id`, `name`, `label`, `pump`, `rpm`, `duty`), `temperatures` and `power` (`id`, `name`, `value`), `alerts`
@@ -384,6 +392,7 @@ the project: build each one with the .NET Framework's `csc.exe`, passing the GCC
 | GET | `/api/info` | FanPilot's version, backend and motherboard, and whether the history on disk is on (`history`) |
 | GET | `/metrics` | the readings in Prometheus' text format; also with an integration token (see Integrations) |
 | GET | `/api/v1/sensors` | the stable JSON for integrations; also with an integration token (see Integrations) |
+| GET/POST | `/api/mqtt` | Home Assistant over MQTT: `enabled`, `host`, `port`, `tls`, `username`, `password` (only when sent; `""` removes it), `discoveryPrefix`, and the connection's `status` |
 | GET | `/api/alerts` | active and recent alerts (the active ones also come in every snapshot, in `alerts`) |
 | POST | `/api/alerts/ack` | `{"id":"…"}` takes the alert off the strip (it stays in the list while it lasts) |
 | GET/POST | `/api/alerts/settings` | limits, the PC's name, the message language and the destinations; secrets come back masked only; `""` removes a destination |

@@ -22,6 +22,7 @@ sealed class FanPilotHost
     FanManager _fans;
     Sampler _sampler;
     AlertMonitor _alerts;
+    MqttPublisher _mqtt;
     bool _stopped;
 
     // openBoard: Boards.Create, or the fake board; it may throw InvalidOperationException with the reason.
@@ -71,9 +72,12 @@ sealed class FanPilotHost
         if (history != null) sampler.OnSample = history.Add;
         var alerts = new AlertMonitor(sampler, fans, bridge, _dataDir);
         sampler.Alerts = alerts.ActiveForSnapshot;
+        // Prometheus and Home Assistant (item 23): read only, with tokens made on /pair, and MQTT when set up in the panel.
+        var feed = new IntegrationFeed(sampler, new FanListCache(fans), () => bridge.BackendName);
+        var mqtt = new MqttPublisher(_dataDir, feed.SensorsV1, Environment.MachineName);
         lock (_sync)
         {
-            _bridge = bridge; _gpu = gpu; _fans = fans; _sampler = sampler; _alerts = alerts;
+            _bridge = bridge; _gpu = gpu; _fans = fans; _sampler = sampler; _alerts = alerts; _mqtt = mqtt;
             if (_stopped) { bridge.Shutdown(); gpu.Shutdown(); return 0; }
         }
 
@@ -81,10 +85,9 @@ sealed class FanPilotHost
         gpu.Start();
         sampler.Start();
         alerts.Start();
-        // Prometheus and Home Assistant (item 23): read only, with tokens made on /pair.
-        var feed = new IntegrationFeed(sampler, new FanListCache(fans), () => bridge.BackendName);
+        mqtt.Start();
         // Only now: until Start() has saved the original curves, no request may change a fan.
-        server.Attach(new AuthManager(_dataDir, _cfg), sampler, fans, gpu, alerts, history, new IntegrationTokens(_dataDir), feed);
+        server.Attach(new AuthManager(_dataDir, _cfg), sampler, fans, gpu, alerts, history, new IntegrationTokens(_dataDir), feed, mqtt);
 
         string pairUrl = "http://localhost:" + _cfg.Port + "/pair";
         Log.Info(new Msg("console.running", "port", _cfg.Port, "urls", string.Join(", ", NetworkInfo.CandidateHosts(_cfg).Select(h => "http://" + h + ":" + _cfg.Port))));
@@ -103,11 +106,12 @@ sealed class FanPilotHost
         WebServer server;
         Sampler sampler;
         AlertMonitor alerts;
+        MqttPublisher mqtt;
         lock (_sync)
         {
             if (_stopped) return;
             _stopped = true;
-            bridge = _bridge; gpu = _gpu; server = _server; sampler = _sampler; alerts = _alerts;
+            bridge = _bridge; gpu = _gpu; server = _server; sampler = _sampler; alerts = _alerts; mqtt = _mqtt;
         }
         if (alerts != null) alerts.Stop();
         var watch = Stopwatch.StartNew();
@@ -119,6 +123,8 @@ sealed class FanPilotHost
         if (server != null) server.Stop();
         if (bridge != null) bridge.Shutdown();
         if (gpu != null) { gpu.Stop(); gpu.Shutdown(); }
+        // Last, after the fans: Home Assistant hears "offline" (or the broker says it, if this takes too long).
+        if (mqtt != null) mqtt.Stop();
         Log.Info("Stopped in " + watch.ElapsedMilliseconds + " ms.");
     }
 

@@ -302,6 +302,14 @@ Só leitura: nada que uma integração faça muda um fan.
         - targets: ["192.168.0.10:8787"]   # o endereço do PC e a porta do FanPilot
   ```
 
+- **Home Assistant pelo MQTT** (o jeito mais fácil): no painel, "Home Assistant (MQTT)": o endereço do broker (o do
+  add-on Mosquitto, por exemplo), a porta (1883, ou 8883 com TLS), o usuário e a senha. As entidades aparecem sozinhas,
+  num aparelho com o nome do PC: temperatura e potência da CPU e da GPU, uso e fan da GPU, RPM e velocidade pedida de
+  cada fan, alertas ativos e um sensor de problema na placa-mãe, com os nomes no idioma do painel. O estado vai para
+  `fanpilot/<pc>/state` a cada 5 s (o mesmo JSON do `/api/v1/sensors`), e `fanpilot/<pc>/availability` diz `online`
+  ou `offline`, o que o broker também diz quando a conexão do FanPilot cai. Só leitura: o Home Assistant não
+  controla nada. A senha fica cifrada com a DPAPI em `bin\data\mqtt.json`; com TLS, o Windows precisa confiar no
+  certificado do broker.
 - **Home Assistant** (sensor REST, `/api/v1/sensors`): um JSON que só ganha campos (`"version": 1`): `cpu`
   (`temperature`, `power`), `gpu` (`name`, `temperature`, `power`, `utilization`, `fan`; `null` sem GPU), `fans`
   (`id`, `name`, `label`, `pump`, `rpm`, `duty`), `temperatures` e `power` (`id`, `name`, `value`), `alerts` (`id`,
@@ -383,6 +391,7 @@ Não fazem parte do projeto: compile cada um com o `csc.exe` do .NET Framework, 
 | GET | `/api/info` | versão do FanPilot, backend e placa-mãe, e se o histórico em disco está ligado (`history`) |
 | GET | `/metrics` | as leituras no formato de texto do Prometheus; também com um token de integração (veja Integrações) |
 | GET | `/api/v1/sensors` | o JSON estável para integrações; também com um token de integração (veja Integrações) |
+| GET/POST | `/api/mqtt` | Home Assistant pelo MQTT: `enabled`, `host`, `port`, `tls`, `username`, `password` (só quando enviada; `""` apaga), `discoveryPrefix`, e o `status` da conexão |
 | GET | `/api/alerts` | alertas ativos e recentes (os ativos também vêm em cada snapshot, no campo `alerts`) |
 | POST | `/api/alerts/ack` | `{"id":"…"}` tira o alerta da faixa (ele continua na lista enquanto durar) |
 | GET/POST | `/api/alerts/settings` | limites, nome do PC e destinos; os segredos voltam só mascarados; `""` remove um destino |

@@ -20,6 +20,7 @@ sealed class WebServer
     HistoryStore _history; // null: historyDays is 0
     IntegrationTokens _tokens; // null in the tests that don't need them: no token is then valid
     IntegrationFeed _feed;
+    MqttPublisher _mqtt;       // null in the tests that don't need it: /api/mqtt answers 404
     volatile bool _ready;
     readonly HostGuard _hosts;
     readonly SseHub _hub = new SseHub();
@@ -42,10 +43,10 @@ sealed class WebServer
 
     // alerts: null where nobody watches (the tests that do not need them); the alert routes then answer 404.
     public void Attach(AuthManager auth, Sampler sampler, FanManager fans, GpuMonitor gpu, AlertMonitor alerts = null, HistoryStore history = null,
-                       IntegrationTokens tokens = null, IntegrationFeed feed = null)
+                       IntegrationTokens tokens = null, IntegrationFeed feed = null, MqttPublisher mqtt = null)
     {
         _auth = auth; _sampler = sampler; _fans = fans; _gpu = gpu; _alerts = alerts; _history = history;
-        _tokens = tokens;
+        _tokens = tokens; _mqtt = mqtt;
         _feed = feed ?? new IntegrationFeed(sampler, new FanListCache(fans), () => fans.BackendName);
         // The sampler only hands the snapshot over: the hub writes to each client on its own.
         sampler.Subscribe(json => _hub.Publish(Frame(json)));
@@ -233,6 +234,12 @@ sealed class WebServer
                 WriteJson(r.Ctx, found ? 200 : 404, found ? new Dictionary<string, object> { { "ok", true } } : Error("err.alertNotFound"));
                 return true;
             }
+        }
+        // Home Assistant over MQTT (item 23): the settings, and how the connection is going.
+        if (p == "/api/mqtt" && _mqtt != null)
+        {
+            if (r.Method == "GET") { WriteJson(r.Ctx, 200, _mqtt.Describe()); return true; }
+            if (r.Method == "POST") { WriteJson(r.Ctx, 200, _mqtt.Update(ReadBody(r))); return true; }
         }
         if (r.Method == "POST" && p == "/api/logout")
         {

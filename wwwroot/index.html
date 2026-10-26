@@ -150,6 +150,43 @@
       </details>
     </section>
 
+    <!-- Home Assistant over MQTT (item 23). -->
+    <section class="card" id="mqttCard">
+      <div class="card-head">
+        <h2 data-i18n="mqtt.title"></h2>
+        <span class="sub" id="mqttSub"></span>
+      </div>
+      <details id="mqttSettings">
+        <summary data-i18n="mqtt.settings"></summary>
+        <div class="row">
+          <label class="field"><span data-i18n="mqtt.host"></span>
+            <input type="text" id="mqHost" maxlength="253" autocomplete="off" data-i18n-attr="placeholder:mqtt.host.placeholder">
+          </label>
+          <label class="field mq-port"><span data-i18n="mqtt.port"></span>
+            <input type="number" id="mqPort" min="1" max="65535" step="1">
+          </label>
+        </div>
+        <label class="check"><input type="checkbox" id="mqTls"> <span data-i18n="mqtt.tls"></span></label>
+        <div class="row">
+          <label class="field"><span data-i18n="mqtt.user"></span>
+            <input type="text" id="mqUser" maxlength="100" autocomplete="off">
+          </label>
+          <label class="field"><span data-i18n="mqtt.password"></span>
+            <input type="password" id="mqPass" maxlength="200" autocomplete="new-password">
+          </label>
+        </div>
+        <label class="field"><span data-i18n="mqtt.prefix"></span>
+          <input type="text" id="mqPrefix" maxlength="64" autocomplete="off">
+        </label>
+        <p class="hint" id="mqTopic"></p>
+        <p class="hint" data-i18n="mqtt.privacy"></p>
+        <div class="row">
+          <button class="btn primary" id="mqSave" data-i18n="mqtt.save"></button>
+          <button class="btn" id="mqOff" data-i18n="mqtt.off" hidden></button>
+        </div>
+      </details>
+    </section>
+
     <section class="card">
       <details>
         <summary data-i18n="sensors.all"></summary>

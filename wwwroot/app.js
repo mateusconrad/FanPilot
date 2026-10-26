@@ -1194,6 +1194,78 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
     $('alNtfyNew').onclick = newNtfyTopic;
   }
 
+  // ---------- Home Assistant over MQTT (item 23) ----------
+  function mqttStatus(m) {
+    const st = m.status;
+    if (st.state === 'off') return tr('mqtt.state.off');
+    if (st.state === 'connected') return tr('mqtt.state.connected', { broker: m.host + ':' + m.port, count: st.entities });
+    if (st.state === 'error') return tr('mqtt.state.error', { error: msg(st.error) });
+    return tr('mqtt.state.connecting');
+  }
+
+  function showMqtt(m, fill) {
+    $('mqttSub').textContent = mqttStatus(m);
+    $('mqOff').hidden = !m.enabled;
+    if (!fill) return;
+    $('mqHost').value = m.host || '';
+    $('mqPort').value = m.port;
+    $('mqTls').checked = m.tls;
+    $('mqUser').value = m.username || '';
+    $('mqPass').value = '';
+    $('mqPass').placeholder = m.hasPassword ? tr('mqtt.password.kept') : '';
+    $('mqPrefix').value = m.discoveryPrefix;
+    $('mqTopic').textContent = tr('mqtt.topic', { topic: m.status.topic + '/state' });
+  }
+
+  // fill: the form too (when it opens); the status line follows on its own every 10 s.
+  async function loadMqtt(fill) {
+    try { showMqtt(await api('/api/mqtt'), fill); }
+    catch (e) { $('mqttSub').textContent = tr('mqtt.loadError', { error: e.message }); }
+  }
+
+  // Right after a save, the status every second until the connection settles, instead of every 10 s.
+  let mqttFollow = 0;
+  function followMqtt() {
+    clearInterval(mqttFollow);
+    let left = 20;
+    mqttFollow = setInterval(async () => {
+      try {
+        const m = await api('/api/mqtt');
+        showMqtt(m, false);
+        if (m.status.state !== 'connecting' || --left <= 0) clearInterval(mqttFollow);
+      } catch (e) { clearInterval(mqttFollow); }
+    }, 1000);
+  }
+
+  // The password goes only when typed: an empty field keeps the saved one. The entities' names go out in this
+  // panel's language.
+  async function saveMqtt(enabled) {
+    const body = {
+      enabled, host: $('mqHost').value, port: Number($('mqPort').value), tls: $('mqTls').checked,
+      username: $('mqUser').value, discoveryPrefix: $('mqPrefix').value, language: language(),
+    };
+    if ($('mqPass').value) body.password = $('mqPass').value;
+    try {
+      showMqtt(await api('/api/mqtt', body), true);
+      toast(tr(enabled ? 'mqtt.saved' : 'mqtt.turnedOff'));
+      if (enabled) followMqtt();
+    } catch (e) { toast(e.message, true); }
+  }
+
+  function wireMqtt() {
+    $('mqttSettings').addEventListener('toggle', () => { if ($('mqttSettings').open) loadMqtt(true); });
+    $('mqSave').onclick = () => saveMqtt(true);
+    $('mqOff').onclick = () => saveMqtt(false);
+    // The usual ports: 1883, and 8883 with TLS.
+    $('mqTls').onchange = () => {
+      const port = Number($('mqPort').value);
+      if ($('mqTls').checked && port === 1883) $('mqPort').value = 8883;
+      if (!$('mqTls').checked && port === 8883) $('mqPort').value = 1883;
+    };
+    loadMqtt(false);
+    setInterval(() => loadMqtt(false), 10000);
+  }
+
   // ---------- sensors table ----------
   const GROUPS = { Temperature: 'sensors.group.Temperature', Fan: 'sensors.group.Fan', Voltage: 'sensors.group.Voltage', Frequency: 'sensors.group.Frequency', Power: 'sensors.group.Power' };
   function renderSensors(snap) {
@@ -1287,6 +1359,7 @@ import { t as tr, msg, num, time, language, loadLanguage, translatePage, wireLan
     wireGpu();
     wireAlerts();
     loadAlerts();
+    wireMqtt();
     Object.values(CHARTS).forEach((def) => {
       $(def.wrap).addEventListener('pointermove', (ev) => chartHover(def, ev));
       $(def.wrap).addEventListener('pointerleave', () => chartLeave(def));
