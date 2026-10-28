@@ -21,6 +21,11 @@
     <ProjectReference Include="..\..\src\FanPilot.csproj" />
   </ItemGroup>
 
+  <!-- JsonTests checks FanPilot's Json against the JavaScriptSerializer it replaced (item 28). -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+
   <ItemGroup>
     <!-- No shadow copy: tests read the files next to FanPilot.exe (its .config, the shipped libraries). -->
     <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />

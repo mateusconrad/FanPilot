@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
-using System.Web.Script.Serialization;
 
 sealed class AppConfig
 {
@@ -83,51 +82,4 @@ sealed class AppConfig
     }
 
     public static int Clamp(int v, int lo, int hi) { return v < lo ? lo : (v > hi ? hi : v); }
-}
-
-static class Json
-{
-    static readonly JavaScriptSerializer Serializer = new JavaScriptSerializer { MaxJsonLength = 8 * 1024 * 1024 };
-
-    public static string Serialize(object o) { return Serializer.Serialize(o); }
-
-    public static Dictionary<string, object> ParseObject(string text)
-    {
-        var d = Serializer.DeserializeObject(text) as Dictionary<string, object>;
-        if (d == null) throw new FormatException("JSON object expected");
-        return d;
-    }
-
-    public static object Get(Dictionary<string, object> d, string key)
-    {
-        object v;
-        return d != null && d.TryGetValue(key, out v) ? v : null;
-    }
-
-    public static int GetInt(Dictionary<string, object> d, string key, int fallback)
-    {
-        object v = Get(d, key);
-        return v == null ? fallback : (int)Math.Round(ToDouble(v));
-    }
-
-    public static string GetString(Dictionary<string, object> d, string key, string fallback)
-    {
-        object v = Get(d, key);
-        return v == null ? fallback : Convert.ToString(v, CultureInfo.InvariantCulture);
-    }
-
-    public static double ToDouble(object v)
-    {
-        if (v == null) throw new FormatException("number expected");
-        return Convert.ToDouble(v, CultureInfo.InvariantCulture);
-    }
-
-    public static List<object> ToList(object v)
-    {
-        var e = v as IEnumerable;
-        if (e == null || v is string) throw new FormatException("array expected");
-        var list = new List<object>();
-        foreach (object o in e) list.Add(o);
-        return list;
-    }
 }
