@@ -1,6 +1,6 @@
 # Roadmap do FanPilot
 
-Os 27 itens de melhoria aprovados em 24/10/2026: os 25 da análise inicial e mais dois de testes automatizados (26 e 27). Cada item tem uma spec em [`docs/specs/`](specs/) e uma issue no GitHub.
+Os 27 itens de melhoria aprovados em 24/10/2026: os 25 da análise inicial e mais dois de testes automatizados (26 e 27). O 28 (Linux) entrou em 28/10/2026. Cada item tem uma spec em [`docs/specs/`](specs/) e uma issue no GitHub.
 
 Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estado por labels (veja "Como o andamento é registrado").
 
@@ -8,7 +8,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 - **Testes:** testes automatizados do item: `a fazer` · `ok` (commitados com o item; rodam na [CI](https://github.com/mateusconrad/FanPilot/actions) a cada push)
 - **Esforço**, em dias de trabalho focado: P ≈ 1 · P–M ≈ 2 · M ≈ 3 · G ≈ 10
 
-**Concluídos: 25 de 27** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 14a, 15, 16, 17, 18, 19, 20, 22, 23, 24, 25, 27 (veja a seção própria)
+**Concluídos: 25 de 28** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 14a, 15, 16, 17, 18, 19, 20, 22, 23, 24, 25, 27 (veja a seção própria)
 
 ## Andamento
 
@@ -41,6 +41,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 | 25 | [Fonte de temperatura combinada](specs/25-fonte-combinada.md) | 4 | P–M | 15 | concluído | ok | [#25](https://github.com/mateusconrad/FanPilot/issues/25) | `source` = sensor, `gpu` ou `max` nas curvas por software; a Gigabyte recusa; falta uma placa no caminho LHM com GPU |
 | 26 | [Testes de ponta a ponta (painel e executável)](specs/26-testes-ponta-a-ponta.md) | 2 | M | 08, 11 | concluído | ok | [#26](https://github.com/mateusconrad/FanPilot/issues/26) | 36 testes no Edge (~1 min na CI) e smoke do zip; acharam e corrigiram a reconexão do SSE depois de um 503 e o contraste do texto secundário |
 | 27 | [Teste automatizado na placa real](specs/27-teste-em-hardware.md) | 2 | P–M | 08 | concluído | ok | [#27](https://github.com/mateusconrad/FanPilot/issues/27) | falta a primeira execução na B760M |
+| 28 | [Linux](specs/28-linux.md) | 5 | G + M | 09, 11, 14a, 15 | a fazer | a fazer | a criar | três etapas: 28a (.NET 10 e a placa falsa), 28b (hwmon e GPU, com ponto de parada num PC com Linux) e 28c (systemd, pacote e CI); o caminho Gigabyte fica só no Windows |
 
 ## Ordem de execução
 
@@ -76,7 +77,17 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 
 - O 21 vem primeiro: o que vier depois já nasce nos dois idiomas.
 
-**Total estimado:** ≈ 63 dias de trabalho focado (≈ 13 semanas).
+### Fase E · Onda 5 · Plataformas (≈ 3 semanas)
+
+`28a → 28b → 28c`
+
+- Começa pela troca do SDK para o 10 (veja Decisões): o Linux roda no .NET 10, e o 8 sai do suporte em 10/11/2026.
+- O 28a não toca no hardware: o FanPilot sobe no Linux com a placa falsa e a CI do Ubuntu passa a rodar os testes. Os
+  itens seguintes do roadmap já saem testados nos dois sistemas.
+- O 28b tem um ponto de parada: o `--hardware-test` num PC de verdade com Linux, antes de investir no serviço e no
+  pacote. A B760M serve se o `it87` reconhecer o IT8689E; se não, outra placa.
+
+**Total estimado:** ≈ 76 dias de trabalho focado (≈ 15 semanas), com o 28.
 
 ## Estratégia de testes
 
@@ -156,6 +167,8 @@ Placa de referência: B760M GAMING X AX com Gigabyte Control Center 26.03.26.01.
 | 24/10/2026 | Instalador com Inno Setup; dados da versão instalada em `%ProgramData%\FanPilot` | 14 | proposta |
 | 24/10/2026 | Resposta "Equilibrada" como padrão, inclusive nas curvas por software já salvas | 15 | proposta |
 | 24/10/2026 | Logs em inglês; README principal em inglês, com versão em português | 21 | proposta |
+| 28/10/2026 | Suporte a Linux x64: alvo `net10.0` ao lado do `net472`, fans e sensores pelo hwmon do kernel, serviço do systemd; o caminho Gigabyte, a bandeja e o instalador ficam só no Windows | 28 | proposta |
+| 28/10/2026 | No Linux, os segredos usam AES-GCM com uma chave em `/etc/fanpilot/secret.key`, fora da pasta de dados, no lugar do DPAPI | 28 | proposta |
 
 "Proposta" quer dizer que vale o que está escrito, a menos que você mude antes de o item ser implementado.
 
@@ -170,4 +183,7 @@ Placa de referência: B760M GAMING X AX com Gigabyte Control Center 26.03.26.01.
 | Chamadas IPC do GCC sem timeout | O item 02 isola a GPU e o HTTP delas; o risco fica registrado no item 10 |
 | Testes em hardware exigem Administrador | O `--hardware-test` (27) roda na B760M pelo dono do repositório (ou numa sessão elevada) e o relatório vai na issue; até lá, os itens ficam em "Verificação em hardware pendente" |
 | Sem PR, nada bloqueia um commit ruim na `main` | Build e testes locais antes de cada push; CI a cada push (item 11); verificação em hardware registrada |
+| O kernel não controla o chip da placa (módulo ausente, conflito com a ACPI; o IT8689E da B760M talvez precise do `it87` de fora da árvore) | O `HwmonBoard` mostra o aviso com o que fazer e não toca nos fans; o `--diagnose` do Linux alimenta os relatos de compatibilidade (13); ponto de parada da 28b numa placa que o kernel controle |
+| Um FanPilot morto com `kill -9` no Linux deixa os fans no último PWM manual | `--restore-fans` no `ExecStopPost` da unit, com os `pwmN_enable` originais guardados em `/run/fanpilot/` |
+| Manter dois alvos (`net472` e `net10.0`) dobra o que pode quebrar | A CI compila e testa os dois a cada push; o que é de um sistema só fica fora do outro pelo `.csproj` e pela `Platform` |
 | O suporte do SDK 8 termina em 10/11/2026 | O FanPilot roda no .NET Framework 4.7.2, que não muda; trocar o SDK é atualizar o `global.json` e instalar o SDK 10 no PC que compila (veja Decisões) |
