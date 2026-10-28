@@ -26,7 +26,6 @@
   <ItemGroup>
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
     <PackageReference Include="MQTTnet" Version="4.3.7.1207" />
-    <Reference Include="System.Web.Extensions" />
     <!-- The Windows service mode (item 14a). -->
     <Reference Include="System.ServiceProcess" />
     <!-- DPAPI for the alert destinations' secrets (item 16). -->
