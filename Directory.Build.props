@@ -6,14 +6,25 @@
          (.github/workflows/release.yml). -->
     <VersionPrefix>0.1.0</VersionPrefix>
     <LangVersion>latest</LangVersion>
-    <!-- FanPilot only runs on 64-bit Windows; the LibreHardwareMonitor package ships its assembly per runtime. -->
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <!-- FanPilot runs on 64-bit Windows and Linux (item 28). -->
     <PlatformTarget>x64</PlatformTarget>
     <!-- packages.lock.json pins every NuGet package and its hash; CI (CI=true) refuses anything that differs. -->
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
   </PropertyGroup>
-  <ItemGroup>
+  <!-- The Windows build. The LibreHardwareMonitor package ships its assembly per runtime; the Linux build stays portable
+       and gets its runtime (linux-x64) when it is published. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net472'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+  <!-- packages.lock.json must come out the same on Windows and Linux: restore always for linux-x64 (what is published),
+       and no native launcher for the build machine's own runtime unless one is asked for (-r). The portable build runs
+       with "dotnet FanPilot.dll". -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <RuntimeIdentifiers>linux-x64</RuntimeIdentifiers>
+    <UseAppHost Condition="'$(RuntimeIdentifier)' == ''">false</UseAppHost>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
     <!-- The .NET Framework reference assemblies come from NuGet on every machine. The SDK only adds this package
          where the targeting pack is missing (a PC without Visual Studio) and not where it is installed (the CI
          runner), so packages.lock.json differed between the two and the CI's locked restore failed. -->

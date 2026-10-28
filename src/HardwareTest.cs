@@ -94,7 +94,7 @@ sealed class HardwareTest
         int at = Array.IndexOf(args, "--fan"), parsed;
         if (at >= 0 && at + 1 < args.Length && int.TryParse(args[at + 1], out parsed)) fan = parsed;
 
-        var test = new HardwareTest(openBoard(), gpu, cfg, dataDir, openBoard, t => Thread.Sleep(t), TimeSpan.FromSeconds(8), I18n.Windows);
+        var test = new HardwareTest(openBoard(), gpu, cfg, dataDir, openBoard, t => Thread.Sleep(t), TimeSpan.FromSeconds(8), I18n.SystemLanguage);
         ConsoleCancelEventHandler onCtrlC = (s, e) =>
         {
             e.Cancel = true; // the test stops at its next check and puts everything back
@@ -278,14 +278,7 @@ sealed class HardwareTest
         var rpms = Rpms();
         var fans = Fans(_fans.Describe());
         string rpmText = string.Join(", ", fans.Select((f, i) => f["title"] + " " + (i < rpms.Count ? rpms[i].ToString("0") : "?")));
-        return new Msg("hwtest.readings", "count", temps.Count, "cpu", (int)Math.Round(CpuTemp()), "rpms", rpmText, "backend", _board.BackendName + GccVersion());
-    }
-
-    // Only when the board is reached through GCC: an update of it is what most often changes this path.
-    string GccVersion()
-    {
-        string dll = Path.Combine(Program.GccLibDir, "Gigabyte.Engine.EnvironmentControl.dll");
-        return _board.BackendName.Contains("Gigabyte") && File.Exists(dll) ? " (GCC " + FileVersionInfo.GetVersionInfo(dll).FileVersion + ")" : "";
+        return new Msg("hwtest.readings", "count", temps.Count, "cpu", (int)Math.Round(CpuTemp()), "rpms", rpmText, "backend", _board.BackendName + Boards.VersionNote(_board));
     }
 
     Msg Responds(int index)
@@ -441,7 +434,7 @@ sealed class HardwareTest
         sb.AppendLine();
         sb.AppendLine(T("hwtest.report.when", "when", started.ToString("yyyy-MM-dd HH:mm:ss"), "minutes", (int)took.TotalMinutes, "seconds", took.Seconds));
         sb.AppendLine("- FanPilot: " + AppVersion.Text);
-        sb.AppendLine(T("hwtest.report.board", "board", Cell(MachineData.Board), "backend", _board.BackendName + GccVersion()));
+        sb.AppendLine(T("hwtest.report.board", "board", Cell(MachineData.Board), "backend", _board.BackendName + Boards.VersionNote(_board)));
         sb.AppendLine(T("hwtest.report.fan", "index", index, "title", Cell(title)));
         sb.AppendLine(T("hwtest.report.outcome", "outcome", T(outcome == Passed ? "hwtest.word.passed" : outcome == Failed ? Fail : Stopped)));
         sb.AppendLine();

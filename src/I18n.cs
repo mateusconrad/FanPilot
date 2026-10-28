@@ -31,8 +31,8 @@ static class I18n
         return tag == "pt" || tag.StartsWith("pt-") ? Portuguese : English;
     }
 
-    // Windows' display language: the console and the reports.
-    public static string Windows { get { return Of(CultureInfo.CurrentUICulture.Name); } }
+    // The system's display language (Windows' setting; LANG and LC_* on Linux): the console and the reports.
+    public static string SystemLanguage { get { return Of(CultureInfo.CurrentUICulture.Name); } }
 
     // The browser's first choice between the two ("pt-BR,pt;q=0.9,en;q=0.8"), English when it names neither.
     public static string FromAcceptLanguage(string header)

@@ -101,3 +101,7 @@ Primeira versão publicada (será a 0.1.0).
   e sem Administrador (`--fake-board[=<cenário>]`, builds Debug).
 - Testes de ponta a ponta (Playwright, no Edge) do painel contra o FanPilot com a placa falsa, e o smoke do zip da
   release antes de publicar.
+- Compilar exige o .NET SDK 10 (o suporte do 8 termina em 10/11/2026); o FanPilot do Windows continua no .NET
+  Framework 4.7.2.
+- O mesmo projeto compila também para o Linux (.NET 10), com os testes rodando no Ubuntu na CI; a placa-mãe no Linux
+  vem com o item 28b ([#35](https://github.com/mateusconrad/FanPilot/issues/35)).

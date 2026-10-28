@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using Microsoft.Win32;
 
 static class MachineData
 {
@@ -15,9 +14,8 @@ static class MachineData
 
     public static void Check(string dataDir)
     {
-        string machineId = ReadHklm(@"SOFTWARE\Microsoft\Cryptography", "MachineGuid");
-        Board = (ReadHklm(@"HARDWARE\DESCRIPTION\System\BIOS", "BaseBoardManufacturer") + " " +
-                 ReadHklm(@"HARDWARE\DESCRIPTION\System\BIOS", "BaseBoardProduct")).Trim();
+        string machineId = Platform.MachineId;
+        Board = Platform.BoardName;
         string path = Path.Combine(dataDir, "machine.json");
         var current = new Dictionary<string, object> { { "machineId", machineId }, { "board", Board } };
 
@@ -41,16 +39,5 @@ static class MachineData
         // No machine.json yet: a fresh install, or data written by a version without this check on this same PC.
         DataFile.WriteAtomic(path, current);
         Log.Info("Motherboard: " + (Board.Length > 0 ? Board : "unknown"));
-    }
-
-    static string ReadHklm(string subKey, string name)
-    {
-        try
-        {
-            using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
-            using (var key = hklm.OpenSubKey(subKey))
-                return key == null ? "" : Convert.ToString(key.GetValue(name) ?? "");
-        }
-        catch { return ""; }
     }
 }

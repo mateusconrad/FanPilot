@@ -1,6 +1,6 @@
 # Every push to main (and every pull request, Dependabot's included): the encoding check, the build, the tests, the
-# release zip, and the end-to-end tests with the zip's smoke test. The zip, the Playwright report and the screenshots
-# are kept as the run's artifacts. Work goes straight to main, so nothing waits on this check: a red build is fixed
+# release zip, and the end-to-end tests with the zip's smoke test; and the Linux build with its tests (item 28). The
+# zip, the Playwright report and the screenshots are kept as the run's artifacts. Work goes straight to main, so nothing waits on this check: a red build is fixed
 # before the next item.
 name: CI
 
@@ -77,3 +77,35 @@ jobs:
         with:
           name: screenshots
           path: tests/e2e/screens
+
+  # The Linux build (item 28): .NET 10, the tests on Linux as a plain user (the ones that need root are skipped, as
+  # the ones that need Administrator are on a PC), and the panel's. The package and the end-to-end tests come with 28c.
+  linux:
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: 'true'
+      DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Restaurar pacotes (packages.lock.json)
+        run: dotnet restore FanPilot.sln --locked-mode
+      - name: Compilar (net10.0)
+        run: dotnet build FanPilot.sln -c Release -f net10.0 --no-restore
+      - name: Versão
+        run: |
+          version=$(sed -n 's:.*<VersionPrefix>\(.*\)</VersionPrefix>.*:\1:p' Directory.Build.props)
+          expected="FanPilot $version+$(git rev-parse HEAD | cut -c1-7)"
+          actual=$(dotnet bin/net10.0/FanPilot.dll --version)
+          if [ "$actual" != "$expected" ]; then echo "--version mostrou '$actual'; o esperado era '$expected'."; exit 1; fi
+          echo "$actual"
+      - name: Testes C#
+        run: dotnet test FanPilot.sln -c Release -f net10.0 --no-build
+      - name: Testes do painel
+        run: node --test "tests/js/*.test.mjs"

@@ -21,7 +21,8 @@ sealed class FanPilotService : ServiceBase
         AutoLog = true; // started and stopped, in the Windows event log
     }
 
-    public static int Run(FanPilotHost host)
+    // stop: unused here, the Service Control Manager stops the service (FanPilotService.Linux.cs waits on it).
+    public static int Run(FanPilotHost host, ManualResetEvent stop)
     {
         // Warnings and errors also go to the event log ("FanPilot" in Application): there is no console to see them.
         Log.Mirror = (level, text) =>

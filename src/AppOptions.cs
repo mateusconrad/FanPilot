@@ -4,8 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Security.AccessControl;
-using System.Security.Principal;
 
 sealed class AppOptions
 {
@@ -72,18 +70,9 @@ static class DataDirectory
         return Path.GetFullPath(Environment.ExpandEnvironmentVariables(requested.Trim()));
     }
 
-    // The service runs as LocalSystem: its pairings, curves and config must not be writable by other users, or a
-    // standard user could change what a SYSTEM process trusts. Only SYSTEM and Administrators, inherited by every file.
-    public static void Restrict(string dir)
-    {
-        Directory.CreateDirectory(dir);
-        var acl = new DirectorySecurity();
-        acl.SetAccessRuleProtection(true, false);
-        foreach (var sid in new[] { WellKnownSidType.LocalSystemSid, WellKnownSidType.BuiltinAdministratorsSid })
-            acl.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(sid, null), FileSystemRights.FullControl,
-                InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
-        Directory.SetAccessControl(dir, acl);
-    }
+    // As a service, the folder is the service's alone (Platform: SYSTEM and Administrators on Windows, root on Linux):
+    // it trusts the pairings and the config.json in it.
+    public static void Restrict(string dir) { Platform.RestrictDirectory(dir); }
 }
 
 // FanPilot.exe --import-data <portable data folder> [--data <folder>]: moving from the zip to the installed version.
@@ -100,17 +89,17 @@ static class DataImport
         from = Path.GetFullPath(from);
         if (running)
         {
-            Console.WriteLine(new Msg("console.import.busy").In(I18n.Windows));
+            Console.WriteLine(new Msg("console.import.busy").In(I18n.SystemLanguage));
             return 4;
         }
         if (!Directory.Exists(from))
         {
-            Console.WriteLine(new Msg("console.import.notFound", "path", from).In(I18n.Windows));
+            Console.WriteLine(new Msg("console.import.notFound", "path", from).In(I18n.SystemLanguage));
             return 1;
         }
         if (string.Equals(from.TrimEnd('\\'), Path.GetFullPath(to).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
         {
-            Console.WriteLine(new Msg("console.import.same").In(I18n.Windows));
+            Console.WriteLine(new Msg("console.import.same").In(I18n.SystemLanguage));
             return 1;
         }
         Directory.CreateDirectory(to);

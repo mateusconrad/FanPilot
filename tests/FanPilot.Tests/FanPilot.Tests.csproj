@@ -1,12 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- The same two builds as FanPilot (item 28): net472 runs on Windows, net10.0 on Linux (the CI's ubuntu job, or a
+       container). On Windows, dotnet test leaves net10.0 out: it would run the Linux code on Windows. -->
   <PropertyGroup>
-    <TargetFramework>net472</TargetFramework>
+    <TargetFrameworks>net472;net10.0</TargetFrameworks>
     <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net472'">
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <!-- Bring FanPilot.exe.config along with FanPilot.exe: the smoke tests check its binding redirects. -->
     <AllowedReferenceRelatedFileExtensions>$(AllowedReferenceRelatedFileExtensions);.exe.config</AllowedReferenceRelatedFileExtensions>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0' and '$(OS)' == 'Windows_NT'">
+    <IsTestProject>false</IsTestProject>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,6 +33,14 @@
   <!-- JsonTests checks FanPilot's Json against the JavaScriptSerializer it replaced (item 28). -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
     <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+
+  <!-- Tests of what only one system has, as in src\FanPilot.csproj. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <Compile Remove="Gcc*.cs;Gigabyte*.cs;CpuTemperatureTests.cs;*.Windows.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
+    <Compile Remove="*.Linux.cs" />
   </ItemGroup>
 
   <ItemGroup>

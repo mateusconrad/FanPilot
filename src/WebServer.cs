@@ -25,7 +25,8 @@ sealed class WebServer
     readonly HostGuard _hosts;
     readonly SseHub _hub = new SseHub();
     readonly HttpListener _listener = new HttpListener();
-    // "+" = every address, so phones on the LAN reach it (needs Administrator). Tests use "localhost", which does not.
+    // "+" = every address, so phones on the LAN reach it (needs Administrator on Windows). Tests and FanPilot without
+    // Administrator use "localhost": this PC only.
     internal string ListenHost = "+";
 
     static readonly Dictionary<string, string> ContentTypes = new Dictionary<string, string> {
@@ -61,7 +62,7 @@ sealed class WebServer
 
     public void Start()
     {
-        _listener.Prefixes.Add("http://" + ListenHost + ":" + _cfg.Port + "/");
+        _listener.Prefixes.Add("http://" + (ListenHost == "localhost" ? Platform.LocalhostPrefixHost : ListenHost) + ":" + _cfg.Port + "/");
         _listener.Start();
         new Thread(AcceptLoop) { IsBackground = true, Name = "http" }.Start();
     }
@@ -104,6 +105,19 @@ sealed class WebServer
         h["X-Frame-Options"] = "DENY";
         h["Referrer-Policy"] = "no-referrer";
         h["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'";
+
+        // "localhost": this PC only, also where the listener had to take every address (Platform.LocalhostPrefixHost).
+        // A plain 403: .NET's own HttpListener (Linux) can't drop a connection without answering it.
+        if (ListenHost == "localhost" && !IPAddress.IsLoopback(ctx.Request.RemoteEndPoint.Address))
+        {
+            try
+            {
+                ctx.Response.StatusCode = 403;
+                ctx.Response.Close();
+            }
+            catch { }
+            return;
+        }
 
         // Before anything else, static files included: a request for some other host is never served.
         var url = ctx.Request.Url;

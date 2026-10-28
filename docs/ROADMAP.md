@@ -41,7 +41,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 | 25 | [Fonte de temperatura combinada](specs/25-fonte-combinada.md) | 4 | P–M | 15 | concluído | ok | [#25](https://github.com/mateusconrad/FanPilot/issues/25) | `source` = sensor, `gpu` ou `max` nas curvas por software; a Gigabyte recusa; falta uma placa no caminho LHM com GPU |
 | 26 | [Testes de ponta a ponta (painel e executável)](specs/26-testes-ponta-a-ponta.md) | 2 | M | 08, 11 | concluído | ok | [#26](https://github.com/mateusconrad/FanPilot/issues/26) | 36 testes no Edge (~1 min na CI) e smoke do zip; acharam e corrigiram a reconexão do SSE depois de um 503 e o contraste do texto secundário |
 | 27 | [Teste automatizado na placa real](specs/27-teste-em-hardware.md) | 2 | P–M | 08 | concluído | ok | [#27](https://github.com/mateusconrad/FanPilot/issues/27) | falta a primeira execução na B760M |
-| 28 | [Linux](specs/28-linux.md) | 5 | G + M | 09, 11, 14a, 15 | a fazer | a fazer | a criar | três etapas: 28a (.NET 10 e a placa falsa), 28b (hwmon e GPU, com ponto de parada num PC com Linux) e 28c (systemd, pacote e CI); o caminho Gigabyte fica só no Windows |
+| 28 | [Linux](specs/28-linux.md) | 5 | G + M | 09, 11, 14a, 15 | em andamento | ok (28a) | [#35](https://github.com/mateusconrad/FanPilot/issues/35) | 28a feita: alvos `net472` e `net10.0`, `Json` próprio, `Platform` por sistema, placa falsa e 292 testes no Linux, job `linux` na CI; seguem a 28b (hwmon e GPU, com ponto de parada num PC com Linux) e a 28c (systemd e pacote); o caminho Gigabyte fica só no Windows |
 
 ## Ordem de execução
 
@@ -162,7 +162,7 @@ Placa de referência: B760M GAMING X AX com Gigabyte Control Center 26.03.26.01.
 | 24/10/2026 | Uma branch e um PR por item; issues controladas por labels de status | todos | substituída pela de baixo |
 | 24/10/2026 | Trabalho direto na `main`, sem branches nem PRs; commits com `(#N)` e o último com `Closes #N`; issues controladas por labels | todos | aprovada |
 | 24/10/2026 | Primeira versão com tag: `v0.1.0`, criada depois da verificação em hardware dos itens pendentes | 11 | proposta |
-| 24/10/2026 | SDK do .NET fixado pelo `global.json` (8.0), para o PC e a CI compilarem igual; passar para o SDK 10 antes do fim do suporte do 8 (10/11/2026) | 11 | proposta |
+| 24/10/2026 | SDK do .NET fixado pelo `global.json` (8.0), para o PC e a CI compilarem igual; passar para o SDK 10 antes do fim do suporte do 8 (10/11/2026) | 11 | aprovada; SDK 10 desde 28/10/2026 (28a) |
 | 24/10/2026 | Assinatura pelo SignPath Foundation (Azure Trusted Signing como alternativa) | 12 | proposta |
 | 24/10/2026 | Instalador com Inno Setup; dados da versão instalada em `%ProgramData%\FanPilot` | 14 | proposta |
 | 24/10/2026 | Resposta "Equilibrada" como padrão, inclusive nas curvas por software já salvas | 15 | proposta |
@@ -186,4 +186,4 @@ Placa de referência: B760M GAMING X AX com Gigabyte Control Center 26.03.26.01.
 | O kernel não controla o chip da placa (módulo ausente, conflito com a ACPI; o IT8689E da B760M talvez precise do `it87` de fora da árvore) | O `HwmonBoard` mostra o aviso com o que fazer e não toca nos fans; o `--diagnose` do Linux alimenta os relatos de compatibilidade (13); ponto de parada da 28b numa placa que o kernel controle |
 | Um FanPilot morto com `kill -9` no Linux deixa os fans no último PWM manual | `--restore-fans` no `ExecStopPost` da unit, com os `pwmN_enable` originais guardados em `/run/fanpilot/` |
 | Manter dois alvos (`net472` e `net10.0`) dobra o que pode quebrar | A CI compila e testa os dois a cada push; o que é de um sistema só fica fora do outro pelo `.csproj` e pela `Platform` |
-| O suporte do SDK 8 termina em 10/11/2026 | O FanPilot roda no .NET Framework 4.7.2, que não muda; trocar o SDK é atualizar o `global.json` e instalar o SDK 10 no PC que compila (veja Decisões) |
+| O suporte do SDK 8 termina em 10/11/2026 | Resolvido na 28a: o `global.json` pede o SDK 10, e o PC que compila precisa dele instalado. O FanPilot do Windows continua no .NET Framework 4.7.2 |

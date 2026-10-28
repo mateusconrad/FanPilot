@@ -374,6 +374,7 @@
   "gcc.missing": "falta {members}",
   "gcc.incompatible": "O Gigabyte Control Center {version} não é compatível com este FanPilot ({problem}).",
   "startup.gccMissing": "config.json pede \"backend\": \"gigabyte\", mas o Gigabyte Control Center não foi encontrado (procurado em {dir}).",
+  "startup.linuxBoard": "No Linux, o FanPilot ainda não alcança a placa-mãe: isso vem com os drivers hwmon do kernel (item 28b, https://github.com/mateusconrad/FanPilot/issues/35). Nenhum fan foi tocado.",
 
   "board.serviceDown": "{service} indisponível: {detail}",
   "board.tempInputRefused": "O serviço recusou a troca do sensor de temperatura.",
@@ -420,6 +421,7 @@
   "raw": "{text}",
   "console.unknownScenario": "Cenário da placa de teste desconhecido: {scenario}. Use um destes: {list}.",
   "console.admin": "FanPilot precisa rodar como Administrador (o acesso aos sensores e fans da placa-mãe exige).",
+  "console.root": "FanPilot precisa rodar como root (o acesso aos sensores e fans da placa-mãe exige): sudo ./FanPilot",
   "console.hwtestBusy": "Feche o FanPilot antes do teste em hardware: os dois disputariam os fans.",
   "console.alreadyRunning": "O FanPilot já está rodando. Painel: {url}",
   "console.option.folder": "{option} precisa de uma pasta: {option} <pasta>.",
@@ -448,6 +450,7 @@
 
   "diag.howToReport": "Para relatar como foi nesta placa, abra o formulário já preenchido e anexe este arquivo: {url}",
   "diag.redacted": "Números de série e UUIDs foram omitidos.",
+  "diag.linuxPending": "O --diagnose no Linux vem com os drivers hwmon do kernel (item 28b, https://github.com/mateusconrad/FanPilot/issues/35). Nada foi lido nem gravado.",
   "diag.otherInstance": "Atenção: outro FanPilot está rodando agora; as leituras abaixo podem refletir o controle dele.",
   "diag.board": "Placa-mãe (registro): {board}",
   "diag.gcc.missing": "não encontrado",

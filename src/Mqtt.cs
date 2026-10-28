@@ -30,7 +30,7 @@ sealed class MqttSettings
     public string Username, Password;
     public string DiscoveryPrefix = "homeassistant";
     // The entities' names go out in the language of the panel the settings were saved from, like the alerts (item 21).
-    public string Language = I18n.Windows;
+    public string Language = I18n.SystemLanguage;
 
     public string Broker { get { return Host + ":" + Port; } }
 

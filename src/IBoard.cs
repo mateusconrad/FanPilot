@@ -35,6 +35,13 @@ interface IBoard
     List<Msg> ControlProblems();
 }
 
+// Boards where FanPilot runs the curves: they can follow the GPU too (item 25). FanPilotHost hands them its temperature
+// once the GPU is open.
+interface IFollowsGpu
+{
+    Func<double?> GpuTemp { set; }
+}
+
 sealed class SensorReading
 {
     public string Id;

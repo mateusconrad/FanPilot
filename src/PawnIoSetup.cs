@@ -27,8 +27,8 @@ static class PawnIoSetup
             return;
         }
         Console.WriteLine();
-        Console.WriteLine(new Msg("console.pawnio.why").In(I18n.Windows));
-        Console.Write(new Msg("console.pawnio.ask", "id", WingetId, "site", Site).In(I18n.Windows) + " ");
+        Console.WriteLine(new Msg("console.pawnio.why").In(I18n.SystemLanguage));
+        Console.Write(new Msg("console.pawnio.ask", "id", WingetId, "site", Site).In(I18n.SystemLanguage) + " ");
         string answer = ReadLine(TimeSpan.FromMinutes(2));
         if (answer == null) { Console.WriteLine(); Log.Warn(new Msg("console.pawnio.noAnswer")); return; }
         answer = answer.Trim().ToLowerInvariant();

@@ -45,7 +45,7 @@ Como funciona por baixo: veja [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEE
 ## Compilar e rodar
 
 ```powershell
-.\build.ps1                     # .NET SDK 8; pacotes do NuGet fixados (com hash) pelo src\packages.lock.json
+.\build.ps1                     # .NET SDK 10; pacotes do NuGet fixados (com hash) pelo src\packages.lock.json
 dotnet test                     # testes automatizados (sem hardware nem Administrador)
 node --test "tests/js/*.test.mjs"  # testes do painel (Node 22+)
 dotnet build src\FanPilot.csproj -c Debug; cd tests\e2e; npm ci; npx playwright test   # ponta a ponta, no Edge
@@ -61,9 +61,13 @@ dotnet build src\FanPilot.csproj -c Debug; cd tests\e2e; npm ci; npx playwright 
 .\bin\FanPilot.exe --import-data <pasta antiga> --data <pasta>   # (FanPilot fechado) traz curvas, pareamentos e nomes
 ```
 
-Compilar exige o [.NET SDK 8](https://dotnet.microsoft.com/download/dotnet/8.0): o `global.json` fixa a versão, para
+Compilar exige o [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0): o `global.json` fixa a versão, para
 este PC e a CI compilarem igual (com outro SDK, o lock file e a versão do C# mudariam). Para **rodar**, basta o Windows: o
 FanPilot usa o .NET Framework 4.7.2 que já vem nele.
+
+O suporte a Linux está a caminho ([#35](https://github.com/mateusconrad/FanPilot/issues/35)): o mesmo projeto também
+compila para o .NET 10 no Linux (`dotnet build -f net10.0`, depois `dotnet bin/net10.0/FanPilot.dll`), e os testes dele
+rodam lá na CI. Ele ainda não alcança a placa-mãe: os drivers hwmon do kernel vêm em seguida.
 
 O build não depende do Gigabyte Control Center: o FanPilot carrega as DLLs do GCC instalado só na hora de rodar, então
 um mesmo build (ou zip) atende as placas Gigabyte e as outras.

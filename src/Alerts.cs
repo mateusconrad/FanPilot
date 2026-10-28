@@ -187,7 +187,7 @@ sealed class AlertSettings
     public string PcName = Environment.MachineName;
     // What the messages that leave the PC are written in: the panel's language when the settings were saved, else
     // Windows' (item 21).
-    public string Language = I18n.Windows;
+    public string Language = I18n.SystemLanguage;
     public string NtfyUrl, TelegramToken, TelegramChatId;
 
     public bool HasDestination { get { return NtfyUrl != null || (TelegramToken != null && TelegramChatId != null); } }
