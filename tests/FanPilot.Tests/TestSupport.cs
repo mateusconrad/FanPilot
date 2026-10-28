@@ -3,7 +3,6 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using System.Security.Principal;
 
 // FanManager and AuthManager keep their state in files: each test gets a fresh folder, deleted afterwards.
 sealed class TempDir : IDisposable
@@ -27,8 +26,9 @@ static class TestEnv
     // xunit.runner.json turns shadow copying off, so this is the build output: FanPilot.exe, wwwroot\, fixtures\.
     public static readonly string OutputDir = Path.GetDirectoryName(typeof(TestEnv).Assembly.Location);
 
-    // Listening on every address ("+", as FanPilot does) needs Administrator; CI runners have it, this PC may not.
-    public static readonly bool IsAdministrator = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
+    // Listening on every address ("+", as FanPilot does) needs Administrator on Windows; CI runners have it, this PC
+    // may not. On Linux: root, which a container has and the CI's runner doesn't.
+    public static readonly bool IsAdministrator = Platform.IsElevated;
 
     public static int FreePort()
     {

@@ -16,7 +16,7 @@ using System.Linq;
 using System.Threading;
 using LibreHardwareMonitor.Hardware;
 
-sealed class LhmBoard : IBoard
+sealed class LhmBoard : IBoard, IFollowsGpu
 {
     const int FailuresBeforeRelease = 5;
 
@@ -52,7 +52,7 @@ sealed class LhmBoard : IBoard
     public string[] TempInputTitles { get; private set; }
     public string BoardName { get; private set; }
     // The GPU's temperature now, for curves that follow it (item 25); FanPilotHost sets it once the GPU is open.
-    public Func<double?> GpuTemp;
+    public Func<double?> GpuTemp { get; set; }
 
     public LhmBoard()
     {

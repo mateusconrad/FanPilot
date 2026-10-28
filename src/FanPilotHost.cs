@@ -1,6 +1,6 @@
 // The running FanPilot: web server, board, fans, GPU and sampler. Started in that order (the port before the hardware,
 // so a port taken by another program fails before anything touches a fan), and stopped by Stop() on every way out.
-// The console (App.Run) and the Windows service (FanPilotService) share it.
+// The console (App.Run) and the service (FanPilotService: Windows service or systemd) share it.
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -63,8 +63,8 @@ sealed class FanPilotHost
 
         var gpu = _openGpu();
         // Curves FanPilot runs can follow the GPU too (item 25).
-        var lhm = bridge as LhmBoard;
-        if (lhm != null) lhm.GpuTemp = () => gpu.Temperature;
+        var follows = bridge as IFollowsGpu;
+        if (follows != null) follows.GpuTemp = () => gpu.Temperature;
         var fans = new FanManager(bridge, _cfg, _dataDir);
         var sampler = new Sampler(bridge, gpu);
         // 10 s rows on disk for the 1 h, 24 h and 7 d charts (item 24); historyDays: 0 keeps only the 10 minutes.
@@ -92,7 +92,7 @@ sealed class FanPilotHost
         string pairUrl = "http://localhost:" + _cfg.Port + "/pair";
         Log.Info(new Msg("console.running", "port", _cfg.Port, "urls", string.Join(", ", NetworkInfo.CandidateHosts(_cfg).Select(h => "http://" + h + ":" + _cfg.Port))));
         Log.Info(new Msg("console.pairHint", "url", pairUrl));
-        if (_interactive) try { Process.Start(pairUrl); } catch { }
+        if (_interactive) Platform.OpenInBrowser(pairUrl);
         return 0;
     }
 

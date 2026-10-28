@@ -374,6 +374,7 @@
   "gcc.missing": "missing {members}",
   "gcc.incompatible": "Gigabyte Control Center {version} is not compatible with this FanPilot ({problem}).",
   "startup.gccMissing": "config.json asks for \"backend\": \"gigabyte\", but Gigabyte Control Center was not found (looked in {dir}).",
+  "startup.linuxBoard": "On Linux, FanPilot can't reach the motherboard yet: that comes with the kernel's hwmon drivers (item 28b, https://github.com/mateusconrad/FanPilot/issues/35). No fan was touched.",
 
   "board.serviceDown": "{service} unavailable: {detail}",
   "board.tempInputRefused": "The service refused to change the temperature sensor.",
@@ -420,6 +421,7 @@
   "raw": "{text}",
   "console.unknownScenario": "Unknown fake board scenario: {scenario}. Use one of: {list}.",
   "console.admin": "FanPilot needs to run as Administrator (reaching the motherboard's sensors and fans requires it).",
+  "console.root": "FanPilot needs to run as root (reaching the motherboard's sensors and fans requires it): sudo ./FanPilot",
   "console.hwtestBusy": "Close FanPilot before the hardware test: the two would fight over the fans.",
   "console.alreadyRunning": "FanPilot is already running. Panel: {url}",
   "console.option.folder": "{option} needs a folder: {option} <folder>.",
@@ -448,6 +450,7 @@
 
   "diag.howToReport": "To report how FanPilot did on this board, open the prefilled form and attach this file: {url}",
   "diag.redacted": "Serial numbers and UUIDs were left out.",
+  "diag.linuxPending": "--diagnose on Linux comes with the kernel's hwmon drivers (item 28b, https://github.com/mateusconrad/FanPilot/issues/35). Nothing was read or written.",
   "diag.otherInstance": "Note: another FanPilot is running right now; the readings below may reflect its control.",
   "diag.board": "Motherboard (registry): {board}",
   "diag.gcc.missing": "not found",

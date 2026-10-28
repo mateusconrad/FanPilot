@@ -222,7 +222,7 @@ public sealed class MqttTests : IDisposable
         saved.Save(path);
         string file = File.ReadAllText(path);
         Assert.DoesNotContain("segredo", file);
-        Assert.Contains("\"password\":\"dpapi:", file);
+        Assert.Contains("\"password\":\"" + Secrets.Prefix, file);
         var loaded = MqttSettings.Load(path);
         Assert.Equal("segredo", loaded.Password);
         Assert.Equal(true, loaded.Describe()["hasPassword"]);

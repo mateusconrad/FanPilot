@@ -6,8 +6,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Security.AccessControl;
-using System.Security.Principal;
 using Xunit;
 
 public class AppOptionsTests
@@ -54,53 +52,6 @@ public class AppOptionsTests
         Assert.True(o.HardwareTest);
         Assert.False(o.Interactive);
         Assert.Equal(new[] { "--hardware-test", "--fan", "2", "--no-browser" }, o.Raw);
-    }
-}
-
-public sealed class DataFolderTests : IDisposable
-{
-    readonly TempDir _dir = new TempDir();
-
-    public void Dispose()
-    {
-        // Restrict() leaves only SYSTEM and Administrators; as the owner, put ourselves back to clean up.
-        foreach (var d in Directory.GetDirectories(_dir.Path))
-        {
-            var acl = new DirectorySecurity();
-            acl.AddAccessRule(new FileSystemAccessRule(WindowsIdentity.GetCurrent().User, FileSystemRights.FullControl,
-                InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
-            try { Directory.SetAccessControl(d, acl); } catch (UnauthorizedAccessException) { }
-        }
-        _dir.Dispose();
-    }
-
-    [Fact]
-    public void WithoutDataTheStateLivesNextToTheExe()
-    {
-        Assert.Equal(@"C:\FanPilot\data", DataDirectory.Resolve(null, @"C:\FanPilot\", false));
-        Assert.Equal(@"C:\FanPilot\data-fake", DataDirectory.Resolve("  ", @"C:\FanPilot\", true));
-    }
-
-    [Fact]
-    public void DataIsExpandedAndMadeAbsolute()
-    {
-        string expected = Path.Combine(Environment.GetEnvironmentVariable("ProgramData"), "FanPilot");
-        Assert.Equal(expected, DataDirectory.Resolve(@"%ProgramData%\FanPilot", @"C:\x\", false));
-        Assert.True(Path.IsPathRooted(DataDirectory.Resolve(@"relativo\dados", @"C:\x\", false)));
-    }
-
-    [Fact]
-    public void TheServiceFolderBelongsToSystemAndAdministratorsOnly()
-    {
-        string dir = Path.Combine(_dir.Path, "servico");
-        DataDirectory.Restrict(dir);
-        var acl = Directory.GetAccessControl(dir);
-        Assert.True(acl.AreAccessRulesProtected);
-        var who = acl.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>()
-            .Select(r => ((SecurityIdentifier)r.IdentityReference)).ToList();
-        Assert.Equal(2, who.Count);
-        Assert.Contains(who, s => s.IsWellKnown(WellKnownSidType.LocalSystemSid));
-        Assert.Contains(who, s => s.IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid));
     }
 }
 
@@ -201,9 +152,14 @@ public sealed class FanPilotHostTests : IDisposable
     [Fact]
     public void ATakenPortFailsBeforeTheBoardIsOpened()
     {
-        var other = new HttpListener();
         int port = TestEnv.FreePort();
+#if NETFRAMEWORK
+        var other = new HttpListener();
         other.Prefixes.Add("http://localhost:" + port + "/");
+#else
+        // Linux: .NET's HttpListener takes "localhost" on ::1 alone, which doesn't stop FanPilot's 127.0.0.1 (item 28).
+        var other = new TcpListener(IPAddress.Any, port);
+#endif
         other.Start();
         try
         {

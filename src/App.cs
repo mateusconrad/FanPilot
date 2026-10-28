@@ -6,8 +6,6 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Runtime.InteropServices;
-using System.Security.Principal;
 using System.Threading;
 
 static class Log
@@ -26,9 +24,9 @@ static class Log
 
     // A line for the person at the console as well (item 21): the window shows it in Windows' language, the log file
     // keeps it in English like every other line.
-    public static void Info(Msg m) { Writer.Write("INFO", m.Text, m.In(I18n.Windows)); }
-    public static void Warn(Msg m) { Writer.Write("WARN", m.Text, m.In(I18n.Windows)); }
-    public static void Error(Msg m) { Writer.Write("ERROR", m.Text, m.In(I18n.Windows)); }
+    public static void Info(Msg m) { Writer.Write("INFO", m.Text, m.In(I18n.SystemLanguage)); }
+    public static void Warn(Msg m) { Writer.Write("WARN", m.Text, m.In(I18n.SystemLanguage)); }
+    public static void Error(Msg m) { Writer.Write("ERROR", m.Text, m.In(I18n.SystemLanguage)); }
 }
 
 // The console and data\fanpilot.log, rotated by size (fanpilot.1.log … fanpilot.3.log). The same line repeated in a
@@ -145,7 +143,7 @@ static class App
         try { o = AppOptions.Parse(args, FakeBoardAllowed); }
         catch (ArgumentException ex)
         {
-            Console.WriteLine(Msg.TextOf(ex, I18n.Windows));
+            Console.WriteLine(Msg.TextOf(ex, I18n.SystemLanguage));
             return 1;
         }
         if (o.Version)
@@ -157,7 +155,7 @@ static class App
         bool fake = o.Fake;
         if (fake && !FakeBoard.Scenarios.Contains(scenario))
         {
-            Console.WriteLine(new Msg("console.unknownScenario", "scenario", scenario, "list", string.Join(", ", FakeBoard.Scenarios)).In(I18n.Windows));
+            Console.WriteLine(new Msg("console.unknownScenario", "scenario", scenario, "list", string.Join(", ", FakeBoard.Scenarios)).In(I18n.SystemLanguage));
             return 1;
         }
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
@@ -168,12 +166,13 @@ static class App
         Log.Info("FanPilot " + AppVersion.Text + (fake ? " (fake board: " + scenario + ")" : "") + (o.Service ? " as a service" : "") +
                  "; data in " + dataDir);
 
-        // The fake board touches no hardware, so it also runs without Administrator, on localhost only (phones need
-        // the "+" prefix, which needs Administrator): that is how the end-to-end tests run on a developer's PC.
-        bool admin = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
+        // The fake board touches no hardware, so it also runs without Administrator (root on Linux), on localhost only
+        // (phones need the "+" prefix, which needs Administrator on Windows): that is how the end-to-end tests run on a
+        // developer's PC.
+        bool admin = Platform.IsElevated;
         if (!admin && (!fake || o.Diagnose))
         {
-            Console.WriteLine(new Msg("console.admin").In(I18n.Windows));
+            Console.WriteLine(Platform.ElevationNeeded.In(I18n.SystemLanguage));
             return 2;
         }
         if (o.ImportFrom != null) return DataImport.Run(o.ImportFrom, dataDir, SingleInstance.IsRunning(fake));
@@ -182,12 +181,12 @@ static class App
         {
             if (o.HardwareTest)
             {
-                Console.WriteLine(new Msg("console.hwtestBusy").In(I18n.Windows));
+                Console.WriteLine(new Msg("console.hwtestBusy").In(I18n.SystemLanguage));
                 return 4;
             }
             string panel = "http://localhost:" + AppConfig.Load(Path.Combine(dataDir, "config.json")).Port + "/";
-            Console.WriteLine(new Msg("console.alreadyRunning", "url", panel).In(I18n.Windows));
-            if (o.Interactive) try { Process.Start(panel); } catch { }
+            Console.WriteLine(new Msg("console.alreadyRunning", "url", panel).In(I18n.SystemLanguage));
+            if (o.Interactive) Platform.OpenInBrowser(panel);
             return 4;
         }
         MachineData.Check(dataDir);
@@ -206,10 +205,10 @@ static class App
             () => fake ? (GpuMonitor)FakeGpu.Scenario(scenario, cfg.GpuSafetyTemp) : GpuMonitor.Create(cfg.GpuSafetyTemp),
             o.Interactive, admin);
         var stop = new ManualResetEvent(false);
-        // Software-curve boards must get their fans back on every way out: hook all the ones Windows tells us about,
+        // Software-curve boards must get their fans back on every way out: hook all the ones the system tells us about,
         // before anything starts.
         Exit.Register(stop, host.Stop);
-        if (o.Service) return FanPilotService.Run(host);
+        if (o.Service) return FanPilotService.Run(host, stop);
         int code = host.Start();
         if (code != 0) return code;
         stop.WaitOne();
@@ -226,106 +225,18 @@ static class App
 #endif
 }
 
-static class Boards
-{
-    // "auto": Gigabyte Control Center when installed (curves in hardware), else LibreHardwareMonitor.
-    // interactive: a person is at the console, so a missing PawnIO driver can be installed right away.
-    public static IBoard Create(AppConfig cfg, bool interactive)
-    {
-        bool gcc = File.Exists(Path.Combine(Program.GccLibDir, GigabyteApi.EngineDll));
-        var api = gcc && cfg.Backend != "lhm" ? GigabyteApi.Load(Program.GccLibDir) : null;
-        if (Choose(cfg.Backend, gcc, api) == "gigabyte")
-        {
-            Log.Info("Gigabyte Control Center " + api.Version + " at " + Program.GccLibDir);
-            return new GigabyteBridge(api);
-        }
-        PawnIoSetup.OfferInstall(interactive);
-        return new LhmBoard();
-    }
-
-    // "gigabyte" or "lhm". An installed but incompatible GCC (an update changed what FanPilot uses) falls back to
-    // LibreHardwareMonitor with a notice in "auto", and stops with the reason when config.json insists on "gigabyte".
-    internal static string Choose(string backend, bool gccInstalled, GigabyteApi api)
-    {
-        if (backend == "lhm") return "lhm";
-        if (!gccInstalled)
-        {
-            if (backend == "gigabyte")
-                throw new Unavailable("startup.gccMissing", "dir", Program.GccLibDir);
-            return "lhm";
-        }
-        if (api.Compatible) return "gigabyte";
-        if (backend == "gigabyte") throw new Unavailable("gcc.incompatible", "version", api.Version, "problem", api.Problem);
-        AppNotices.Add(new Msg("notice.gccFallback", "version", api.Version, "problem", api.Problem));
-        return "lhm";
-    }
-}
-
-// One FanPilot per PC: a second one would fight the first over the fans (and fail on the port anyway).
-static class SingleInstance
-{
-    // Global\: visible from every session, so a FanPilot running as a service (session 0) counts too.
-    const string Name = @"Global\FanPilot-e717e36d-9b66-43c9-a08b-96d2af1a9b7c";
-    // Held for the whole run. A local variable could be collected, and finalizing the Mutex would let a second one in.
-    static Mutex _held;
-
-    public static bool TryAcquire(bool fake)
-    {
-        _held = TryAcquire(fake ? Name + "-fake" : Name);
-        return _held != null;
-    }
-
-    public static bool IsRunning(bool fake) { return IsRunning(fake ? Name + "-fake" : Name); }
-
-    internal static Mutex TryAcquire(string name)
-    {
-        var mutex = new Mutex(false, name);
-        try
-        {
-            if (mutex.WaitOne(0)) return mutex;
-            mutex.Dispose();
-            return null;
-        }
-        catch (AbandonedMutexException)
-        {
-            // The previous FanPilot ended without releasing it (killed, crashed): the mutex is ours now.
-            Log.Warn("The previous FanPilot ended without shutting down cleanly.");
-            return mutex;
-        }
-    }
-
-    internal static bool IsRunning(string name)
-    {
-        Mutex mutex;
-        if (!Mutex.TryOpenExisting(name, out mutex)) return false;
-        mutex.Dispose();
-        return true;
-    }
-}
-
-// Runs the cleanup once on Ctrl+C, closing the console window, logoff, shutdown, or an unhandled exception.
-// A forced kill (Task Manager "End task" on the process, a crash of the runtime) cannot be intercepted.
+// Runs the cleanup once on Ctrl+C, closing the console window, logoff, shutdown (Platform: the console's signals on
+// each system), or an unhandled exception. A forced kill (Task Manager "End task" on the process, kill -9, a crash of
+// the runtime) cannot be intercepted.
 static class Exit
 {
-    delegate bool ConsoleCtrlHandler(int ctrlType);
-    [DllImport("kernel32.dll", SetLastError = true)]
-    static extern bool SetConsoleCtrlHandler(ConsoleCtrlHandler handler, bool add);
-
-    const int CtrlC = 0, CtrlBreak = 1, CtrlClose = 2, CtrlLogoff = 5, CtrlShutdown = 6;
-    static ConsoleCtrlHandler _handler; // kept referenced so the GC doesn't collect the callback
     static Action _cleanup;
     static int _done;
 
     public static void Register(ManualResetEvent stop, Action cleanup)
     {
         _cleanup = cleanup;
-        _handler = type =>
-        {
-            if (type == CtrlC || type == CtrlBreak) { stop.Set(); return true; } // Main cleans up and returns
-            Cleanup(); // close/logoff/shutdown: Windows ends the process right after this returns
-            return true;
-        };
-        SetConsoleCtrlHandler(_handler, true);
+        Platform.HandleConsoleSignals(() => stop.Set(), Cleanup);
         AppDomain.CurrentDomain.ProcessExit += (s, e) => Cleanup();
         AppDomain.CurrentDomain.UnhandledException += (s, e) =>
         {

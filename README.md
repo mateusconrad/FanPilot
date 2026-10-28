@@ -47,7 +47,7 @@ How it works under the hood: see [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGI
 ## Build and run
 
 ```powershell
-.\build.ps1                     # .NET SDK 8; NuGet packages pinned (with hashes) by src\packages.lock.json
+.\build.ps1                     # .NET SDK 10; NuGet packages pinned (with hashes) by src\packages.lock.json
 dotnet test                     # automated tests (no hardware, no Administrator)
 node --test "tests/js/*.test.mjs"  # panel tests (Node 22+)
 dotnet build src\FanPilot.csproj -c Debug; cd tests\e2e; npm ci; npx playwright test   # end to end, in Edge
@@ -63,9 +63,13 @@ dotnet build src\FanPilot.csproj -c Debug; cd tests\e2e; npm ci; npx playwright 
 .\bin\FanPilot.exe --import-data <old folder> --data <folder>   # (FanPilot closed) brings curves, pairings and names
 ```
 
-Building needs the [.NET SDK 8](https://dotnet.microsoft.com/download/dotnet/8.0): `global.json` pins the version, so
+Building needs the [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0): `global.json` pins the version, so
 a PC and the CI build alike (another SDK would change the lock file and the C# version). To **run** it, Windows is
 enough: FanPilot uses the .NET Framework 4.7.2 that comes with it.
+
+Linux support is on its way ([#35](https://github.com/mateusconrad/FanPilot/issues/35)): the same project also builds
+for .NET 10 on Linux (`dotnet build -f net10.0`, then `dotnet bin/net10.0/FanPilot.dll`), and its tests run there in
+the CI. It doesn't reach the motherboard yet: the kernel's hwmon drivers come next.
 
 The build doesn't depend on Gigabyte Control Center: FanPilot loads the installed GCC's DLLs only at run time, so one
 build (or zip) serves Gigabyte boards and every other one.

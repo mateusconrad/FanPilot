@@ -18,6 +18,8 @@ public class SmokeTests
         Assert.Equal("FanPilot", typeof(FanCurve).Assembly.GetName().Name);
     }
 
+#if NETFRAMEWORK
+    // Windows only: LibreHardwareMonitor and the binding redirects of the .NET Framework build.
     [Fact]
     public void LibreHardwareMonitorAndItsDependenciesLoad()
     {
@@ -75,4 +77,5 @@ public class SmokeTests
         string file = Path.Combine(OutputDir, name.Name + (name.Name == "FanPilot" ? ".exe" : ".dll"));
         return Assembly.ReflectionOnlyLoadFrom(file).GetReferencedAssemblies();
     }
+#endif
 }

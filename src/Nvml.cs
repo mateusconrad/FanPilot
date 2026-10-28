@@ -1,5 +1,6 @@
 // NVIDIA GPU monitoring/fan control through NVML (nvml.dll ships with the driver in System32).
-// GCC does not cover the GPU, so this is independent of the Gigabyte service. Other GPUs: see LhmGpu.cs.
+// GCC does not cover the GPU, so this is independent of the Gigabyte service. Which GPU monitor FanPilot uses on each
+// system: GpuMonitor.Windows.cs (other GPUs through LibreHardwareMonitor: LhmGpu.cs) and GpuMonitor.Linux.cs.
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -34,7 +35,7 @@ static class NvmlNative
 
 // What the panel and the sampler use, whichever library reaches the GPU. The safety rule lives here: a manual fan
 // setting never outlives an overheating GPU, and every way out puts the fan back on the driver's automatic curve.
-abstract class GpuMonitor
+abstract partial class GpuMonitor
 {
     protected readonly object Sync = new object();
     protected readonly int SafetyTemp;
@@ -83,16 +84,6 @@ abstract class GpuMonitor
         object temp;
         if (r.TryGetValue("temp", out temp) && EnforceSafety(temp)) r = Read(); // the snapshot must show the fan back on auto
         _latest = r;
-    }
-
-    // NVML when the NVIDIA driver provides it (most complete), otherwise LibreHardwareMonitor (AMD, Intel Arc, NVIDIA).
-    public static GpuMonitor Create(int safetyTemp)
-    {
-        var nvml = new NvmlGpu(safetyTemp);
-        if (nvml.Ok) return nvml;
-        var lhm = new LhmGpu(safetyTemp, nvml.Error);
-        Log.Info(lhm.Ok ? "GPU via LibreHardwareMonitor: " + lhm.Name : "GPU unavailable: " + lhm.Error.Text);
-        return lhm;
     }
 
     public abstract Dictionary<string, object> Read();

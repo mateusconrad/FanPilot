@@ -1,19 +1,25 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Runs on the .NET Framework 4.7.2 that ships with Windows: the Gigabyte service's IPC (.NET Remoting) only
-       exists there. The .NET SDK is only needed to build. -->
+  <!-- Two builds of the same FanPilot (item 28). Windows: the .NET Framework 4.7.2 that ships with it, because the
+       Gigabyte service's IPC (.NET Remoting) only exists there. Linux: .NET 10, published self-contained. The .NET SDK
+       is only needed to build. -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net472</TargetFramework>
+    <TargetFrameworks>net472;net10.0</TargetFrameworks>
     <AssemblyName>FanPilot</AssemblyName>
     <RootNamespace />
-    <ApplicationManifest>..\app.manifest</ApplicationManifest>
     <ApplicationIcon>..\assets\brand\fanpilot.ico</ApplicationIcon>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net472'">
+    <ApplicationManifest>..\app.manifest</ApplicationManifest>
     <!-- LibreHardwareMonitor's dependencies were built against slightly different versions of each other. -->
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <!-- bin\FanPilot.exe (Release) and bin\Debug\FanPilot.exe, where the README, the scripts and the end-to-end tests
+         find it; the Linux build goes to a net10.0 folder inside each. -->
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
   </PropertyGroup>
 
   <!-- Release goes to bin\ next to data\, as the README describes; build.ps1 -OutDir builds elsewhere. -->
@@ -24,13 +30,25 @@
   <!-- No reference to Gigabyte Control Center: GigabyteApi loads its client DLLs at runtime from the GCC install,
        so one build (on any machine, the CI included) serves Gigabyte and every other board. -->
   <ItemGroup>
-    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
     <PackageReference Include="MQTTnet" Version="4.3.7.1207" />
+    <InternalsVisibleTo Include="FanPilot.Tests" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
     <!-- The Windows service mode (item 14a). -->
     <Reference Include="System.ServiceProcess" />
     <!-- DPAPI for the alert destinations' secrets (item 16). -->
     <Reference Include="System.Security" />
-    <InternalsVisibleTo Include="FanPilot.Tests" />
+  </ItemGroup>
+
+  <!-- What only one system has. Windows: Gigabyte Control Center, LibreHardwareMonitor with PawnIO, the Windows service
+       and *.Windows.cs. Linux: *.Linux.cs. Each *.Windows.cs has a *.Linux.cs with the same members. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <Compile Remove="Gigabyte*.cs;Lhm*.cs;CpuTemperature.cs;PawnIoSetup.cs;FanPilotService.cs;*.Windows.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
+    <Compile Remove="*.Linux.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -42,7 +60,7 @@
   <!-- MSBuild only redirects the version conflicts it sees at build time. Gigabyte's assemblies are loaded at runtime
        from the GCC folder and could reference older versions of the libraries FanPilot ships, so every strong-named
        library next to the exe gets a redirect to its own copy (what NuGet did in packages.config projects). -->
-  <Target Name="RedirectEveryShippedLibrary" AfterTargets="ResolveAssemblyReferences" BeforeTargets="GenerateBindingRedirects">
+  <Target Name="RedirectEveryShippedLibrary" AfterTargets="ResolveAssemblyReferences" BeforeTargets="GenerateBindingRedirects" Condition="'$(TargetFramework)' == 'net472'">
     <ItemGroup>
       <_StrongNamedShipped Include="@(ReferencePath)" Condition="'%(ReferencePath.FusionName)' != '' and !$([System.String]::Copy('%(ReferencePath.FusionName)').Contains('PublicKeyToken=null'))" />
       <!-- Only what is copied next to the exe (System.Management, for instance, comes from Windows itself). -->

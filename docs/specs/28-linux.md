@@ -95,6 +95,45 @@ Distribuições de referência: Ubuntu 24.04 LTS e Fedora (a atual). Outras com 
    o Windows passam no `net10.0`. Os que tocam (`GigabyteApi`, ACL, serviço do Windows, DPAPI) ficam só no `net472`
    ou viram `SkippableFact` por sistema.
 
+### Andamento da 28a (28/10/2026)
+
+Feita. No Windows nada muda: 301 testes no `net472` (os 294 de antes e os 7 do `JsonTests`), o e2e no Edge e o zip
+iguais (48 arquivos, nada do `net10.0`). No Linux (container `dotnet/sdk:10.0`), restore travado, build, 292 testes
+como root, 289 como usuário comum (os 3 que pedem Administrador ficam de fora, como num PC) e a placa falsa de ponta a
+ponta: `/pair` e `/api/fans` respondem, uma segunda instância diz que já está rodando e o `SIGTERM` para limpo.
+
+O que mudou em relação ao plano:
+
+- **JSON sem pacote novo.** Em vez do `System.Text.Json` (que traria dependências e binding redirects para o `net472`,
+  ao lado das DLLs do GCC), o `Json` (`src/Json.cs`) ganhou leitor e escritor próprios, iguais nos dois alvos. Eles
+  reproduzem o `JavaScriptSerializer`: `int`, `long`, `decimal` e, com expoente, `double`; `object[]`; o mesmo escape
+  (`<`, `>`, `&`, `'`, U+2028); números no formato `"r"`; `NaN` escrito como antes. O `JsonTests` compara os dois no
+  Windows, inclusive com as fixtures e os dicionários do painel. JSON inválido vira `FormatException` (400 no servidor).
+- **Arquivos por sistema** em vez de uma classe `Platform` com tudo: `Platform`, `Boards`, `SingleInstance`, `Secrets`,
+  `GpuMonitor.Create`, `Diagnose.Run` e `FanPilotService` têm um `*.Windows.cs` e um `*.Linux.cs` com os mesmos membros,
+  e o `.csproj` escolhe pelo alvo. O GCC saiu do `Program.cs` para o `GigabyteInstall.cs`; o `CpuRoles` saiu do
+  `CpuTemperature.cs` (só Windows) para o `CpuRoles.cs`. `I18n.Windows` virou `I18n.SystemLanguage` (`System` esconderia
+  o namespace dentro da classe). O `FanPilotHost` fala com o `IFollowsGpu` em vez do `LhmBoard`.
+- **Instância única sem PID.** O arquivo `/run/fanpilot/fanpilot.lock` (com `FileShare.None`, um `flock`) cai com o
+  processo, morto ou não, então não há o que limpar; e um PID gravado acusaria "não terminou limpo" depois de toda saída
+  normal. Fica como no Windows, onde o mutex some com o processo.
+- **"Só este PC" no Linux.** O `HttpListener` do .NET no Linux escuta `localhost` só no primeiro endereço que o nome
+  resolve (em geral o `::1`), e o `127.0.0.1` era recusado. Lá o FanPilot sem root escuta em todos os endereços IPv4
+  (`Platform.LocalhostPrefixHost`) e o `WebServer` responde 403, sem corpo, a quem não vem do próprio PC; o listener do
+  Linux não consegue derrubar a conexão sem responder. No Windows, nada muda.
+- **Segredos:** a chave fica em `/etc/fanpilot/secret.key` como root e em `~/.config/fanpilot/secret.key` para a placa
+  falsa e os testes, sempre `0600` numa pasta `0700`.
+- **Lock files:** o `net10.0` restaura sempre para `linux-x64` (`RuntimeIdentifiers`) e sem apphost no build portátil,
+  para o `packages.lock.json` sair igual no Windows e no Linux; o build portátil roda com `dotnet FanPilot.dll`. O
+  `build.ps1` compila só o `net472`, para o zip do Windows não levar o build do Linux.
+- **A placa real no Linux ainda não existe:** o FanPilot sobe, diz que a placa vem com a 28b (`startup.linuxBoard`), não
+  toca em nenhum fan e sai com o código 3; o `--diagnose` avisa o mesmo e sai com o 8. A GPU NVIDIA espera o nome do
+  `libnvidia-ml.so.1` (28b) e aparece como indisponível.
+- **CI:** o job `linux` (`ubuntu-latest`) faz restore travado, build do `net10.0`, `--version`, os testes C# e os do
+  painel. O e2e no Linux fica para a 28c, junto com o pacote. O `dotnet test` no Windows deixa o `net10.0` de fora.
+- Ficou para depois: o `WebRequest` dos alertas é obsoleto no .NET 10 (aviso SYSLIB0014), mas funciona; trocar pelo
+  `HttpClient` pode vir com a 28b.
+
 ## 28b · Placa real: hwmon e GPU
 
 1. **`HwmonBoard : IBoard`**, com `HardwareCurves = false` e as curvas pelo `SoftwareCurveEngine`, como o `LhmBoard`.
