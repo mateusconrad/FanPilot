@@ -112,8 +112,8 @@ interface abre com uma tecla.
   log), `TerminalFeedTests` (contra o FanPilot com a placa falsa: leitura, Turbo, nenhum FanPilot, o duty exato,
   a porta sem escrever nada), o duty no `HwmonBoardTests`. Num pseudo-terminal (`script`), no container e na CI do
   Ubuntu: o FanPilot desenha a tela e `q` o fecha; o `--tui` liga o Turbo com `t` e `q` deixa o FanPilot rodando.
-- Falta conferir à mão, com um print de cada na issue: o Windows Terminal e o conhost do Windows 10/11 (o modo VT e as
-  fontes), e um terminal gráfico do Linux. A CI do Windows não tem um console de verdade para isso.
+- Conferido à mão em 29/10/2026, com a placa falsa: o FanPilot no Windows Terminal e o `--tui` no conhost do Windows 11,
+  visual aprovado. O terminal gráfico do Linux vai junto com o ponto de parada da 28b, num PC com Linux.
 
 ## Critérios de aceite
 
