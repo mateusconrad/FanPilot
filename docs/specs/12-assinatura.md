@@ -5,6 +5,7 @@
 - **Tipo:** infra
 - **Esforço:** P (mais o tempo de aprovação externa)
 - **Depende de:** 11
+- **Situação:** adiado como débito técnico (28/10/2026). A inscrição no SignPath Foundation exige um site do projeto e outros requisitos ainda não definidos. Até lá, as releases saem sem assinatura, com o `SHA256SUMS.txt`, e o README explica o aviso do Windows e como conferir o hash. O instalador (14c) também sai sem assinatura.
 
 ## Problema
 
