@@ -54,7 +54,7 @@ dotnet build src\FanPilot.csproj -c Debug; cd tests\e2e; npm ci; npx playwright 
 .\bin\FanPilot.exe --tui        # (sem UAC) a mesma tela, ligada a um FanPilot já rodando (o serviço)
 .\bin\FanPilot.exe --log        # a janela mostra o log rolando, como antes
 .\scripts\firewall.ps1          # (admin, uma vez) libera a porta 8787 no perfil de rede Privado
-.\scripts\autostart.ps1         # (admin, opcional) sobe com o PC como serviço do Windows, sem janela; menu Iniciar > FanPilot abre a tela
+.\scripts\autostart.ps1         # (admin, opcional) sobe com o PC como serviço do Windows, sem janela, com o ícone na bandeja; um clique nele (ou menu Iniciar > FanPilot) abre a tela
 .\scripts\package.ps1           # gera dist\FanPilot-<versão>-win-x64.zip para distribuir (sem data\)
 .\bin\FanPilot.exe --version    # versão e commit, ex.: FanPilot 0.1.0+1a2b3c4
 .\bin\FanPilot.exe --diagnose   # relatório só de leitura da placa (para placas ainda não testadas)

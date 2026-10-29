@@ -80,6 +80,26 @@ Passando, seguem a 14b (bandeja) e a 14c (instalador).
 4. Notificações do Windows para os alertas do item 16.
 5. Conversa com o serviço por `http://localhost:<porta>`, usando as rotas atuais e `/api/info`.
 
+### Andamento da 14b (29/10/2026)
+
+Começada antes do ponto de parada da 14a, a pedido do dono: o FanPilot já roda como serviço na B760M (item 30), e a
+tela do terminal (item 29) devia abrir a partir da bandeja, sem janela no logon. Feito:
+
+- `tray\FanPilotTray.csproj`: `FanPilotTray.exe`, WinForms, `net472`, manifesto `asInvoker` (sem UAC), ao lado do
+  `FanPilot.exe` (`bin\` e o zip). Usa o `Json.cs` e o `I18n.cs` do `src\` e os dicionários do painel, no idioma do
+  Windows. Fica fora dos builds do Linux, que passam a compilar o projeto de testes em vez da solução.
+- O ícone lê `/api/state` a cada 5 s: o tooltip diz a CPU (`cpu-main`), a GPU e os alertas ativos (63 caracteres no
+  máximo); um ponto laranja marca alerta ou placa sem resposta, um cinza o FanPilot sem responder.
+- Clique: abre `FanPilot.exe --tui --port <porta>` no terminal padrão, com `__COMPAT_LAYER=RunAsInvoker`, como o atalho
+  do menu Iniciar; com o conhost, traz de volta a tela já aberta (no Windows Terminal abre outra). Menu: Abrir o
+  monitor · Abrir o painel no navegador · Fechar este ícone (o serviço continua). Um ícone por sessão.
+- `autostart.ps1`: grava `"FanPilotTray.exe" --port <porta>` na chave `Run` do HKLM e abre o ícone na hora, sem
+  Administrador, por uma tarefa agendada de uma vez só (como Administrador ele herdaria a elevação); `-Remove` apaga a
+  chave e fecha os ícones.
+- Testes: `TrayStatusTests` (o tooltip e a marca a partir do estado); na CI, a chave `Run` com a porta importada e o
+  `-Remove` sem ela; as chaves `tray.*` nos dois idiomas pelo teste do i18n.
+- Falta: Parear celular, Turbo, Perfis e Ver log no menu; as notificações do Windows para os alertas (item 16).
+
 ## 14c · Instalador (Inno Setup)
 
 1. `installer/FanPilot.iss`, compilado na CI (item 11); sai sem assinatura enquanto o item 12 for débito técnico.

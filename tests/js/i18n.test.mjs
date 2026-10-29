@@ -70,14 +70,15 @@ test('toda chave usada pelo painel existe nos dois idiomas', () => {
   }
 });
 
-// FanPilot.exe reads the same dictionaries (src/I18n.cs): every string in its code shaped like a key of a known
-// namespace ("err.curve.points", "alert.fanStopped.title") must be in both. File names are not keys.
+// FanPilot.exe and the tray icon read the same dictionaries (src/I18n.cs): every string in their code shaped like a key
+// of a known namespace ("err.curve.points", "alert.fanStopped.title") must be in both. File names are not keys.
 test('toda chave usada pelo FanPilot.exe existe nos dois idiomas', async () => {
   const { readdirSync } = await import('node:fs');
   const namespaces = new Set(Object.keys(dicts.en).map((k) => k.split('.')[0]));
   const keys = new Set();
-  for (const file of readdirSync(new URL('../../src/', import.meta.url)).filter((f) => f.endsWith('.cs'))) {
-    for (const m of read('src/' + file).matchAll(/"([a-z]\w*(?:\.\w+)+)"/g)) {
+  const files = ['src/', 'tray/'].flatMap((dir) => readdirSync(new URL('../../' + dir, import.meta.url)).filter((f) => f.endsWith('.cs')).map((f) => dir + f));
+  for (const file of files) {
+    for (const m of read(file).matchAll(/"([a-z]\w*(?:\.\w+)+)"/g)) {
       if (/\.(json|log|dll|exe|md|ps1|bak|txt|html|m?js|css|png|svg)$/.test(m[1])) continue;
       if (namespaces.has(m[1].split('.')[0])) keys.add(m[1]);
     }
