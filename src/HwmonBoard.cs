@@ -19,7 +19,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 
-sealed class HwmonBoard : IBoard, IFollowsGpu
+sealed class HwmonBoard : IBoard, IFollowsGpu, IReportsDuty
 {
     const int FailuresBeforeRelease = 5;
     // pwmN_enable: 1 is manual on every hwmon driver; what the automatic modes are numbered varies by chip.
@@ -34,6 +34,7 @@ sealed class HwmonBoard : IBoard, IFollowsGpu
         public FanCurve Curve;  // null = BIOS
         public bool OnBiosFallback;
         public long? Original;  // pwmN_enable before FanPilot took the header; null while it hasn't
+        public double? Duty;    // what FanPilot wrote last, 0..100%; null on the BIOS
         public string Pwm { get { return Chip.File("pwm" + N); } }
         public string Enable { get { return Chip.File("pwm" + N + "_enable"); } }
         public string Tach { get { return Chip.File("fan" + N + "_input"); } }
@@ -295,7 +296,9 @@ sealed class HwmonBoard : IBoard, IFollowsGpu
             if (h.OnBiosFallback) Log.Info("Fan " + h.Title + ": the reference sensor is back; FanPilot's curve applied again.");
             h.OnBiosFallback = false;
             Take(h);
-            HwmonFiles.Write(h.Pwm, (long)Math.Round(Math.Max(0, Math.Min(100, duty.Value)) * 255 / 100));
+            double percent = Math.Max(0, Math.Min(100, duty.Value));
+            HwmonFiles.Write(h.Pwm, (long)Math.Round(percent * 255 / 100));
+            h.Duty = percent;
         }
     }
 
@@ -319,6 +322,7 @@ sealed class HwmonBoard : IBoard, IFollowsGpu
         {
             WriteBack(h.Enable, h.Pwm, h.Original.Value);
             h.Original = null;
+            h.Duty = null;
             _restore.Remove(h.Enable);
         }
         catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
@@ -369,6 +373,8 @@ sealed class HwmonBoard : IBoard, IFollowsGpu
     }
 
     public int CountFans() { lock (_sync) return _headers.Count; }
+
+    public List<double?> Duties() { lock (_sync) return _headers.Select(h => h.Original != null ? h.Duty : null).ToList(); }
 
     public List<SensorReading> ReadSensors() { lock (_sync) return _readings.ToList(); }
 

@@ -109,3 +109,13 @@ jobs:
         run: dotnet test FanPilot.sln -c Release -f net10.0 --no-build
       - name: Testes do painel
         run: node --test "tests/js/*.test.mjs"
+      # The terminal (item 29) in a real pseudo-terminal: FanPilot on the fake board draws it, and q closes FanPilot.
+      - name: Interface no terminal
+        run: |
+          dotnet build src/FanPilot.csproj -c Debug -f net10.0 --no-restore
+          cd src/bin/Debug/net10.0
+          export TERM=xterm-256color
+          (sleep 15; printf q) | script -qfec "stty cols 120 rows 30; dotnet FanPilot.dll --fake-board --no-browser" /tmp/tui.out > /dev/null
+          for w in "Temperatures" "Fans" "RPM" "[q] close FanPilot" "Stopped in"; do
+            grep -q -F "$w" /tmp/tui.out || { echo "A tela não mostrou: $w"; tail -c 3000 /tmp/tui.out; exit 1; }
+          done

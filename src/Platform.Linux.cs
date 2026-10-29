@@ -54,6 +54,27 @@ static class Platform
     // address.
     public static void OpenInBrowser(string url) { }
 
+    // The terminal (item 29), key o: --tui runs as the person, who has a browser; as root, the address on the screen is
+    // the way, as above.
+    public static void OpenFromTerminal(string url)
+    {
+        if (IsElevated) return;
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo("xdg-open", url) {
+                UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
+            using (System.Diagnostics.Process.Start(psi)) { }
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception || ex is InvalidOperationException) { }
+    }
+
+    // Every terminal speaks ANSI; "dumb" ones (an editor's output pane) and none at all don't.
+    public static bool EnableTerminal()
+    {
+        string term = Environment.GetEnvironmentVariable("TERM");
+        return !string.IsNullOrEmpty(term) && term != "dumb";
+    }
+
     static readonly List<PosixSignalRegistration> Signals = new List<PosixSignalRegistration>();
 
     // Ctrl+C (SIGINT), Ctrl+\ (SIGQUIT), systemd stopping the service or a plain kill (SIGTERM) and the terminal

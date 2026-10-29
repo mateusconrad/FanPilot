@@ -139,12 +139,15 @@ public sealed class HwmonBoardTests : IDisposable
         Assert.Equal("5", FakeSys.Read(chip, "pwm2_enable")); // the other header is left alone
         Assert.Contains("pwm1_enable", File.ReadAllText(RestoreFile));
         Assert.False(b.GetCurve(0).IsBios);
+        Assert.Equal(duty, Math.Round(b.Duties()[0].Value * 255 / 100)); // what the terminal shows (item 29), exact here
+        Assert.Null(b.Duties()[1]);
 
         var bios = new FanCurve { Index = 0, Mode = FanCurve.BiosMode };
         b.SetCurve(bios);
         Assert.Equal("5", FakeSys.Read(chip, "pwm1_enable"));
         Assert.True(b.GetCurve(0).IsBios);
         Assert.False(File.Exists(RestoreFile));
+        Assert.Null(b.Duties()[0]);
         b.Shutdown();
     }
 

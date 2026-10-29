@@ -42,6 +42,13 @@ interface IFollowsGpu
     Func<double?> GpuTemp { set; }
 }
 
+// Boards where FanPilot runs the curves know the speed they just set on each header (0..100%, null on the BIOS); the
+// others' speed is estimated from the curve (FanListCache.DutyNow). The terminal (item 29) and the panel show it.
+interface IReportsDuty
+{
+    List<double?> Duties();
+}
+
 sealed class SensorReading
 {
     public string Id;

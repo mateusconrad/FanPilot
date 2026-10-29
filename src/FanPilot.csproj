@@ -46,6 +46,8 @@
     <Reference Include="System.ServiceProcess" />
     <!-- DPAPI for the alert destinations' secrets (item 16). -->
     <Reference Include="System.Security" />
+    <!-- The terminal's client of the local API (item 29); .NET 10 has it built in. -->
+    <Reference Include="System.Net.Http" />
   </ItemGroup>
 
   <!-- What only one system has. Windows: Gigabyte Control Center, LibreHardwareMonitor with PawnIO, the Windows service

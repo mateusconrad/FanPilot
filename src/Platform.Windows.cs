@@ -57,6 +57,25 @@ static class Platform
         try { Process.Start(url); } catch { }
     }
 
+    // The terminal (item 29), key o: the person at this console is the one who wants the panel.
+    public static void OpenFromTerminal(string url) { OpenInBrowser(url); }
+
+    [DllImport("kernel32.dll")] static extern IntPtr GetStdHandle(int handle);
+    [DllImport("kernel32.dll")] static extern bool GetConsoleMode(IntPtr handle, out uint mode);
+    [DllImport("kernel32.dll")] static extern bool SetConsoleMode(IntPtr handle, uint mode);
+    const int StdOutput = -11;
+    const uint VirtualTerminalProcessing = 0x0004;
+
+    // ANSI colors and cursor moves in this console: Windows Terminal has them on; the classic console from Windows 10
+    // 1607 needs ENABLE_VIRTUAL_TERMINAL_PROCESSING; older ones can't, and the terminal falls back to the log.
+    public static bool EnableTerminal()
+    {
+        IntPtr output = GetStdHandle(StdOutput);
+        uint mode;
+        if (!GetConsoleMode(output, out mode)) return false;
+        return (mode & VirtualTerminalProcessing) != 0 || SetConsoleMode(output, mode | VirtualTerminalProcessing);
+    }
+
     delegate bool ConsoleCtrlHandler(int ctrlType);
     [DllImport("kernel32.dll", SetLastError = true)]
     static extern bool SetConsoleCtrlHandler(ConsoleCtrlHandler handler, bool add);

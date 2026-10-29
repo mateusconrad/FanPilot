@@ -26,6 +26,15 @@ sealed class AppConfig
     // Days of history kept on disk, 10 s per row (item 24); 0 turns it off (the panel keeps its 10 minutes).
     public int HistoryDays = 7;
 
+    // The port alone, writing nothing: what --tui needs to find the FanPilot it attaches to (item 29). The default port
+    // when the file is missing or unreadable.
+    public static int ReadPort(string path)
+    {
+        int port = new AppConfig().Port;
+        try { return File.Exists(path) ? Clamp(Json.GetInt(Json.ParseObject(File.ReadAllText(path)), "port", port), 1, 65535) : port; }
+        catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is FormatException) { return port; }
+    }
+
     public static AppConfig Load(string path)
     {
         var cfg = new AppConfig();

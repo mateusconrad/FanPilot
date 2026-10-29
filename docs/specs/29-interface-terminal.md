@@ -85,6 +85,36 @@ interface abre com uma tecla.
 - **Uma janela gráfica (WinForms, Avalonia):** fugiria do "visual de terminal" pedido e traria um toolkit inteiro. A
   bandeja do Windows (item 14b) continua sendo a ponte para quem quer um ícone.
 
+### Como ficou (29/10/2026)
+
+- `TerminalFeed` (os dados, pela API local: `/api/info`, `/api/fans` a cada 30 s e depois do Turbo,
+  `/api/alerts/settings` para os limites das cores, `/api/history` para encher os sparklines e `/api/stream` a cada
+  segundo, reconectando sozinho), `TerminalScreen` (a tela como linhas, com ou sem ANSI: é o que os testes conferem) e
+  `TerminalApp` (tela alternativa, cursor escondido, teclas, redesenho só das linhas que mudaram, redimensionamento).
+  Uns 740 linhas no total, sem biblioteca; a renderização (`TerminalScreen`) tem 230, abaixo das ~400 em que a spec
+  manda reavaliar a Spectre.Console.
+- `FanPilot` num terminal mostra a interface depois de abrir a placa; o log vai só para o arquivo enquanto ela está na
+  tela, e `l` o mostra. Saída redirecionada, `--log` ou console sem VT (`Platform.EnableTerminal`: `SetConsoleMode` no
+  Windows, `TERM` no Linux) mantêm o log de antes; é o que os e2e e o serviço continuam vendo.
+- `FanPilot --tui`: liga-se pela porta do `config.json` da pasta de dados (só lida, nada é escrito; 8787 sem ele), sem
+  Administrador nem root, antes de qualquer outra coisa do `App.Run`. Sem FanPilot respondendo, sai com 4 e a mensagem;
+  sem terminal, com 1.
+- O cliente fala com `localhost`: o `http.sys` do Windows recusa outro Host no modo "só este PC", e no Linux o cliente
+  do .NET tenta o `::1` e depois o `127.0.0.1`.
+- `fanDuty` e `fanDutyEstimated` no snapshot: exato no `LhmBoard` e no `HwmonBoard` (`IReportsDuty`, o duty que eles
+  acabaram de escrever); nas outras placas, `FanListCache.DutyNow` (a curva na temperatura que ela segue), mostrado com
+  "~". O `FanListCache` passou a ser um só para o sampler e as integrações.
+- Ctrl+C é tratado como `q` (`TreatControlCAsInput`), para a tela sempre voltar ao normal; `SIGTERM` e o fechamento da
+  janela continuam passando pelo `Exit`.
+- `o`: no Linux, o `xdg-open` só quando a interface não roda como root (o `--tui` de um usuário comum).
+- O cabeçalho, sem espaço, tira o nome do backend antes do endereço do painel.
+- Testes: `TerminalScreenTests` (larguras de 100 e 50, altura 8, inglês e português, cores, link, alertas, sparkline,
+  log), `TerminalFeedTests` (contra o FanPilot com a placa falsa: leitura, Turbo, nenhum FanPilot, o duty exato,
+  a porta sem escrever nada), o duty no `HwmonBoardTests`. Num pseudo-terminal (`script`), no container e na CI do
+  Ubuntu: o FanPilot desenha a tela e `q` o fecha; o `--tui` liga o Turbo com `t` e `q` deixa o FanPilot rodando.
+- Falta conferir à mão, com um print de cada na issue: o Windows Terminal e o conhost do Windows 10/11 (o modo VT e as
+  fontes), e um terminal gráfico do Linux. A CI do Windows não tem um console de verdade para isso.
+
 ## Critérios de aceite
 
 - [ ] `FanPilot` no console abre a interface: temperaturas, coolers com RPM e porcentagem, link do painel; `o` abre o

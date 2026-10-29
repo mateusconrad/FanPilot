@@ -12,6 +12,9 @@ static class Log
 {
     static readonly LogWriter Writer = new LogWriter();
 
+    // The console too (false while the terminal of item 29 has the window: the file keeps every line).
+    public static bool ToConsole { get { return Writer.ToConsole; } set { Writer.ToConsole = value; } }
+
     // data\fanpilot.log; null (the tests) = console only.
     public static string FilePath { get { return Writer.FilePath; } set { Writer.FilePath = value; } }
     // Also called with every line written (level, text): the service copies warnings and errors to the event log.
@@ -161,6 +164,8 @@ static class App
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
         // The fake board writes its own curves, backup and pairings: never into the real board's data\.
         string dataDir = DataDirectory.Resolve(o.DataDir, baseDir, fake);
+        // --tui only reads a running FanPilot's API (item 29): no data folder of its own, no log, no Administrator.
+        if (o.Tui) return TerminalApp.Attach(AppConfig.ReadPort(Path.Combine(dataDir, "config.json")));
         if (o.Service) DataDirectory.Restrict(dataDir); else Directory.CreateDirectory(dataDir);
         Log.FilePath = Path.Combine(dataDir, "fanpilot.log");
         Log.Info("FanPilot " + AppVersion.Text + (fake ? " (fake board: " + scenario + ")" : "") + (o.Service ? " as a service" : "") +
@@ -217,7 +222,15 @@ static class App
         if (o.Service) return FanPilotService.Run(host, stop);
         int code = host.Start();
         if (code != 0) return code;
-        stop.WaitOne();
+        // A person at a terminal gets the numbers instead of the scrolling log (item 29); --log, a redirected output or
+        // a console without ANSI keep the log.
+        if (!o.Log && TerminalApp.Available())
+        {
+            Log.ToConsole = false;
+            TerminalApp.RunHere(cfg.Port, stop, Log.FilePath);
+            Log.ToConsole = true;
+        }
+        else stop.WaitOne();
         Exit.Cleanup();
         return 0;
     }
@@ -302,6 +315,8 @@ sealed class Sampler
     public Func<List<Dictionary<string, object>>> Alerts;
     // Also given every snapshot, on the sampler's thread: the history on disk (item 24).
     public Action<Dictionary<string, object>> OnSample;
+    // What each fan is told to do, for its speed on boards that keep the curve in the chip (fanDuty, item 29).
+    public FanListCache Fans;
 
     public Sampler(IBoard bridge, GpuMonitor gpu) { _bridge = bridge; _gpu = gpu; }
 
@@ -366,6 +381,7 @@ sealed class Sampler
                 _bridge.ReadFanTach(out temps, out rpms);
                 snap["fanRpm"] = rpms.Select(v => (int)Math.Round(v)).ToList();
                 snap["tempInputs"] = temps.Select(v => Math.Round(v, 1)).ToList();
+                AddDuties(snap, temps);
             }
             if (_boardDown)
             {
@@ -389,6 +405,25 @@ sealed class Sampler
         var alerts = Alerts;
         if (alerts != null) snap["alerts"] = alerts();
         return snap;
+    }
+
+    // fanDuty: each fan's speed now, 0..100% (null on the BIOS or unknown), index-aligned with fanRpm. Exact where FanPilot
+    // runs the curves; elsewhere the curve's value at the temperature it follows, and fanDutyEstimated says so.
+    void AddDuties(Dictionary<string, object> snap, List<float> temps)
+    {
+        var exact = _bridge as IReportsDuty;
+        List<double?> duties;
+        if (exact != null) duties = exact.Duties();
+        else
+        {
+            var fans = Fans == null ? null : Fans.Get();
+            if (fans == null) return;
+            var gpu = _gpu.Temperature;
+            var t = temps.Select(v => (double)v).ToList();
+            duties = fans.Select(f => FanListCache.DutyNow(f, t, gpu)).ToList();
+        }
+        snap["fanDuty"] = duties.Select(d => d.HasValue ? (object)Math.Round(d.Value, 1) : null).ToList();
+        snap["fanDutyEstimated"] = exact == null;
     }
 
     void Publish(Dictionary<string, object> snap)
