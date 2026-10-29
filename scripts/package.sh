@@ -13,8 +13,9 @@ WORK="$ROOT/dist/$NAME"
 rm -rf "$WORK" "$ROOT/dist/$NAME.tar.gz"
 mkdir -p "$WORK"
 
-# The whole solution first: "dotnet publish -f net10.0" restoring by itself would write a lock file without net472.
-dotnet restore "$ROOT/FanPilot.sln" --nologo
+# Both frameworks first: "dotnet publish -f net10.0" restoring by itself would write a lock file without net472. The test
+# project brings FanPilot with it; the solution would bring the tray too, a Windows-only project.
+dotnet restore "$ROOT/tests/FanPilot.Tests/FanPilot.Tests.csproj" --nologo
 dotnet publish "$ROOT/src/FanPilot.csproj" -c Release -f net10.0 -r linux-x64 --self-contained \
     -p:PublishSingleFile=true --no-restore --nologo -o "$WORK"
 

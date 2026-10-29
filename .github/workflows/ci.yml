@@ -194,8 +194,9 @@ jobs:
         with:
           node-version: 22
 
+      # The test project (and FanPilot, which it references), not the solution: the tray is a Windows-only project.
       - name: Restaurar pacotes (packages.lock.json)
-        run: dotnet restore FanPilot.sln --locked-mode
+        run: dotnet restore tests/FanPilot.Tests/FanPilot.Tests.csproj --locked-mode
       - name: Compilar (net10.0)
         run: dotnet build tests/FanPilot.Tests/FanPilot.Tests.csproj -c Release -f net10.0 --no-restore
       - name: Versão
