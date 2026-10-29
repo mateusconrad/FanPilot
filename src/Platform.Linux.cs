@@ -10,7 +10,15 @@ using System.Runtime.Versioning;
 
 static class Platform
 {
-    public static void Init() { }
+    // Before anything else runs: NVML's library has its Linux name (item 28b), and NvmlNative keeps Windows' one.
+    public static void Init()
+    {
+        NativeLibrary.SetDllImportResolver(typeof(Platform).Assembly, (name, assembly, path) =>
+        {
+            IntPtr handle;
+            return name == "nvml.dll" && NativeLibrary.TryLoad("libnvidia-ml.so.1", assembly, path, out handle) ? handle : IntPtr.Zero;
+        });
+    }
 
     [DllImport("libc", SetLastError = true)]
     static extern uint geteuid();

@@ -120,7 +120,7 @@ test.describe('placas com avisos, em inglês', () => {
     const unsupported = await FanPilot.start('unsupported');
     try {
       await page.goto(unsupported.url + '/');
-      await expect(page.locator('#gpuGrid')).toHaveText('GPU unavailable: NVML not found (nvml.dll): install the NVIDIA driver.');
+      await expect(page.locator('#gpuGrid')).toHaveText('GPU unavailable: NVML not found (it comes with the NVIDIA driver): without an NVIDIA card, nothing to do; with one, install its driver.');
       await expect(page.locator('#fans')).toContainText('Monitoring keeps working.');
       expect(await portugueseIn(page)).toEqual([]);
     } finally { await unsupported.stop(); }

@@ -170,6 +170,68 @@ O que mudou em relação ao plano:
    suporta). Se não reconhecer, o ponto de parada precisa de outra placa (uma `nct67xx` de qualquer marca serve), e o
    README diz isso.
 
+### Andamento da 28b (29/10/2026)
+
+Feita, menos o ponto de parada, que depende de um PC de verdade com Linux.
+
+- `HwmonBoard` (`src/HwmonBoard.cs`, com `HwmonFiles.cs`): chips de placa pelo nome do driver (`nct*`, `it8*`, Fintek,
+  Winbond, `asus*`, `gigabyte*`, `dell_smm`…, ou qualquer chip com `pwmN` e `pwmN_enable` que não seja CPU nem GPU);
+  CPU pelo `k10temp` (`Tctl`), `coretemp` (`Package id 0`) ou `zenpower`, como referência "CPU" e papel `cpu-main`;
+  leituras de temperatura, RPM e tensão de cada chip; potência da CPU pelo RAPL (`powercap/intel-rapl:0`) e clock pelo
+  `cpufreq`. Chave estável `hwmon/<chip>@<dispositivo>/pwmN` (ex.: `hwmon/nct6798@nct6775.656/pwm2`), sem o número do
+  `hwmonN`.
+- Controle: `pwmN_enable = 1` e o duty em `pwmN`, reafirmados a cada segundo (desfaz a BIOS retomando o header depois
+  da suspensão). "Voltar à BIOS" grava o `pwmN_enable` de antes; um header que já estava em manual (não há modo automático
+  conhecido) volta a 255. Sem `pwmN_enable`, o header não é oferecido: não haveria como devolvê-lo.
+- `kill -9`: cada header tomado vai para `/run/fanpilot/hwmon-restore.json` antes do primeiro duty. O próximo FanPilot
+  devolve o que estiver lá antes de abrir a placa, e `FanPilot --restore-fans` faz o mesmo sozinho (para o
+  `ExecStopPost` da 28c); com outro FanPilot rodando, ele se recusa, como o `--hardware-test`. O `--diagnose` abre a placa
+  sem devolver nada, para não mexer no FanPilot que estiver rodando.
+- Avisos: nenhum driver de placa (`board.hwmon.noChip`: o `sensors-detect` diz qual módulo carregar); driver carregado
+  sem chip (`board.hwmon.loadedNoChip`: conflito da ACPI e `acpi_enforce_resources=lax`, ou `force_id` no it87); chip sem
+  fan controlável (`board.hwmon.noControl`); escrita recusada pelo driver (`board.hwmon.writeFailed`, o header fica na
+  BIOS). O FanPilot não carrega módulos nem mexe no boot.
+- GPU: `nvml.dll` resolvido para `libnvidia-ml.so.1` (`Platform.Init`); sem NVML, `HwmonGpu` lê a AMD pelo `amdgpu`
+  (temperatura, fan, potência, clocks, uso e memória, com o fan fixo por `pwm1_enable = 1` e de volta ao automático com
+  `2`) e a Intel (`xe`, `i915`) só para leitura. A mensagem de NVML ausente deixou de citar o `nvml.dll`.
+- `"backend"` aceita `hwmon`; no Linux, `gigabyte` e `lhm` são recusados com o motivo (`startup.backendOtherSystem`), e
+  no Windows, `hwmon`.
+- `--diagnose` no Linux: kernel e distribuição, a placa (DMI), os drivers de placa carregados, a mesma seção "como o
+  FanPilot vê esta placa" do Windows (agora `Diagnose.DescribeBoard`, compartilhada) e cada chip hwmon com os arquivos de
+  sensores e de controle.
+- Publicação: `EnableSingleFileAnalyzer` no `net10.0` deixa o pacote do analisador sempre no lock, e a publicação usa
+  `--no-restore` depois de um restore completo (um `dotnet publish -f net10.0` com restore regravaria o lock sem o
+  `net472`). Numa máquina limpa, o executável único roda numa imagem sem .NET (`runtime-deps`).
+- Testes: `HwmonBoardTests` e `HwmonGpuTests` num `/sys` falso montado como o do kernel (`hwmonN` como link para a pasta
+  do dispositivo). Os chips seguem a documentação do kernel (nct6775, k10temp, amdgpu); placas reais entram pelo
+  `--diagnose`. Linux: 307 testes como root, 304 como usuário comum; Windows: 301, e2e e painel iguais.
+- Ficou para depois: o `WebRequest` dos alertas (aviso SYSLIB0014) segue funcionando; trocar pelo `HttpClient` não
+  depende do Linux.
+
+### Ponto de parada: como verificar num PC com Linux
+
+Na B760M, um Ubuntu 24.04 num pendrive ("Experimentar o Ubuntu") basta: nada é instalado no disco.
+
+1. No Windows, na pasta do repositório: `dotnet restore FanPilot.sln`, depois
+   `dotnet publish src\FanPilot.csproj -c Release -f net10.0 -r linux-x64 --self-contained -p:PublishSingleFile=true --no-restore -o dist\linux-x64`.
+   Copiar a pasta `dist\linux-x64` para outro pendrive.
+2. No Ubuntu, num terminal: `sudo apt install lm-sensors`, `sudo sensors-detect --auto` e `sensors`. O chip da placa
+   (IT8689E na B760M) aparece com fans e temperaturas? Se não aparecer, o `it87` do kernel não o reconhece: tentar
+   `sudo modprobe it87 ignore_resource_conflict=1` ou o `it87` de fora da árvore (github.com/frankcrawford/it87), ou fazer
+   o ponto de parada noutra placa (uma `nct67xx` de qualquer marca).
+3. `cp -r <pendrive>/linux-x64 ~/fanpilot && cd ~/fanpilot && chmod +x FanPilot`.
+4. `sudo ./FanPilot --diagnose --data ~/fp-data`: anexar o `~/fp-data/diagnostico-*.txt` na issue #35.
+5. `sudo ./FanPilot --hardware-test --fan N --data ~/fp-data`, com N tirado da lista "Fans that can be controlled" do
+   diagnóstico (nunca o da CPU): passa, e o `~/fp-data/hwtest-*.md` vai para a issue.
+6. `sudo ./FanPilot --data ~/fp-data`: o painel em `http://localhost:8787` mostra a placa e a CPU; uma curva num fan muda
+   o RPM; Ctrl+C devolve o fan (`cat /sys/class/hwmon/hwmon*/pwm*_enable` volta aos valores de antes).
+7. `kill -9`: com o FanPilot rodando e uma curva aplicada, `sudo pkill -9 FanPilot`; o `pwmN_enable` fica em 1;
+   `sudo ./FanPilot --restore-fans --data ~/fp-data` diz "Fans devolvidos à BIOS: 1" e o valor volta.
+8. Com uma GPU NVIDIA e o driver proprietário: a GPU aparece no painel, e "Fixo 50%" → "Automático" funciona. Com uma
+   AMD, o mesmo pelo `amdgpu`.
+
+Passando, segue a 28c.
+
 ## 28c · Serviço do systemd, pacote e CI
 
 1. **`--service` no Linux:** o mesmo `FanPilotHost` sem console, parando no `SIGTERM`. O log continua em

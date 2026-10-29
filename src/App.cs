@@ -189,6 +189,12 @@ static class App
             if (o.Interactive) Platform.OpenInBrowser(panel);
             return 4;
         }
+        // Linux: what a killed FanPilot left taken goes back to the BIOS (the service's ExecStopPost, item 28b).
+        if (o.RestoreFans)
+        {
+            Console.WriteLine(new Msg("console.restoreFans", "count", Boards.RestoreFans()).In(I18n.SystemLanguage));
+            return 0;
+        }
         MachineData.Check(dataDir);
         var cfg = AppConfig.Load(Path.Combine(dataDir, "config.json"));
         if (o.Diagnose) return Diagnose.Run(dataDir, cfg, SingleInstance.IsRunning(fake), o.Interactive);

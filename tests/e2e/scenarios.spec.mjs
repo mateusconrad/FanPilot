@@ -105,7 +105,7 @@ test.describe('placa sem controle de fans e sem GPU', () => {
     await expect(page.locator('#statusText')).toHaveText('ao vivo');
     await expect(page.locator('#fans')).toContainText('não oferece controle de fans pelo caminho que o FanPilot usa. O monitoramento continua funcionando.');
     await expect(page.locator('#turboBtn')).toBeHidden();
-    await expect(page.locator('#gpuGrid')).toHaveText('GPU indisponível: NVML não encontrado (nvml.dll): instale o driver da NVIDIA.');
+    await expect(page.locator('#gpuGrid')).toHaveText('GPU indisponível: NVML não encontrado (ele vem com o driver da NVIDIA): sem placa NVIDIA, nada a fazer; com uma, instale o driver dela.');
     await expect(page.locator('#gpuControls')).toBeHidden();
   });
 });

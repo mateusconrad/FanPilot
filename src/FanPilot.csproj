@@ -22,6 +22,12 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
 
+  <!-- The Linux build is published as a single file (item 28): its analyzer runs on every build, so what breaks in one
+       file shows up early, and the package it needs is always in the lock file, published or not. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+  </PropertyGroup>
+
   <!-- Release goes to bin\ next to data\, as the README describes; build.ps1 -OutDir builds elsewhere. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <OutputPath>..\bin\</OutputPath>
@@ -43,12 +49,13 @@
   </ItemGroup>
 
   <!-- What only one system has. Windows: Gigabyte Control Center, LibreHardwareMonitor with PawnIO, the Windows service
-       and *.Windows.cs. Linux: *.Linux.cs. Each *.Windows.cs has a *.Linux.cs with the same members. -->
+       and *.Windows.cs. Linux: *.Linux.cs and the kernel's hwmon (Hwmon*.cs). Each *.Windows.cs has a *.Linux.cs with the
+       same members. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
     <Compile Remove="Gigabyte*.cs;Lhm*.cs;CpuTemperature.cs;PawnIoSetup.cs;FanPilotService.cs;*.Windows.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
-    <Compile Remove="*.Linux.cs" />
+    <Compile Remove="*.Linux.cs;Hwmon*.cs" />
   </ItemGroup>
 
   <ItemGroup>

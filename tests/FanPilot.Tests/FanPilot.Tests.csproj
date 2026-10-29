@@ -40,7 +40,7 @@
     <Compile Remove="Gcc*.cs;Gigabyte*.cs;CpuTemperatureTests.cs;*.Windows.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
-    <Compile Remove="*.Linux.cs" />
+    <Compile Remove="*.Linux.cs;Hwmon*.cs" />
   </ItemGroup>
 
   <ItemGroup>
