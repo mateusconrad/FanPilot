@@ -56,11 +56,12 @@ dotnet build src\FanPilot.csproj -c Debug; cd tests\e2e; npm ci; npx playwright 
 .\scripts\firewall.ps1          # (admin, uma vez) libera a porta 8787 no perfil de rede Privado
 .\scripts\autostart.ps1         # (admin, opcional) sobe com o PC como serviço do Windows, sem janela, com o ícone na bandeja; um clique nele (ou menu Iniciar > FanPilot) abre a tela
 .\scripts\package.ps1           # gera dist\FanPilot-<versão>-win-x64.zip para distribuir (sem data\)
+.\scripts\package.ps1 -Installer   # e também dist\FanPilot-<versão>-win-x64-setup.exe (exige o Inno Setup 6)
 .\bin\FanPilot.exe --version    # versão e commit, ex.: FanPilot 0.1.0+1a2b3c4
 .\bin\FanPilot.exe --diagnose   # relatório só de leitura da placa (para placas ainda não testadas)
 .\bin\FanPilot.exe --hardware-test [--fan N]   # (FanPilot fechado) roteiro de verificação na placa real, ~2 min
 .\bin\FanPilot.exe --data <pasta>              # dados em outra pasta (padrão: data\ ao lado do exe)
-.\bin\FanPilot.exe --service --data <pasta>    # modo serviço do Windows; o instalador (em preparação) o registra
+.\bin\FanPilot.exe --service --data <pasta>    # modo serviço do Windows; o instalador o registra
 .\bin\FanPilot.exe --import-data <pasta antiga> --data <pasta>   # (FanPilot fechado) traz curvas, pareamentos e nomes
 ```
 
@@ -132,8 +133,18 @@ mesmo depois de um `kill -9` (`FanPilot --restore-fans`). Para gerar o pacote vo
 ## Versões e releases
 
 - **Baixar:** cada versão sai na página [Releases](https://github.com/mateusconrad/FanPilot/releases) como
-  `FanPilot-<versão>-win-x64.zip`, com um `SHA256SUMS.txt` para conferir o download
-  (`Get-FileHash .\FanPilot-0.1.0-win-x64.zip` deve dar o mesmo hash). Versões `0.x` saem como pre-release.
+  `FanPilot-<versão>-win-x64-setup.exe` (o instalador) e `FanPilot-<versão>-win-x64.zip` (a versão portátil), com um
+  `SHA256SUMS.txt` para conferir o download (`Get-FileHash .\FanPilot-0.1.0-win-x64.zip` deve dar o mesmo hash).
+  Versões `0.x` saem como pre-release.
+- **Instalador:** instala em `Program Files\FanPilot`, registra o serviço (sobe com o PC, antes do logon, e volta
+  sozinho se fechar; dados em `%ProgramData%\FanPilot`), libera a porta no firewall só no perfil Privado, põe o ícone
+  na bandeja a cada logon e "FanPilot" no menu Iniciar, oferece instalar o PawnIO (marcado só sem o Gigabyte Control
+  Center) e, no fim, abre a página de pareamento. Instalar uma versão nova por cima para o serviço, troca os arquivos
+  e o inicia de novo, com os dados mantidos. A desinstalação remove o serviço, a regra de firewall, a bandeja e o
+  atalho, e pergunta se apaga os dados. Vindo da versão portátil: com o FanPilot fechado, num terminal como
+  Administrador, `& "$env:ProgramFiles\FanPilot\FanPilot.exe" --import-data <pasta data antiga> --data
+  "$env:ProgramData\FanPilot"` e `Restart-Service FanPilot` (o `autostart.ps1` fica para a versão portátil). Ainda
+  sem assinatura digital (item 12): o Windows avisa ao abrir, como no zip.
 - **Qual versão está rodando:** no rodapé do painel, na primeira linha do log, no `--diagnose` e em
   `FanPilot.exe --version` (num terminal como Administrador: o exe pede elevação e, fora dele, a janela fecha antes de
   dar para ler). O número vem do `Directory.Build.props` e o sufixo é o commit do build.

@@ -1,5 +1,5 @@
 # Every push to main (and every pull request, Dependabot's included): the encoding check, the build, the tests, the
-# release zip, and the end-to-end tests with the zip's smoke test; and the Linux build with its tests (item 28). The
+# release zip and the installer, the end-to-end tests with the zip's smoke test, the installer installed and removed; and the Linux build with its tests (item 28). The
 # zip, the Playwright report and the screenshots are kept as the run's artifacts. Work goes straight to main, so nothing waits on this check: a red build is fixed
 # before the next item.
 name: CI
@@ -47,11 +47,18 @@ jobs:
       - name: Testes do painel
         run: node --test "tests/js/*.test.mjs"
 
+      # Item 14c: the installer, with Inno Setup 6 (installed when the runner image lacks it).
+      - name: Inno Setup
+        run: if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup --no-progress -y }
       - name: Empacotar
-        run: ./scripts/package.ps1
+        run: ./scripts/package.ps1 -Installer
       - uses: actions/upload-artifact@v7
         with:
           path: dist/FanPilot-*-win-x64.zip
+          archive: false
+      - uses: actions/upload-artifact@v7
+        with:
+          path: dist/FanPilot-*-win-x64-setup.exe
           archive: false
 
       # The panel in Edge against FanPilot.exe on the fake board (a Debug build), then the zip's own exe.
@@ -112,6 +119,63 @@ jobs:
           if ((Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run').FanPilotTray) { throw 'a bandeja continua no logon' }
           if (Get-Process FanPilotTray -ErrorAction SilentlyContinue) { throw 'a bandeja continua aberta' }
           if (-not (Test-Path "$env:ProgramData\FanPilot\config.json")) { throw 'o -Remove apagou os dados' }
+
+      # Item 14c on a clean Windows (the data of the steps above gone): the silent install leaves the service running
+      # (automatic, from Program Files) and answering, the firewall rule on the Private profile only, the tray icon at
+      # logon and the shortcut; the service stops and starts; installing again over it (an update) brings it back with
+      # the data kept; uninstalling leaves no files, service, firewall rule, logon entry, shortcut or tray icon, and a
+      # silent one keeps the data. PawnIO stays out (/MERGETASKS): it would put a driver on the runner.
+      - name: Instalador (instalação, atualização e desinstalação)
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Remove-Item -Recurse -Force "$env:ProgramData\FanPilot" -ErrorAction SilentlyContinue
+          $setup = (Resolve-Path dist/FanPilot-*-win-x64-setup.exe).Path
+          $app = Join-Path $env:ProgramFiles 'FanPilot'
+          $data = Join-Path $env:ProgramData 'FanPilot'
+          $run = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run'
+          $lnk = Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'FanPilot.lnk'
+          function Install {
+            $p = Start-Process $setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/MERGETASKS="!pawnio"', "/LOG=$PWD\dist\setup.log" -Wait -PassThru
+            if (Test-Path "$app\install.log") { Get-Content "$app\install.log" }
+            if ($p.ExitCode -ne 0) { Get-Content dist\setup.log -Tail 40; throw "instalador: código $($p.ExitCode)" }
+          }
+          function Up {
+            for ($i = 0; $i -lt 90; $i++) {
+              try { if ((Invoke-WebRequest -UseBasicParsing http://localhost:8787/api/state -TimeoutSec 2).StatusCode -eq 200) { return } } catch { }
+              Start-Sleep -Milliseconds 500
+            }
+            Get-Content "$data\fanpilot.log" -Tail 40 -ErrorAction SilentlyContinue
+            throw 'o serviço não respondeu em /api/state'
+          }
+          Install
+          $svc = Get-CimInstance Win32_Service -Filter "Name='FanPilot'"
+          if ($svc.State -ne 'Running' -or $svc.StartMode -ne 'Auto' -or $svc.PathName -notlike "*$app\FanPilot.exe*") { throw "serviço: $($svc.State), $($svc.StartMode), $($svc.PathName)" }
+          Up
+          $rule = Get-NetFirewallRule -DisplayName 'FanPilot (TCP 8787)'
+          if ("$($rule.Profile)" -ne 'Private' -or "$($rule.Direction)" -ne 'Inbound') { throw "firewall: $($rule.Profile), $($rule.Direction)" }
+          $tray = (Get-ItemProperty $run).FanPilotTray
+          if ($tray -ne ('"' + "$app\FanPilotTray.exe" + '" --port 8787')) { throw "bandeja no logon: '$tray'" }
+          if (-not (Test-Path $lnk)) { throw 'sem o atalho do menu Iniciar' }
+          Stop-Service FanPilot
+          Start-Service FanPilot
+          Up
+          New-Item -ItemType File -Force "$data\fica.txt" | Out-Null
+          Install
+          if ((Get-Service FanPilot).Status -ne 'Running') { throw 'o serviço não voltou depois da atualização' }
+          Up
+          if (-not (Test-Path "$data\fica.txt")) { throw 'a atualização apagou os dados' }
+          $p = Start-Process "$app\unins000.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "desinstalador: código $($p.ExitCode)" }
+          # The uninstaller runs from a copy in %TEMP%: wait for it to finish with Program Files.
+          for ($i = 0; $i -lt 60 -and (Test-Path "$app\FanPilot.exe"); $i++) { Start-Sleep -Milliseconds 500 }
+          if (Test-Path "$app\FanPilot.exe") { throw 'os arquivos continuam em Program Files' }
+          if (Get-Service FanPilot -ErrorAction SilentlyContinue) { throw 'o serviço continua instalado' }
+          if (Get-NetFirewallRule -DisplayName 'FanPilot (TCP *)' -ErrorAction SilentlyContinue) { throw 'a regra de firewall continua lá' }
+          if ((Get-ItemProperty $run).FanPilotTray) { throw 'a bandeja continua no logon' }
+          if (Test-Path $lnk) { throw 'o atalho continua lá' }
+          if (Get-Process FanPilotTray -ErrorAction SilentlyContinue) { throw 'a bandeja continua aberta' }
+          if (-not (Test-Path "$data\fica.txt")) { throw 'a desinstalação silenciosa apagou os dados' }
 
   # The Linux build (item 28): .NET 10, the tests on Linux as a plain user (the ones that need root are skipped, as
   # the ones that need Administrator are on a PC), the panel's, the terminal in a pseudo-terminal, the end-to-end tests

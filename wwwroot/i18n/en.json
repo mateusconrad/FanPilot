@@ -478,6 +478,8 @@
   "tui.notRunning": "No FanPilot answering at {url}. Start FanPilot (or its service) and try again.",
   "tray.openMonitor": "Open the monitor",
   "tray.openPanel": "Open the panel in the browser",
+  "tray.pair": "Pair a phone",
+  "tray.log": "Show the log",
   "tray.exit": "Close this icon (FanPilot keeps running)",
   "tray.down": "not answering",
   "tray.boardDown": "board not answering",

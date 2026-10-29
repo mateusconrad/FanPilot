@@ -28,6 +28,8 @@ sealed class WebServer
     // "+" = every address, so phones on the LAN reach it (needs Administrator on Windows). Tests and FanPilot without
     // Administrator use "localhost": this PC only.
     internal string ListenHost = "+";
+    // What /api/log sends: the last few thousand lines, not the 5 MB a full log reaches.
+    const int LogTailBytes = 256 * 1024;
 
     static readonly Dictionary<string, string> ContentTypes = new Dictionary<string, string> {
         { ".html", "text/html; charset=utf-8" }, { ".js", "text/javascript; charset=utf-8" }, { ".mjs", "text/javascript; charset=utf-8" },
@@ -234,6 +236,15 @@ sealed class WebServer
                 { "version", AppVersion.Text }, { "backend", _fans.BackendName }, { "board", MachineData.Board },
                 // false with "historyDays": 0: the panel then offers only its 10 minutes.
                 { "history", _history != null } });
+            return true;
+        }
+        // The end of fanpilot.log, for the tray's "Ver log" (item 14b). This PC only, like the pairing: the log names
+        // the devices and addresses that reached the server.
+        if (r.Method == "GET" && p == "/api/log")
+        {
+            if (!r.Loopback) { WriteJson(r.Ctx, 403, Error("err.localOnly")); return true; }
+            r.Ctx.Response.Headers["Cache-Control"] = "no-store";
+            Text(r.Ctx, 200, Log.Tail(LogTailBytes));
             return true;
         }
         if (p.StartsWith("/api/alerts") && _alerts != null)

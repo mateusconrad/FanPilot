@@ -1,7 +1,9 @@
 # Builds a release zip in dist\: FanPilot.exe + DLLs + wwwroot + scripts + licenses, without any data\.
 # Any machine will do: Gigabyte Control Center is loaded at runtime, so the zip serves Gigabyte and other boards.
 # The zip is named after the version in Directory.Build.props (dist\FanPilot-0.1.0-win-x64.zip); the exe inside also
-# carries the commit it was built from (FanPilot.exe --version).
+# carries the commit it was built from (FanPilot.exe --version). -Installer also compiles the installer (item 14c) from
+# the same files, with Inno Setup 6: dist\FanPilot-0.1.0-win-x64-setup.exe.
+param([switch]$Installer)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot
 $work = Join-Path ([IO.Path]::GetTempPath()) 'FanPilot-package'
@@ -29,5 +31,16 @@ try {
         [void][IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $file.FullName, $entry, 'Optimal')
     }
 } finally { $archive.Dispose() }
-Remove-Item -Recurse -Force $work
 Write-Host "OK -> $zip"
+
+if ($Installer) {
+    # On the PATH, where its installer puts it (for everyone or for the current user), or in $env:ISCC.
+    $iscc = @($env:ISCC, (Get-Command ISCC.exe -ErrorAction SilentlyContinue | ForEach-Object Source),
+        (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'), (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe')) |
+        Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+    if (-not $iscc) { throw 'O instalador exige o Inno Setup 6: winget install JRSoftware.InnoSetup' }
+    & $iscc /Q "/DAppVersion=$version" "/DSourceDir=$base" "/O$dist" (Join-Path $root 'installer\FanPilot.iss')
+    if ($LASTEXITCODE -ne 0) { throw "ISCC falhou ($LASTEXITCODE)" }
+    Write-Host "OK -> $(Join-Path $dist "FanPilot-$version-win-x64-setup.exe")"
+}
+Remove-Item -Recurse -Force $work

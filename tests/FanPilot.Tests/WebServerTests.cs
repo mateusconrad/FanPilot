@@ -241,6 +241,19 @@ public sealed class WebServerTests : IDisposable
         Assert.Contains("/locked.js", RawHttp.Send(_port, "GET", "/panel", host: lan + ":" + _port).Body);
     }
 
+    // Item 14b: the log is the PC's alone, as the pairing page is; not even a paired phone reads it.
+    [SkippableFact]
+    public void TheLogIsForThePcOnly()
+    {
+        var local = RawHttp.Send(_port, "GET", "/api/log");
+        Assert.Equal(200, local.Status);
+        Assert.Contains("Content-Type: text/plain", local.Head);
+        Skip.IfNot(TestEnv.IsAdministrator, "precisa de Administrador para escutar em todos os endereços, como o FanPilot");
+        string lan = LanAddress();
+        Skip.If(lan == null, "nenhum endereço IPv4 de rede neste PC");
+        Assert.NotEqual(200, RawHttp.Send(_port, "GET", "/api/log", host: lan + ":" + _port).Status);
+    }
+
     // Item 23: Prometheus and the stable JSON, for the PC and for a token. A token that doesn't hold gets 401 even
     // from the PC, so the integration shows a revoked token as such.
     [Fact]

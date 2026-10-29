@@ -91,6 +91,16 @@ Primeira versão publicada (será a 0.1.0).
   temperatura da CPU e da GPU e os alertas ativos, ganha um ponto laranja com alerta e cinza quando o FanPilot não
   responde; um clique abre a tela do terminal, e o menu abre o painel no navegador. Fechar a tela ou o ícone não para o
   serviço ([#14](https://github.com/mateusconrad/FanPilot/issues/14)).
+- O menu do ícone também pareia um celular, liga e desliga o Turbo, troca o perfil de todos os fans e mostra o log do
+  serviço; cada alerta novo vira uma notificação do Windows, e um clique nela abre o painel.
+
+### Instalador
+
+- `FanPilot-<versão>-win-x64-setup.exe` na release: instala em `Program Files`, registra o serviço, libera a porta no
+  firewall (perfil Privado), põe o ícone na bandeja a cada logon, oferece o PawnIO (marcado só sem o Gigabyte Control
+  Center) e abre a página de pareamento. Atualizar por cima mantém os dados; desinstalar não deixa serviço, regra de
+  firewall nem entrada de inicialização, e pergunta se apaga os dados. O zip portátil continua
+  ([#14](https://github.com/mateusconrad/FanPilot/issues/14)).
 
 ### Linux (em teste)
 

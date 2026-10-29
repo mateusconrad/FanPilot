@@ -78,4 +78,19 @@ public sealed class LogTests : IDisposable
         Assert.Contains("linha 199", Lines().Last());
         Assert.DoesNotContain(File.ReadAllLines(_dir.File("fanpilot.1.log")), l => l.Contains("linha 199"));
     }
+
+    // Item 14b: the tray's "Ver log" gets the end of the file, from a whole line.
+    [Fact]
+    public void TheTailStartsAtAWholeLine()
+    {
+        var log = Writer();
+        Assert.Equal("", log.Tail(1024));
+        for (int i = 0; i < 100; i++) { log.Write("INFO", "linha " + i); _now = _now.AddSeconds(1); }
+        string all = File.ReadAllText(_dir.File("fanpilot.log"));
+        Assert.Equal(all, log.Tail(1024 * 1024));
+        string tail = log.Tail(200);
+        Assert.True(tail.Length <= 200, tail);
+        Assert.StartsWith("2026-10-24 ", tail);
+        Assert.EndsWith("[INFO] linha 99" + Environment.NewLine, tail);
+    }
 }

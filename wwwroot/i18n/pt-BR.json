@@ -478,6 +478,8 @@
   "tui.notRunning": "Nenhum FanPilot respondendo em {url}. Inicie o FanPilot (ou o serviço dele) e tente de novo.",
   "tray.openMonitor": "Abrir o monitor",
   "tray.openPanel": "Abrir o painel no navegador",
+  "tray.pair": "Parear um celular",
+  "tray.log": "Ver o log",
   "tray.exit": "Fechar este ícone (o FanPilot continua rodando)",
   "tray.down": "não está respondendo",
   "tray.boardDown": "placa sem resposta",
