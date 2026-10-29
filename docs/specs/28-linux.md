@@ -229,6 +229,8 @@ Na B760M, um Ubuntu 24.04 num pendrive ("Experimentar o Ubuntu") basta: nada é 
    `sudo ./FanPilot --restore-fans --data ~/fp-data` diz "Fans devolvidos à BIOS: 1" e o valor volta.
 8. Com uma GPU NVIDIA e o driver proprietário: a GPU aparece no painel, e "Fixo 50%" → "Automático" funciona. Com uma
    AMD, o mesmo pelo `amdgpu`.
+9. A interface no terminal (item 29) no terminal do Ubuntu: `sudo ./FanPilot --data ~/fp-data` mostra temperaturas e
+   coolers com barras, e, noutro terminal, `./FanPilot --tui` (sem sudo) mostra o mesmo e abre o navegador com `o`.
 
 Passando, segue a 28c.
 
