@@ -38,6 +38,12 @@ Confira nele:
 Se a lista de fans vier vazia, pare aqui: o LibreHardwareMonitor não controla essa placa, e o arquivo já ajuda a
 entender o porquê.
 
+**No Linux** (em teste), a partir do pacote extraído: primeiro o `sensors` (lm-sensors) deve listar o chip da placa
+com fans e temperaturas; depois, `sudo ./FanPilot --diagnose` salva `data/diagnostico-<data>.txt` ao lado do programa.
+Além das mesmas listas, ele traz cada chip hwmon com os seus arquivos e os drivers de placa carregados: se nenhum chip
+aparecer, o arquivo diz qual driver falta ou está preso pela BIOS. As etapas seguintes são as mesmas, com
+`sudo ./FanPilot`, e o caminho no formulário é "Linux hwmon".
+
 ## 2. Monitoramento
 
 Rode `.\FanPilot.exe` (pede Administrador e abre `http://localhost:8787/pair` no navegador). Abra o painel no

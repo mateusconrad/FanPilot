@@ -29,6 +29,7 @@ How it works under the hood: see [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGI
 ## Requirements
 
 - Windows 10/11 64-bit (the .NET Framework 4.x it needs comes with Windows).
+- Or Linux x64, being tested: see [Linux](#linux-being-tested).
 - Run as **Administrator** (the `.exe` asks for elevation by itself).
 - One of two ways to reach the motherboard (FanPilot picks it):
   - **A Gigabyte board with Gigabyte Control Center** installed and the **EasyTune Engine Service** running.
@@ -69,20 +70,6 @@ Building needs the [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10
 a PC and the CI build alike (another SDK would change the lock file and the C# version). To **run** it, Windows is
 enough: FanPilot uses the .NET Framework 4.7.2 that comes with it.
 
-Linux support is on its way ([#35](https://github.com/mateusconrad/FanPilot/issues/35)) and **being tested**: the same
-project builds for .NET 10 on Linux, reaches the motherboard through the kernel's hwmon drivers (nct6775, it87,
-asus-ec-sensors…: `sensors` from lm-sensors shows whether the kernel knows your chip) and the GPU through NVML or the
-amdgpu driver. Gigabyte Control Center, the tray and the installer stay on Windows. Until the package and the systemd
-service arrive, it is published by hand and run as root:
-
-```bash
-dotnet restore FanPilot.sln
-dotnet publish src/FanPilot.csproj -c Release -f net10.0 -r linux-x64 --self-contained -p:PublishSingleFile=true --no-restore -o dist/linux-x64
-sudo dist/linux-x64/FanPilot --diagnose      # read-only report of the board
-sudo dist/linux-x64/FanPilot                 # the panel at http://localhost:8787
-sudo dist/linux-x64/FanPilot --restore-fans  # after a kill -9: hands the fans back to the BIOS
-```
-
 The build doesn't depend on Gigabyte Control Center: FanPilot loads the installed GCC's DLLs only at run time, so one
 build (or zip) serves Gigabyte boards and every other one.
 
@@ -117,6 +104,29 @@ included). Nothing on it changes a fan. Its buttons show for a few seconds after
 screen on" (the Wake Lock API where the browser offers it, else a muted video playing in a loop, which is what works
 over the LAN's plain HTTP). For screens set up once: `/panel?scale=1.3&theme=light` (`theme=auto` follows the device;
 dark is the default). On OLED screens everything shifts a few pixels every 3 minutes.
+
+## Linux (being tested)
+
+FanPilot also runs on Linux x64 (Ubuntu 24.04 and Fedora are the reference; any distribution with systemd and kernel
+6.1 or newer should work), and is **being tested** on real boards
+([#35](https://github.com/mateusconrad/FanPilot/issues/35)). It reaches the motherboard through the kernel's hwmon
+drivers (nct6775, it87, asus-ec-sensors…: `sensors`, from lm-sensors, shows whether the kernel knows your chip; if it
+doesn't, `sudo sensors-detect` says which module to load) and the GPU through NVML (NVIDIA) or amdgpu (AMD). FanPilot
+runs the curves itself, as on boards without Gigabyte Control Center, which, like the tray and the installer, stays
+on Windows. The package carries its own .NET; the system's ICU (`libicu`) is all it needs.
+
+```bash
+tar -xzf FanPilot-0.1.0-linux-x64.tar.gz && cd FanPilot-0.1.0-linux-x64
+sudo ./FanPilot --diagnose          # read-only report of the board, to try it first
+sudo ./install.sh                   # installs it in /opt/fanpilot as a systemd service, started now and at boot
+/opt/fanpilot/FanPilot --tui        # the terminal screen, attached to the service (no sudo)
+sudo ./install.sh --remove          # removes it; the data stays in /var/lib/fanpilot
+```
+
+`install.sh --import-data <folder>` brings curves, pairings and names from a folder you ran it from before; at the end
+it shows how to open the port on `ufw` or `firewalld` for the home network only. The service hands the fans back to
+the BIOS when it stops, even after a `kill -9` (`FanPilot --restore-fans`). To build the package yourself, on Linux:
+`sh scripts/package.sh` (the .NET SDK 10 is enough).
 
 ## Versions and releases
 

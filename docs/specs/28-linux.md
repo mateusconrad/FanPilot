@@ -278,6 +278,38 @@ Passando, segue a 28c.
    `TESTING-OTHER-BOARDS.md` e o `TESTANDO-OUTRAS-PLACAS.md` explicam o `--diagnose` no Linux; o formulário de
    compatibilidade (item 13) ganha o campo "Sistema".
 
+### Andamento da 28c (29/10/2026)
+
+Feita antes do ponto de parada da 28b, por decisão do dono (29/10/2026): é só software, e o que o teste num PC com Linux
+mostrar entra depois.
+
+- `--service` no Linux: o mesmo `FanPilotHost` sem console até o `SIGTERM` (`FanPilotService.Linux.cs`, da 28a). A
+  volta da suspensão não precisou do logind: o `HwmonBoard` reafirma o `pwmN_enable` a cada segundo. O journal guarda a
+  saída, e o `fanpilot.log` da pasta de dados também.
+- `packaging/linux/fanpilot.service`: como no plano, com `ExecStopPost=--restore-fans`, `Restart=on-failure` em 1 s e
+  `TimeoutStopSec=10`. O `ProtectSystem=full` deixa o `/etc` só leitura, então `ReadWritePaths=/etc/fanpilot` (a chave
+  dos segredos). Sem `RuntimeDirectory`: o systemd apagaria o `/run/fanpilot` ao parar, e com ele o arquivo que o
+  `--restore-fans` lê.
+- `packaging/linux/install.sh` (POSIX sh, sem avisos do shellcheck): root e systemd obrigatórios, x86_64, aviso sem o
+  ICU; para o serviço, copia para `/opt/fanpilot`, cria `/etc/fanpilot` em 0700, `--import-data <pasta>`, instala e
+  inicia a unit e mostra o painel, o `--tui` e como abrir a porta no `ufw` e no `firewalld` só para a rede de casa;
+  `--remove` desfaz tudo menos os dados e a chave. O link `/usr/local/bin/fanpilot` e o `.desktop` ficam para o item 30.
+- `scripts/package.sh`: restore completo, `dotnet publish` self-contained em arquivo único com `--no-restore`, e o
+  `.tar.gz` com o executável, o `wwwroot`, a unit, o `install.sh`, as licenças, os READMEs e o CHANGELOG, com os modos
+  fixos (só `FanPilot` e `install.sh` executáveis) e dono root. Roda no Linux (a CI); no Windows, o NTFS não guarda o bit
+  de execução. `.gitattributes` mantém LF nos `.sh` e `.service` mesmo com o `autocrlf`. O `THIRD_PARTY_NOTICES.md`
+  ganhou o runtime do .NET, que vai dentro do executável.
+- CI (job `linux`): os e2e no Chromium do Playwright (os mesmos 85 do Windows; os de serviço e de zip, e os do celular
+  na rede, ficam para o Windows), o pacote como artefato e o `install.sh` de verdade no runner, que tem systemd: o
+  serviço sobe e responde, a pasta de dados é 700 do root, um `kill -9` é seguido do reinício, o `--tui` de um usuário
+  comum se liga a ele, a parada leva menos de 3 s com "Stopped in" no log, e o `--remove` limpa tudo menos os dados.
+  O `service.spec.mjs` continua só no Windows; no Linux, isso é o passo da CI.
+- `fanpilot.mjs` dos e2e funciona nos dois sistemas: `FanPilot.exe` ou `dotnet FanPilot.dll`, root pelo `getuid`, as
+  sobras pelo `pkill`, e o `kill` com `SIGKILL` (no Linux, o `SIGTERM` seria uma parada limpa).
+- Release: um job `linux` gera o `.tar.gz`, que vai para a release e para o `SHA256SUMS.txt` junto com o zip.
+- README: seção "Linux" com o pacote, o `install.sh` e o `--tui`; os guias de teste de placas, com o `--diagnose` no
+  Linux; o formulário de compatibilidade, com o campo "Sistema" e o caminho "Linux hwmon".
+
 ## Critérios de aceite
 
 - [ ] No Windows, nada muda: os testes de hoje passam no `net472`, o zip é o mesmo e o `--hardware-test` passa na B760M.

@@ -1,0 +1,4 @@
+# What runs on Linux keeps LF on every checkout, Windows' autocrlf included (item 28c): a CRLF breaks a shell script
+# and a systemd unit.
+*.sh      text eol=lf
+*.service text eol=lf

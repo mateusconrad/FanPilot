@@ -1,4 +1,4 @@
-// End-to-end tests: the panel in a real browser against FanPilot.exe on the fake board (fanpilot.mjs), plus the
+// End-to-end tests: the panel in a real browser against FanPilot on the fake board (fanpilot.mjs), plus the
 // release zip's smoke test when FANPILOT_ZIP names it (the CI). Run from tests\e2e: npx playwright test.
 import { defineConfig } from '@playwright/test';
 
@@ -14,8 +14,9 @@ export default defineConfig({
   globalTeardown: './global-teardown.mjs',
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    // The Edge that comes with Windows, the CI runner's included: no browser to download.
-    channel: 'msedge',
+    // The Edge that comes with Windows, the CI runner's included: no browser to download. Linux: Playwright's Chromium
+    // (npx playwright install chromium).
+    ...(process.platform === 'win32' ? { channel: 'msedge' } : {}),
     locale: 'pt-BR',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',

@@ -1,6 +1,7 @@
-// The real FanPilot.exe (a Debug build, where --fake-board exists) on a fake board, from a scratch copy, on a free
-// port. Without Administrator (a developer's PC) it serves localhost only; elevated (the CI) it listens on every
-// address, as it does for phones, and the tests that play the phone run too.
+// The real FanPilot (a Debug build, where --fake-board exists) on a fake board, from a scratch copy, on a free port:
+// FanPilot.exe on Windows, "dotnet FanPilot.dll" on Linux (item 28c). Without Administrator (a developer's PC) or root it
+// serves localhost only; elevated (the Windows CI) it listens on every address, as it does for phones, and the tests
+// that play the phone run too.
 import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import net from 'node:net';
@@ -9,8 +10,14 @@ import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const repo = path.resolve(import.meta.dirname, '..', '..');
-// FANPILOT_BUILD: another Debug output folder.
-export const buildDir = process.env.FANPILOT_BUILD || path.join(repo, 'src', 'bin', 'Debug');
+export const windows = process.platform === 'win32';
+// FANPILOT_BUILD: another Debug output folder. Linux: the .NET 10 build, inside the Windows one.
+export const buildDir = process.env.FANPILOT_BUILD || path.join(repo, 'src', 'bin', 'Debug', ...(windows ? [] : ['net10.0']));
+// What runs FanPilot from a folder: its exe, or the .NET host with its dll.
+export const program = windows ? 'FanPilot.exe' : 'FanPilot.dll';
+export function command(dir, args) {
+  return windows ? [path.join(dir, 'FanPilot.exe'), args] : ['dotnet', [path.join(dir, 'FanPilot.dll'), ...args]];
+}
 // Every FanPilot the tests start runs from here, so a leftover one can be told apart from a real FanPilot. The long
 // form of the path: the CI's %TEMP% can be an 8.3 name, and process paths are not.
 export const scratchRoot = path.join(fs.realpathSync.native(os.tmpdir()), 'fanpilot-e2e');
@@ -23,8 +30,9 @@ export function powershell(script, env = {}) {
   return execFileSync('powershell', ['-NoProfile', '-Command', script], { encoding: 'utf8', env: childEnv }).trim();
 }
 
-export const isAdmin = powershell(
-  '([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)') === 'True';
+export const isAdmin = windows
+  ? powershell('([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)') === 'True'
+  : process.getuid() === 0;
 
 // A process ended by kill() has no exit code, only a signal (SIGTERM, even on Windows).
 export const hasExited = (proc) => proc.exitCode !== null || proc.signalCode !== null;
@@ -41,6 +49,10 @@ export function freePort() {
 
 // A FanPilot left running by a crashed run would hold the fake board's single-instance lock.
 export function stopLeftovers() {
+  if (!windows) {
+    try { execFileSync('pkill', ['-KILL', '-f', scratchRoot]); } catch { /* none left */ }
+    return;
+  }
   powershell("Get-CimInstance Win32_Process -Filter \"Name='FanPilot.exe'\" | Where-Object { $_.ExecutablePath -like ($env:ROOT + '\\*') } | " +
     'ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }', { ROOT: scratchRoot });
 }
@@ -78,7 +90,8 @@ export class FanPilot {
         fs.writeFileSync(path.join(this.dataDir, 'config.json'), JSON.stringify({ ...this.config, port: this.port }));
       }
       // RunAsInvoker: without it Windows would ask for elevation (app.manifest). Elevated, nothing changes.
-      this.proc = spawn(path.join(this.dir, 'FanPilot.exe'), ['--fake-board=' + scenario, '--no-browser'], {
+      const [file, args] = command(this.dir, ['--fake-board=' + scenario, '--no-browser']);
+      this.proc = spawn(file, args, {
         cwd: this.dir, env: { ...process.env, __COMPAT_LAYER: 'RunAsInvoker' }, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
       });
       this.proc.stdout.on('data', (d) => { this.output += d; });
@@ -111,7 +124,7 @@ export class FanPilot {
   async kill() {
     if (!this.proc || hasExited(this.proc)) return;
     const exited = new Promise((resolve) => this.proc.once('exit', resolve));
-    this.proc.kill();
+    this.proc.kill('SIGKILL'); // on Windows any signal is TerminateProcess; on Linux SIGTERM would be a clean stop
     await exited;
   }
 

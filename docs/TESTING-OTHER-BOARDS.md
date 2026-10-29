@@ -37,6 +37,12 @@ On an English Windows the file is in English. Check in it:
 If the list of fans is empty, stop here: LibreHardwareMonitor can't control this board, and the file already helps to
 understand why.
 
+**On Linux** (being tested), from the extracted package: first `sensors` (lm-sensors) should list the board's chip
+with fans and temperatures; then `sudo ./FanPilot --diagnose` saves `data/diagnostico-<date>.txt` next to the program.
+Besides the same lists, it has every hwmon chip with its files and the board drivers loaded: if no chip shows up, the
+file says which driver is missing or held by the BIOS. The later steps are the same, with `sudo ./FanPilot`, and the
+path in the form is "Linux hwmon".
+
 ## 2. Monitoring
 
 Run `.\FanPilot.exe` (it asks for Administrator and opens `http://localhost:8787/pair` in the browser). Open the panel
