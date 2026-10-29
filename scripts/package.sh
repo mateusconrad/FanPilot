@@ -18,7 +18,7 @@ dotnet restore "$ROOT/FanPilot.sln" --nologo
 dotnet publish "$ROOT/src/FanPilot.csproj" -c Release -f net10.0 -r linux-x64 --self-contained \
     -p:PublishSingleFile=true --no-restore --nologo -o "$WORK"
 
-cp "$ROOT/packaging/linux/fanpilot.service" "$ROOT/packaging/linux/install.sh" "$WORK/"
+cp "$ROOT/packaging/linux/fanpilot.service" "$ROOT/packaging/linux/fanpilot.desktop" "$ROOT/packaging/linux/install.sh" "$WORK/"
 cp "$ROOT/LICENSE" "$ROOT/THIRD_PARTY_NOTICES.md" "$ROOT/README.md" "$ROOT/README.pt-BR.md" "$ROOT/CHANGELOG.md" "$WORK/"
 # The same modes whoever builds it: only FanPilot and install.sh run.
 find "$WORK" -type d -exec chmod 755 {} +

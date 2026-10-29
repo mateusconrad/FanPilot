@@ -46,6 +46,28 @@ public class AppOptionsTests
     }
 
     [Fact]
+    public void TheTerminalCanBeToldWhereFanPilotIs()
+    {
+        Assert.Equal(9123, AppOptions.Parse(new[] { "--tui", "--port", "9123" }, false).Port);
+        Assert.Null(AppOptions.Parse(new[] { "--tui" }, false).Port);
+        foreach (string bad in new[] { "0", "65536", "-1", "80a", " 81" })
+            Assert.Equal("console.option.port", Assert.Throws<UserError>(() => AppOptions.Parse(new[] { "--port", bad }, false)).Msg.Key);
+        Assert.Throws<UserError>(() => AppOptions.Parse(new[] { "--port" }, false));
+    }
+
+    // Item 30: FanPilot opened while another runs (the service) shows its screen, to a person at a terminal only.
+    [Fact]
+    public void OpenedWithFanPilotRunningShowsItsScreen()
+    {
+        Assert.True(App.ShowsRunningOne(AppOptions.Parse(new string[0], false), true));
+        Assert.True(App.ShowsRunningOne(AppOptions.Parse(new[] { "--port", "8790" }, false), true));
+        Assert.False(App.ShowsRunningOne(AppOptions.Parse(new string[0], false), false)); // no terminal: "already running"
+        foreach (var args in new[] { new[] { "--log" }, new[] { "--no-browser" }, new[] { "--restore-fans" }, new[] { "--service" },
+                                     new[] { "--import-data", @"C:\velho" } })
+            Assert.False(App.ShowsRunningOne(AppOptions.Parse(args, false), true), string.Join(" ", args));
+    }
+
+    [Fact]
     public void OptionsForOthersAreLeftAlone()
     {
         var o = AppOptions.Parse(new[] { "--hardware-test", "--fan", "2", "--no-browser" }, false);

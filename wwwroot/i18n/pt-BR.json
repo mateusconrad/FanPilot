@@ -433,6 +433,7 @@
   "console.alreadyRunning": "O FanPilot já está rodando. Painel: {url}",
   "console.option.folder": "{option} precisa de uma pasta: {option} <pasta>.",
   "console.option.empty": "{option} precisa de uma pasta.",
+  "console.option.port": "Porta inválida: {value} (use um número de 1 a 65535).",
   "console.import.busy": "Pare o FanPilot (ou o serviço) antes de importar: ele está usando os dados agora.",
   "console.import.notFound": "Pasta não encontrada: {path}",
   "console.import.same": "A pasta de origem é a própria pasta de dados.",

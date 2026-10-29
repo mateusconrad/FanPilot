@@ -54,7 +54,7 @@ dotnet build src\FanPilot.csproj -c Debug; cd tests\e2e; npm ci; npx playwright 
 .\bin\FanPilot.exe --tui        # (sem UAC) a mesma tela, ligada a um FanPilot já rodando (o serviço)
 .\bin\FanPilot.exe --log        # a janela mostra o log rolando, como antes
 .\scripts\firewall.ps1          # (admin, uma vez) libera a porta 8787 no perfil de rede Privado
-.\scripts\autostart.ps1         # (admin, opcional) inicia elevado no logon, sem UAC
+.\scripts\autostart.ps1         # (admin, opcional) sobe com o PC como serviço do Windows, sem janela; menu Iniciar > FanPilot abre a tela
 .\scripts\package.ps1           # gera dist\FanPilot-<versão>-win-x64.zip para distribuir (sem data\)
 .\bin\FanPilot.exe --version    # versão e commit, ex.: FanPilot 0.1.0+1a2b3c4
 .\bin\FanPilot.exe --diagnose   # relatório só de leitura da placa (para placas ainda não testadas)
@@ -266,8 +266,8 @@ valem em qualquer resposta:
 - A velocidade é reaplicada a cada segundo, desfazendo o que a BIOS ou um app do fabricante tenha mudado.
 - **Limite:** se o processo for **encerrado à força** (Gerenciador de Tarefas > Finalizar tarefa, `taskkill /f`)
   ou o PC travar, não há como reagir: o fan fica na última velocidade até a BIOS ou o FanPilot assumir de novo.
-  Por isso o piso de 20% e o 100% obrigatório até 90 °C valem aqui também, e o `autostart.ps1` configura a
-  tarefa agendada para tentar reiniciar o FanPilot.
+  Por isso o piso de 20% e o 100% obrigatório até 90 °C valem aqui também, e o serviço que o `autostart.ps1` instala
+  é reiniciado pelo Windows 1 s depois de morrer.
 - Não use junto com o controle de fans do fabricante (**ASUS Armoury Crate / AI Suite "Fan Xpert"**, MSI Center
   etc.): os dois vão disputar os fans. Desative o controle de fans de lá.
 
@@ -369,7 +369,7 @@ Só leitura: nada que uma integração faça muda um fan.
 | "Código inválido ou expirado" | O código é de uso único e dura ~3 min; escaneie o QR atual de novo. Muitas tentativas erradas bloqueiam o IP por 1 min. |
 | Celular volta para a tela de bloqueio | Sessão revogada em `/pair`, cookies apagados ou 30 dias sem uso: pareie de novo. |
 | Status "sensores da placa indisponíveis" | Gigabyte: `EasyTuneEngineService` parado (`services.msc`) ou GCC atualizado/removido. A GPU continua funcionando. |
-| "Falta o driver PawnIO" | Placa sem GCC: feche e abra o FanPilot pela janela e responda `S` para instalar (ou instale pelo [site](https://pawnio.eu)). Com o autostart (`--no-browser`) ele não pergunta. |
+| "Falta o driver PawnIO" | Placa sem GCC: feche e abra o FanPilot pela janela e responda `S` para instalar (ou instale pelo [site](https://pawnio.eu)). Rodando como serviço (`autostart.ps1`), ele não pergunta. |
 | Placa sem GCC não mostra fans | O LibreHardwareMonitor não reconheceu ou não controla o chip dessa placa. Rode `FanPilot.exe --diagnose` e relate pelo link que vem no arquivo gerado. |
 | FanPilot fecha logo ao abrir | Não está como Administrador, ou o GCC não está instalado. Veja o log. |
 | "Esta placa-mãe não oferece controle de fans" | A placa não usa o caminho de controle que o FanPilot implementa; só o monitoramento funciona. |

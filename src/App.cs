@@ -165,7 +165,7 @@ static class App
         // The fake board writes its own curves, backup and pairings: never into the real board's data\.
         string dataDir = DataDirectory.Resolve(o.DataDir, baseDir, fake);
         // --tui only reads a running FanPilot's API (item 29): no data folder of its own, no log, no Administrator.
-        if (o.Tui) return TerminalApp.Attach(AppConfig.ReadPort(Path.Combine(dataDir, "config.json")));
+        if (o.Tui) return TerminalApp.Attach(o.Port ?? AppConfig.ReadPort(Path.Combine(dataDir, "config.json")));
         if (o.Service) DataDirectory.Restrict(dataDir); else Directory.CreateDirectory(dataDir);
         Log.FilePath = Path.Combine(dataDir, "fanpilot.log");
         Log.Info("FanPilot " + AppVersion.Text + (fake ? " (fake board: " + scenario + ")" : "") + (o.Service ? " as a service" : "") +
@@ -189,7 +189,10 @@ static class App
                 Console.WriteLine(new Msg("console.hwtestBusy").In(I18n.SystemLanguage));
                 return 4;
             }
-            string panel = "http://localhost:" + AppConfig.Load(Path.Combine(dataDir, "config.json")).Port + "/";
+            int port = o.Port ?? AppConfig.Load(Path.Combine(dataDir, "config.json")).Port;
+            // Opened while FanPilot runs (the service, item 30): what the person wanted to see is its screen.
+            if (ShowsRunningOne(o, TerminalApp.Available())) return TerminalApp.Attach(port);
+            string panel = "http://localhost:" + port + "/";
             Console.WriteLine(new Msg("console.alreadyRunning", "url", panel).In(I18n.SystemLanguage));
             if (o.Interactive) Platform.OpenInBrowser(panel);
             return 4;
@@ -233,6 +236,13 @@ static class App
         else stop.WaitOne();
         Exit.Cleanup();
         return 0;
+    }
+
+    // FanPilot opened with another one running: the terminal attached to it when a person is at a terminal (item 30),
+    // else "already running" (and the browser) as before. Never for --log, the restore and the imports.
+    internal static bool ShowsRunningOne(AppOptions o, bool terminal)
+    {
+        return terminal && o.Interactive && !o.Log && !o.RestoreFans && !o.Service && o.ImportFrom == null;
     }
 
     // --fake-board: the whole app on FakeBoard/FakeGpu, for the end-to-end tests and UI work without hardware. Debug

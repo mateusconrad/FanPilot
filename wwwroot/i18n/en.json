@@ -433,6 +433,7 @@
   "console.alreadyRunning": "FanPilot is already running. Panel: {url}",
   "console.option.folder": "{option} needs a folder: {option} <folder>.",
   "console.option.empty": "{option} needs a folder.",
+  "console.option.port": "Invalid port: {value} (use a number from 1 to 65535).",
   "console.import.busy": "Stop FanPilot (or the service) before importing: it is using the data right now.",
   "console.import.notFound": "Folder not found: {path}",
   "console.import.same": "The source folder is the data folder itself.",

@@ -3,13 +3,16 @@
 #   sudo ./install.sh                            installs or updates, and starts it
 #   sudo ./install.sh --import-data <folder>     the same, bringing curves, pairings and names from a portable run
 #   sudo ./install.sh --remove                   stops and removes it; the data stays in /var/lib/fanpilot
-# The program goes to /opt/fanpilot, the data to /var/lib/fanpilot, the secrets' key to /etc/fanpilot.
+# The program goes to /opt/fanpilot, the data to /var/lib/fanpilot, the secrets' key to /etc/fanpilot; "fanpilot" in
+# /usr/local/bin and "FanPilot" in the applications menu open its terminal screen without root (item 30).
 set -eu
 
 PREFIX=/opt/fanpilot
 DATA=/var/lib/fanpilot
 KEYS=/etc/fanpilot
 UNIT=/etc/systemd/system/fanpilot.service
+LINK=/usr/local/bin/fanpilot
+DESKTOP=/usr/share/applications/fanpilot.desktop
 HERE=$(cd "$(dirname "$0")" && pwd)
 
 fail() { echo "install.sh: $*" >&2; exit 1; }
@@ -19,7 +22,7 @@ command -v systemctl > /dev/null || fail "o systemd é necessário (systemctl n�
 
 if [ "${1:-}" = "--remove" ]; then
     systemctl disable --now fanpilot.service 2> /dev/null || true
-    rm -f "$UNIT"
+    rm -f "$UNIT" "$LINK" "$DESKTOP"
     systemctl daemon-reload
     rm -rf "$PREFIX"
     echo "FanPilot removido. Os dados ficam em $DATA e a chave dos segredos em $KEYS (apague-os se quiser)."
@@ -48,7 +51,7 @@ systemctl stop fanpilot.service 2> /dev/null || true
 mkdir -p "$PREFIX"
 rm -rf "$PREFIX/wwwroot"
 cp -R "$HERE/FanPilot" "$HERE/wwwroot" "$PREFIX/"
-for f in FanPilot.pdb LICENSE THIRD_PARTY_NOTICES.md README.md README.pt-BR.md CHANGELOG.md install.sh fanpilot.service; do
+for f in FanPilot.pdb LICENSE THIRD_PARTY_NOTICES.md README.md README.pt-BR.md CHANGELOG.md install.sh fanpilot.service fanpilot.desktop; do
     [ -e "$HERE/$f" ] && cp "$HERE/$f" "$PREFIX/"
 done
 chmod 755 "$PREFIX/FanPilot" "$PREFIX/install.sh"
@@ -69,8 +72,15 @@ if [ -f "$DATA/config.json" ]; then
     [ -n "$PORT" ] || PORT=8787
 fi
 
+# The terminal screen for whoever is at this PC: "fanpilot" on the PATH, and an entry in the applications menu.
+ln -sf "$PREFIX/FanPilot" "$LINK"
+if [ -f "$HERE/fanpilot.desktop" ] && [ -d "$(dirname "$DESKTOP")" ]; then
+    sed "s|--port [0-9]*|--port $PORT|" "$HERE/fanpilot.desktop" > "$DESKTOP"
+    chmod 644 "$DESKTOP"
+fi
+
 echo "FanPilot instalado e rodando como serviço (systemctl status fanpilot; journalctl -u fanpilot)."
-echo "Painel neste PC: http://localhost:$PORT/pair  ·  no terminal: $PREFIX/FanPilot --tui"
+echo "Painel neste PC: http://localhost:$PORT/pair  ·  no terminal: fanpilot --tui --port $PORT (ou \"FanPilot\" no menu)"
 echo "Para o celular na rede local, abra a porta $PORT só para a rede de casa, por exemplo:"
 echo "  ufw:       sudo ufw allow from 192.168.0.0/16 to any port $PORT proto tcp"
 echo "  firewalld: sudo firewall-cmd --permanent --zone=home --add-port=$PORT/tcp && sudo firewall-cmd --reload"

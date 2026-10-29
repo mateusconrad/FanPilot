@@ -77,6 +77,14 @@ Primeira versão publicada (será a 0.1.0).
   log rolando. `FanPilot --tui` mostra a mesma tela ligada a um FanPilot que já roda, sem Administrador, no Windows e
   no Linux ([#36](https://github.com/mateusconrad/FanPilot/issues/36)).
 
+### Partida sem janela
+
+- O `autostart.ps1` passa a instalar o FanPilot como serviço do Windows: sobe com o PC, antes do logon e sem janela,
+  volta sozinho se fechar e traz a pasta `data\` da versão portátil; "FanPilot" no menu Iniciar abre a tela do
+  terminal sem UAC, e o `FanPilot.exe` aberto com o serviço rodando mostra a tela dele. No Linux, o `install.sh` põe o
+  `fanpilot` no PATH e "FanPilot" no menu de aplicativos. A tarefa agendada do `autostart.ps1` antigo é removida
+  ([#37](https://github.com/mateusconrad/FanPilot/issues/37)).
+
 ### Linux (em teste)
 
 - O FanPilot roda no Linux como root: placa-mãe pelos drivers hwmon do kernel, com as curvas executadas pelo FanPilot;

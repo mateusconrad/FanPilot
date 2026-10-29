@@ -44,6 +44,31 @@ Esconder o console (um `WinExe` sem janela, ou a tarefa com a janela oculta) tir
 FanPilot dependente do logon e sem como ver o que está acontecendo. O serviço já existe, já é testado na CI (item 14a)
 e é o que o instalador (14c) vai instalar; este item só o torna o caminho padrão.
 
+### Como ficou (29/10/2026)
+
+Feito antes do ponto de parada da 14a (o serviço na B760M), por decisão do dono: o item só torna o serviço a partida
+padrão; o que o teste na placa mostrar entra depois.
+
+- `scripts\autostart.ps1` (Windows PowerShell 5.1): remove a tarefa agendada antiga; troca o serviço anterior, se
+  houver; importa a `data\` portátil uma vez (só quando `%ProgramData%\FanPilot` ainda não tem `machine.json`); registra
+  o serviço `FanPilot` (automático, `--service --data %ProgramData%\FanPilot`, recuperação de 1 s, 5 s e 60 s) e o
+  inicia; cria "FanPilot" no menu Iniciar de todos os usuários. `-Remove` tira serviço, atalho e tarefa e deixa os dados.
+- O atalho não pede UAC: o manifesto do `FanPilot.exe` pede Administrador, e o atalho roda
+  `cmd /c "set __COMPAT_LAYER=RunAsInvoker&& FanPilot.exe --tui --port <porta>"` (o mesmo que os e2e usam). A porta vai no
+  atalho porque a pasta do serviço é só de SYSTEM e Administradores: `--port`, opção nova, diz ao `--tui` onde está o
+  FanPilot. Trocar o manifesto por `asInvoker` com auto-elevação seria mais limpo e fica como alternativa se o
+  `RunAsInvoker` der problema.
+- `FanPilot` aberto com outro rodando (`App.ShowsRunningOne`): num terminal, com uma pessoa na janela, mostra a tela
+  ligada a ele; `--log`, `--no-browser`, `--restore-fans`, o serviço e a importação continuam com "já está rodando".
+- O serviço do Windows avisa no log, depois de subir, se a tarefa agendada antiga ainda existir.
+- Linux (`install.sh` da 28c): `/usr/local/bin/fanpilot` aponta para o executável e
+  `/usr/share/applications/fanpilot.desktop` (`Terminal=true`) abre `--tui --port <porta>`; `--remove` apaga os dois.
+- Testes: `--port` e a escolha do `ShowsRunningOne` (`AppOptionsTests`). Na CI do Windows, o `autostart.ps1` de verdade
+  a partir de uma tarefa agendada antiga e de uma `data\` portátil na porta 8790: a tarefa some, o serviço sobe
+  automático e responde na porta importada, o atalho leva `--tui --port 8790`, e o `-Remove` limpa tudo menos os dados.
+  Na do Linux, o link, o `.desktop` e o `fanpilot --tui` pelo link, e o `--remove` sem eles.
+- Fica para a verificação em hardware: reiniciar a B760M e um PC com Linux e ver que nada abre; o atalho abrindo a tela.
+
 ## Critérios de aceite
 
 - [ ] Windows: depois do `autostart.ps1`, reiniciar o PC não abre janela nenhuma; o painel e o celular funcionam antes

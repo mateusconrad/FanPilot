@@ -14,6 +14,9 @@ sealed class AppOptions
     public string DataDir;
     // --import-data <folder>: copy a portable install's state into this one's data folder, then exit.
     public string ImportFrom;
+    // --port: where --tui finds FanPilot when its config.json can't be read (the service's folder is root's or
+    // Administrators' alone, item 30); null = the config's.
+    public int? Port;
     // Debug builds only (App.FakeBoardScenario): the fake board's scenario.
     public string FakeScenario;
     public string[] Raw;
@@ -37,6 +40,7 @@ sealed class AppOptions
                 case "--log": o.Log = true; break;
                 case "--no-browser": o.Interactive = false; break;
                 case "--data": o.DataDir = Value(args, ref i, a); break;
+                case "--port": o.Port = PortValue(Value(args, ref i, a)); break;
                 case "--import-data": o.ImportFrom = Value(args, ref i, a); break;
                 case "--fake-board": if (fakeBoardAllowed) o.FakeScenario = "demo"; break;
                 default:
@@ -48,6 +52,14 @@ sealed class AppOptions
         }
         if (o.Service) o.Interactive = false;
         return o;
+    }
+
+    static int PortValue(string text)
+    {
+        int port;
+        if (!int.TryParse(text, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out port) || port < 1 || port > 65535)
+            throw new UserError("console.option.port", "value", text);
+        return port;
     }
 
     static string Value(string[] args, ref int i, string name)
