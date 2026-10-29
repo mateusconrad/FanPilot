@@ -85,6 +85,13 @@ Primeira versão publicada (será a 0.1.0).
   `fanpilot` no PATH e "FanPilot" no menu de aplicativos. A tarefa agendada do `autostart.ps1` antigo é removida
   ([#37](https://github.com/mateusconrad/FanPilot/issues/37)).
 
+### Ícone na bandeja
+
+- O `autostart.ps1` também põe o FanPilot na bandeja do Windows a cada logon, sem UAC: o ícone mostra no tooltip a
+  temperatura da CPU e da GPU e os alertas ativos, ganha um ponto laranja com alerta e cinza quando o FanPilot não
+  responde; um clique abre a tela do terminal, e o menu abre o painel no navegador. Fechar a tela ou o ícone não para o
+  serviço ([#14](https://github.com/mateusconrad/FanPilot/issues/14)).
+
 ### Linux (em teste)
 
 - O FanPilot roda no Linux como root: placa-mãe pelos drivers hwmon do kernel, com as curvas executadas pelo FanPilot;

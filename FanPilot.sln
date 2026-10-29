@@ -9,6 +9,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{82F0EA6D
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FanPilot.Tests", "tests\FanPilot.Tests\FanPilot.Tests.csproj", "{4604A999-9169-4462-A4BC-6326D8A9939B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FanPilotTray", "tray\FanPilotTray.csproj", "{6E1C2B7A-3F4D-4C8E-9A51-2D7B8F0E4C13}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,6 +28,10 @@ Global
 		{4604A999-9169-4462-A4BC-6326D8A9939B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4604A999-9169-4462-A4BC-6326D8A9939B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4604A999-9169-4462-A4BC-6326D8A9939B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6E1C2B7A-3F4D-4C8E-9A51-2D7B8F0E4C13}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E1C2B7A-3F4D-4C8E-9A51-2D7B8F0E4C13}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E1C2B7A-3F4D-4C8E-9A51-2D7B8F0E4C13}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E1C2B7A-3F4D-4C8E-9A51-2D7B8F0E4C13}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{4604A999-9169-4462-A4BC-6326D8A9939B} = {82F0EA6D-C831-4C26-A17D-1C5679CA44A0}

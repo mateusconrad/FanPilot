@@ -1,15 +1,18 @@
 ﻿# Starts FanPilot with the PC, without any window (item 30): registers it as a Windows service (LocalSystem, before
 # logon, restarted if it dies) with its data in %ProgramData%\FanPilot, brings the portable data\ folder there the
 # first time, and puts "FanPilot" in the Start menu, which opens its terminal screen (FanPilot.exe --tui) without UAC.
+# The tray icon (FanPilotTray.exe, item 14b) starts at every logon, for every user, and opens that screen on a click.
 # Replaces the scheduled task the older version of this script created. Run in an elevated PowerShell, from the
 # repository (bin\FanPilot.exe) or the release zip (FanPilot.exe next to scripts\); the service runs the exe from there,
-# so moving the folder means running this again. -Remove undoes it: the service, the shortcut and the old task go, the
-# data stays.
+# so moving the folder means running this again. -Remove undoes it: the service, the tray icon, the shortcut and the old
+# task go, the data stays.
 param([switch]$Remove)
 $ErrorActionPreference = 'Stop'
 $name = 'FanPilot'
 $data = Join-Path $env:ProgramData 'FanPilot'
 $shortcut = Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'FanPilot.lnk'
+$run = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run'
+$trayName = 'FanPilotTray'
 
 $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $admin) { throw 'Rode num PowerShell como Administrador.' }
@@ -31,6 +34,8 @@ if (Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue) {
 
 if ($Remove) {
     Remove-FanPilotService
+    Remove-ItemProperty -Path $run -Name $trayName -ErrorAction SilentlyContinue
+    Stop-Process -Name $trayName -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $shortcut -ErrorAction SilentlyContinue
     Write-Host "FanPilot removido da partida automática. Os dados ficam em $data."
     return
@@ -41,6 +46,8 @@ $parent = Split-Path $PSScriptRoot
 $exe = @((Join-Path $parent 'bin\FanPilot.exe'), (Join-Path $parent 'FanPilot.exe')) | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $exe) { throw 'FanPilot.exe não encontrado (compile com build.ps1 ou extraia o zip da release).' }
 $exe = (Resolve-Path $exe).Path
+$tray = Join-Path (Split-Path $exe) 'FanPilotTray.exe'
+if (-not (Test-Path $tray)) { throw "FanPilotTray.exe não encontrado ao lado de $exe (compile com build.ps1)." }
 
 # An update: the service goes (handing the fans back) and comes back with this exe.
 Remove-FanPilotService
@@ -77,5 +84,28 @@ $link.IconLocation = "$exe,0"
 $link.Description = 'Temperaturas e coolers do FanPilot no terminal'
 $link.Save()
 
+# The tray icon at every logon, for every user, with the port for the same reason as the shortcut. Its manifest asks
+# for no elevation.
+Set-ItemProperty -Path $run -Name $trayName -Value ('"' + $tray + '" --port ' + $port)
+
+# And now, for whoever runs this: started from here it would inherit Administrator, so a one-off task starts it as the
+# signed-in person (without Administrator), and goes once the icon is up. A tray already open stays (one per session).
+$trayStarted = [bool](Get-Process -Name $trayName -ErrorAction SilentlyContinue)
+if (-not $trayStarted) {
+    $once = 'FanPilotTray-agora'
+    try {
+        $who = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+        Register-ScheduledTask -TaskName $once -Force `
+            -Action (New-ScheduledTaskAction -Execute $tray -Argument "--port $port") `
+            -Principal (New-ScheduledTaskPrincipal -UserId $who -LogonType Interactive -RunLevel Limited) `
+            -Settings (New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries) | Out-Null
+        Start-ScheduledTask -TaskName $once
+        for ($i = 0; $i -lt 25 -and -not $trayStarted; $i++) { Start-Sleep -Milliseconds 200; $trayStarted = [bool](Get-Process -Name $trayName -ErrorAction SilentlyContinue) }
+    } catch { }
+    Unregister-ScheduledTask -TaskName $once -Confirm:$false -ErrorAction SilentlyContinue
+}
+
 Write-Host "FanPilot instalado como serviço: sobe com o PC, sem janela, e volta sozinho se fechar."
 Write-Host "Painel: http://localhost:$port  ·  No menu Iniciar, 'FanPilot' abre a tela do terminal."
+if ($trayStarted) { Write-Host "Ícone na bandeja: um clique abre a tela do terminal; ele volta a cada logon." }
+else { Write-Host "Ícone na bandeja: aparece no próximo logon (um clique abre a tela do terminal)." }

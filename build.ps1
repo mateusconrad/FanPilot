@@ -16,4 +16,7 @@ if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
 Remove-Item -Recurse -Force (Join-Path $bin 'wwwroot') -ErrorAction SilentlyContinue
 & dotnet build (Join-Path $root 'src\FanPilot.csproj') -c Release -f net472 -o $bin --nologo -v:minimal
 if ($LASTEXITCODE -ne 0) { throw "dotnet build falhou ($LASTEXITCODE)" }
-Write-Host "OK -> $bin\FanPilot.exe"
+# The tray icon (item 14b), next to the exe.
+& dotnet build (Join-Path $root 'tray\FanPilotTray.csproj') -c Release -o $bin --nologo -v:minimal
+if ($LASTEXITCODE -ne 0) { throw "dotnet build da bandeja falhou ($LASTEXITCODE)" }
+Write-Host "OK -> $bin\FanPilot.exe, $bin\FanPilotTray.exe"

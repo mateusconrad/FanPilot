@@ -35,6 +35,11 @@
     <Reference Include="System.Web.Extensions" />
   </ItemGroup>
 
+  <!-- TrayStatusTests reads what the tray icon (item 14b) makes of /api/state: the tray is Windows only, this file is not. -->
+  <ItemGroup>
+    <Compile Include="..\..\tray\TrayStatus.cs" Link="tray\TrayStatus.cs" />
+  </ItemGroup>
+
   <!-- Tests of what only one system has, as in src\FanPilot.csproj. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
     <Compile Remove="Gcc*.cs;Gigabyte*.cs;CpuTemperatureTests.cs;*.Windows.cs" />

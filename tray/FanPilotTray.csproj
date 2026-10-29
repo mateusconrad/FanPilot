@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The tray icon (item 14b): started at every logon, as the person and without UAC, it shows the service's state and
+       opens FanPilot's terminal screen (item 29) on a click. Windows only, on the .NET Framework that ships with it. It
+       talks to FanPilot through the local API, as the terminal screen does, so it takes the panel's dictionaries and
+       FanPilot's Json from src\ instead of referencing FanPilot.exe (which asks for Administrator). The Linux builds
+       leave it out: they build the test project, not FanPilot.sln, with net10.0. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>FanPilotTray</AssemblyName>
+    <RootNamespace />
+    <ApplicationIcon>..\assets\brand\fanpilot.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+
+  <!-- Next to FanPilot.exe, where autostart.ps1 and the release zip find it. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <OutputPath>..\bin\</OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Net.Http" />
+    <Compile Include="..\src\Json.cs;..\src\I18n.cs" LinkBase="shared" />
+    <EmbeddedResource Include="..\wwwroot\i18n\*.json" LogicalName="i18n.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\assets\brand\fanpilot.ico" LogicalName="fanpilot.ico" />
+  </ItemGroup>
+
+</Project>

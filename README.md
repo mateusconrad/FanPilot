@@ -56,7 +56,7 @@ dotnet build src\FanPilot.csproj -c Debug; cd tests\e2e; npm ci; npx playwright 
 .\bin\FanPilot.exe --tui        # (no UAC) the same screen, attached to a FanPilot already running (the service)
 .\bin\FanPilot.exe --log        # the window shows the scrolling log instead
 .\scripts\firewall.ps1          # (admin, once) opens port 8787 on the Private network profile
-.\scripts\autostart.ps1         # (admin, optional) starts it with the PC as a Windows service, no window; Start menu > FanPilot opens its screen
+.\scripts\autostart.ps1         # (admin, optional) starts it with the PC as a Windows service, no window, with the tray icon; a click on it (or Start menu > FanPilot) opens its screen
 .\scripts\package.ps1           # builds dist\FanPilot-<version>-win-x64.zip to hand out (without data\)
 .\bin\FanPilot.exe --version    # version and commit, e.g. FanPilot 0.1.0+1a2b3c4
 .\bin\FanPilot.exe --diagnose   # read-only report of the board (for boards nobody has tested yet)

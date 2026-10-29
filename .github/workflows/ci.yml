@@ -80,8 +80,8 @@ jobs:
 
       # Item 30: autostart.ps1 as someone with the older version installed runs it: the scheduled task with a window
       # goes, the portable data\ comes along, the service comes up (automatic, answering), the Start menu shortcut opens
-      # --tui with the port, and -Remove undoes it all but the data. bin\FanPilot.exe is the Release build, on the
-      # runner's real board (no GCC, no PawnIO: monitoring only).
+      # --tui with the port, the tray icon (item 14b) starts at logon with it too, and -Remove undoes it all but the
+      # data. bin\FanPilot.exe is the Release build, on the runner's real board (no GCC, no PawnIO: monitoring only).
       - name: Partida sem janela (autostart.ps1)
         shell: powershell
         run: |
@@ -103,9 +103,14 @@ jobs:
           $s = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk)
           if ($s.Arguments -notmatch '--tui --port 8790') { throw "atalho: $($s.TargetPath) $($s.Arguments)" }
           Write-Host "atalho: $($s.TargetPath) $($s.Arguments)"
+          $tray = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run').FanPilotTray
+          if ($tray -notmatch 'FanPilotTray\.exe" --port 8790$') { throw "bandeja no logon: '$tray'" }
+          Write-Host "bandeja: $tray"
           ./scripts/autostart.ps1 -Remove
           if (Get-Service FanPilot -ErrorAction SilentlyContinue) { throw 'o serviço continua instalado' }
           if (Test-Path $lnk) { throw 'o atalho continua lá' }
+          if ((Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run').FanPilotTray) { throw 'a bandeja continua no logon' }
+          if (Get-Process FanPilotTray -ErrorAction SilentlyContinue) { throw 'a bandeja continua aberta' }
           if (-not (Test-Path "$env:ProgramData\FanPilot\config.json")) { throw 'o -Remove apagou os dados' }
 
   # The Linux build (item 28): .NET 10, the tests on Linux as a plain user (the ones that need root are skipped, as
@@ -128,7 +133,7 @@ jobs:
       - name: Restaurar pacotes (packages.lock.json)
         run: dotnet restore FanPilot.sln --locked-mode
       - name: Compilar (net10.0)
-        run: dotnet build FanPilot.sln -c Release -f net10.0 --no-restore
+        run: dotnet build tests/FanPilot.Tests/FanPilot.Tests.csproj -c Release -f net10.0 --no-restore
       - name: Versão
         run: |
           version=$(sed -n 's:.*<VersionPrefix>\(.*\)</VersionPrefix>.*:\1:p' Directory.Build.props)
@@ -137,7 +142,7 @@ jobs:
           if [ "$actual" != "$expected" ]; then echo "--version mostrou '$actual'; o esperado era '$expected'."; exit 1; fi
           echo "$actual"
       - name: Testes C#
-        run: dotnet test FanPilot.sln -c Release -f net10.0 --no-build
+        run: dotnet test tests/FanPilot.Tests/FanPilot.Tests.csproj -c Release -f net10.0 --no-build
       - name: Testes do painel
         run: node --test "tests/js/*.test.mjs"
       # The terminal (item 29) in a real pseudo-terminal: FanPilot on the fake board draws it, and q closes FanPilot.
