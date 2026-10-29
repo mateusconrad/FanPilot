@@ -113,7 +113,8 @@ interface abre com uma tecla.
   a porta sem escrever nada), o duty no `HwmonBoardTests`. Num pseudo-terminal (`script`), no container e na CI do
   Ubuntu: o FanPilot desenha a tela e `q` o fecha; o `--tui` liga o Turbo com `t` e `q` deixa o FanPilot rodando.
 - Conferido à mão em 29/10/2026, com a placa falsa: o FanPilot no Windows Terminal e o `--tui` no conhost do Windows 11,
-  visual aprovado. O terminal gráfico do Linux vai junto com o ponto de parada da 28b, num PC com Linux.
+  visual aprovado. As teclas no Windows ainda não foram testadas à mão (veja "Verificação em hardware pendente" no
+  roadmap); o terminal gráfico do Linux vai junto com o ponto de parada da 28b.
 
 ## Critérios de aceite
 
