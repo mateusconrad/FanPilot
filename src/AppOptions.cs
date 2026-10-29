@@ -7,7 +7,7 @@ using System.Linq;
 
 sealed class AppOptions
 {
-    public bool Version, Diagnose, HardwareTest, Service, RestoreFans;
+    public bool Version, Diagnose, HardwareTest, Service, RestoreFans, Tui, Log;
     // A person is at the console: the browser opens, a missing PawnIO driver can be installed. Never for a service.
     public bool Interactive = true;
     // --data <folder>: where the state lives (the installed service uses %ProgramData%\FanPilot). Null: next to the exe.
@@ -33,6 +33,8 @@ sealed class AppOptions
                 case "--hardware-test": o.HardwareTest = true; break;
                 case "--service": o.Service = true; break;
                 case "--restore-fans": o.RestoreFans = true; o.Interactive = false; break;
+                case "--tui": o.Tui = true; break;
+                case "--log": o.Log = true; break;
                 case "--no-browser": o.Interactive = false; break;
                 case "--data": o.DataDir = Value(args, ref i, a); break;
                 case "--import-data": o.ImportFrom = Value(args, ref i, a); break;

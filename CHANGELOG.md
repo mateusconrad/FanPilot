@@ -70,6 +70,13 @@ Primeira versão publicada (será a 0.1.0).
   seguem o idioma do Windows, e o log é sempre em inglês, para buscar uma mensagem em qualquer issue. README e guia de
   teste em inglês e em português, e formulários de issue em inglês com os rótulos em português.
 
+### Interface no terminal
+
+- A janela do FanPilot mostra as temperaturas e os coolers (RPM e porcentagem) com barras e gráficos dos últimos 10
+  minutos, o endereço do painel e as teclas `o` (abrir no navegador), `t` (Turbo), `l` (log) e `q`; `--log` volta ao
+  log rolando. `FanPilot --tui` mostra a mesma tela ligada a um FanPilot que já roda, sem Administrador, no Windows e
+  no Linux ([#36](https://github.com/mateusconrad/FanPilot/issues/36)).
+
 ### Linux (em teste)
 
 - O FanPilot roda no Linux como root: placa-mãe pelos drivers hwmon do kernel, com as curvas executadas pelo FanPilot;

@@ -49,7 +49,9 @@ Como funciona por baixo: veja [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEE
 dotnet test                     # testes automatizados (sem hardware nem Administrador)
 node --test "tests/js/*.test.mjs"  # testes do painel (Node 22+)
 dotnet build src\FanPilot.csproj -c Debug; cd tests\e2e; npm ci; npx playwright test   # ponta a ponta, no Edge
-.\bin\FanPilot.exe              # pede UAC, abre http://localhost:8787/pair
+.\bin\FanPilot.exe              # pede UAC, abre http://localhost:8787/pair; a janela mostra temperaturas e coolers
+.\bin\FanPilot.exe --tui        # (sem UAC) a mesma tela, ligada a um FanPilot já rodando (o serviço)
+.\bin\FanPilot.exe --log        # a janela mostra o log rolando, como antes
 .\scripts\firewall.ps1          # (admin, uma vez) libera a porta 8787 no perfil de rede Privado
 .\scripts\autostart.ps1         # (admin, opcional) inicia elevado no logon, sem UAC
 .\scripts\package.ps1           # gera dist\FanPilot-<versão>-win-x64.zip para distribuir (sem data\)

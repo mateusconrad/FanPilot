@@ -8,7 +8,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 - **Testes:** testes automatizados do item: `a fazer` · `ok` (commitados com o item; rodam na [CI](https://github.com/mateusconrad/FanPilot/actions) a cada push)
 - **Esforço**, em dias de trabalho focado: P ≈ 1 · P–M ≈ 2 · M ≈ 3 · G ≈ 10
 
-**Concluídos: 25 de 30** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 14a, 15, 16, 17, 18, 19, 20, 22, 23, 24, 25, 27, 28b (veja a seção própria)
+**Concluídos: 26 de 30** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 14a, 15, 16, 17, 18, 19, 20, 22, 23, 24, 25, 27, 28b, 29 (veja a seção própria)
 
 ## Andamento
 
@@ -42,7 +42,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 | 26 | [Testes de ponta a ponta (painel e executável)](specs/26-testes-ponta-a-ponta.md) | 2 | M | 08, 11 | concluído | ok | [#26](https://github.com/mateusconrad/FanPilot/issues/26) | 36 testes no Edge (~1 min na CI) e smoke do zip; acharam e corrigiram a reconexão do SSE depois de um 503 e o contraste do texto secundário |
 | 27 | [Teste automatizado na placa real](specs/27-teste-em-hardware.md) | 2 | P–M | 08 | concluído | ok | [#27](https://github.com/mateusconrad/FanPilot/issues/27) | falta a primeira execução na B760M |
 | 28 | [Linux](specs/28-linux.md) | 5 | G + M | 09, 11, 14a, 15 | em andamento | ok (28a, 28b) | [#35](https://github.com/mateusconrad/FanPilot/issues/35) | 28a e 28b feitas: `net472` e `net10.0`, placa pelo hwmon do kernel, GPU pelo NVML e pelo `amdgpu`, `--restore-fans`, `--diagnose` do Linux; parada no ponto de verificação num PC com Linux antes da 28c (systemd e pacote); o caminho Gigabyte fica só no Windows |
-| 29 | [Interface no terminal](specs/29-interface-terminal.md) | 6 | M | 21, 28a | a fazer | a fazer | [#36](https://github.com/mateusconrad/FanPilot/issues/36) | temperaturas e coolers em gráficos de caracteres, link do painel, Turbo; no console no lugar do log e em `--tui` ligada ao serviço; Windows e Linux |
+| 29 | [Interface no terminal](specs/29-interface-terminal.md) | 6 | M | 21, 28a | concluído | ok | [#36](https://github.com/mateusconrad/FanPilot/issues/36) | `FanPilot` num terminal mostra temperaturas e coolers (RPM e %, `fanDuty` no snapshot) com barras e sparklines, o link do painel e o Turbo; `--tui` liga-se ao serviço sem elevação; `--log` mantém o log; testada num pseudo-terminal na CI do Ubuntu; falta o print no Windows Terminal, no conhost e num terminal do Linux |
 | 30 | [Partida sem janela](specs/30-partida-sem-janela.md) | 6 | P–M | 14a, 28c, 29 | a fazer | a fazer | [#37](https://github.com/mateusconrad/FanPilot/issues/37) | o serviço vira a partida automática (`autostart.ps1` e `install.sh`), atalho que abre a interface sem elevação |
 
 ## Ordem de execução
@@ -134,6 +134,7 @@ Itens já na `main` cujo comportamento na placa real ainda não foi conferido. P
 |---|---|
 | 10 | `--hardware-test` passa com o exe compilado sem referência ao GCC; o log mostra "Gigabyte Control Center 8.0.8.2 at …"; `--diagnose` mostra a versão e "compatível" |
 | 11 | O zip feito pela CI (artefato `FanPilot-0.1.0-win-x64.zip` da última execução em [Actions](https://github.com/mateusconrad/FanPilot/actions)), extraído numa pasta nova com uma cópia da `data\` do `bin\`, passa no `--hardware-test`; o log começa com "FanPilot 0.1.0+<commit>" e o rodapé do painel mostra a mesma versão. A `data\` do `bin\` não é tocada, e a pasta de teste pode ser apagada depois. É esse zip que a `v0.1.0` vai publicar |
+| 29 | No PC, `bin\FanPilot.exe` aberto no Windows Terminal e no console clássico (conhost): a tela mostra as temperaturas e os coolers com barras, sem caracteres estranhos; redimensionar a janela redesenha; `o` abre o painel, `t` liga e desliga o Turbo, `l` mostra o log, `q` fecha devolvendo os fans. Com o serviço rodando, `FanPilot.exe --tui` num terminal sem elevação mostra o mesmo. Um print de cada na issue #36 |
 | 28b | O ponto de parada do item 28: o FanPilot num PC com Linux (um Ubuntu num pendrive na B760M serve, se o kernel reconhecer o IT8689E): `--diagnose`, `--hardware-test`, painel, Ctrl+C e `kill -9` com `--restore-fans` devolvendo os fans. Passo a passo na [spec 28](specs/28-linux.md#ponto-de-parada-como-verificar-num-pc-com-linux). Passando, segue a 28c |
 | 14a | O ponto de parada do item 14: o FanPilot como serviço na B760M (GCC como LocalSystem, NVML na sessão 0, suspensão, parada em menos de 1 s, partida antes do logon, caminho LHM). Passo a passo na [spec 14](specs/14-servico-bandeja-instalador.md#ponto-de-parada-como-verificar-na-b760m). Passando, o item segue para a bandeja e o instalador |
 | 16 | Na B760M: em "Alertas", gerar um tópico do ntfy, assinar o mesmo tópico no app do ntfy no celular, salvar e "Enviar teste": a mensagem chega ao celular. Pôr o limite da CPU em 60 °C (abaixo da temperatura atual): em ~10 s aparece "CPU a … °C" na faixa e no celular; voltar o limite a 95 °C: o alerta termina 30 s depois e chega o "Resolvido" |

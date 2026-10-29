@@ -67,13 +67,15 @@ sealed class FanPilotHost
         if (follows != null) follows.GpuTemp = () => gpu.Temperature;
         var fans = new FanManager(bridge, _cfg, _dataDir);
         var sampler = new Sampler(bridge, gpu);
+        var fanList = new FanListCache(fans);
+        sampler.Fans = fanList;
         // 10 s rows on disk for the 1 h, 24 h and 7 d charts (item 24); historyDays: 0 keeps only the 10 minutes.
         var history = _cfg.HistoryDays > 0 ? new HistoryStore(Path.Combine(_dataDir, "history"), _cfg.HistoryDays) : null;
         if (history != null) sampler.OnSample = history.Add;
         var alerts = new AlertMonitor(sampler, fans, bridge, _dataDir);
         sampler.Alerts = alerts.ActiveForSnapshot;
         // Prometheus and Home Assistant (item 23): read only, with tokens made on /pair, and MQTT when set up in the panel.
-        var feed = new IntegrationFeed(sampler, new FanListCache(fans), () => bridge.BackendName);
+        var feed = new IntegrationFeed(sampler, fanList, () => bridge.BackendName);
         var mqtt = new MqttPublisher(_dataDir, feed.SensorsV1, Environment.MachineName);
         lock (_sync)
         {

@@ -16,7 +16,7 @@ using System.Linq;
 using System.Threading;
 using LibreHardwareMonitor.Hardware;
 
-sealed class LhmBoard : IBoard, IFollowsGpu
+sealed class LhmBoard : IBoard, IFollowsGpu, IReportsDuty
 {
     const int FailuresBeforeRelease = 5;
 
@@ -28,6 +28,7 @@ sealed class LhmBoard : IBoard, IFollowsGpu
         public string Key;      // the control sensor's identifier, e.g. /lpc/nct6798d/0/control/1: stable across runs
         public FanCurve Curve;  // null = BIOS
         public bool OnBiosFallback;
+        public double? Duty;    // what FanPilot set last, 0..100%; null on the BIOS
     }
 
     readonly object _sync = new object();
@@ -233,11 +234,13 @@ sealed class LhmBoard : IBoard, IFollowsGpu
             h.OnBiosFallback = false;
             float percent = (float)Math.Max(h.Control.Control.MinSoftwareValue, Math.Min(h.Control.Control.MaxSoftwareValue, duty.Value));
             h.Control.Control.SetSoftware(percent);
+            h.Duty = percent;
         }
     }
 
     static void TryDefault(Header h)
     {
+        h.Duty = null;
         try { h.Control.Control.SetDefault(); } catch (Exception ex) { Log.Warn("Fan " + h.Title + ": SetDefault failed: " + ex.Message); }
     }
 
@@ -253,6 +256,8 @@ sealed class LhmBoard : IBoard, IFollowsGpu
     }
 
     public int CountFans() { lock (_sync) return _headers.Count; }
+
+    public List<double?> Duties() { lock (_sync) return _headers.Select(h => h.Curve != null ? h.Duty : null).ToList(); }
 
     public List<SensorReading> ReadSensors() { lock (_sync) return _readings.ToList(); }
 
