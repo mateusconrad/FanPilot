@@ -30,6 +30,9 @@ static class Log
     public static void Info(Msg m) { Writer.Write("INFO", m.Text, m.In(I18n.SystemLanguage)); }
     public static void Warn(Msg m) { Writer.Write("WARN", m.Text, m.In(I18n.SystemLanguage)); }
     public static void Error(Msg m) { Writer.Write("ERROR", m.Text, m.In(I18n.SystemLanguage)); }
+
+    // The end of the log, for "Ver log" in the tray (item 14b): the service's folder is not readable by the person.
+    public static string Tail(int maxBytes) { return Writer.Tail(maxBytes); }
 }
 
 // The console and data\fanpilot.log, rotated by size (fanpilot.1.log … fanpilot.3.log). The same line repeated in a
@@ -104,6 +107,35 @@ sealed class LogWriter
             File.AppendAllText(FilePath, entry);
         }
         catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { }
+    }
+
+    // The last maxBytes of the file, from the first whole line; "" without one.
+    public string Tail(int maxBytes)
+    {
+        if (FilePath == null) return "";
+        byte[] bytes;
+        lock (_sync)
+        {
+            try
+            {
+                using (var f = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                {
+                    long start = Math.Max(0, f.Length - maxBytes);
+                    f.Position = start;
+                    bytes = new byte[f.Length - start];
+                    int read = 0, n;
+                    while (read < bytes.Length && (n = f.Read(bytes, read, bytes.Length - read)) > 0) read += n;
+                    if (read < bytes.Length) Array.Resize(ref bytes, read);
+                    if (start > 0)
+                    {
+                        int nl = Array.IndexOf(bytes, (byte)'\n');
+                        bytes = nl < 0 ? new byte[0] : bytes.Skip(nl + 1).ToArray();
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { return ""; }
+        }
+        return System.Text.Encoding.UTF8.GetString(bytes);
     }
 
     // fanpilot.log -> fanpilot.1.log -> … -> fanpilot.3.log, the oldest dropped.

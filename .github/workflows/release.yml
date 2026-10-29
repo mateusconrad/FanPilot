@@ -1,5 +1,6 @@
 # A tag vX.Y.Z publishes that version: the tag must match Directory.Build.props, then build, tests, the zip and its
-# smoke test (with the end-to-end tests), the Linux .tar.gz (item 28c; the CI installs it as a service on every push),
+# smoke test (with the end-to-end tests), the installer (item 14c; the CI installs and removes it on every push), the
+# Linux .tar.gz (item 28c; the CI installs it as a service on every push),
 # SHA256SUMS.txt and the GitHub release, with the version's CHANGELOG.md section as its notes (0.x = pre-release).
 # Started by hand (Actions > Release > Run workflow, or gh workflow run release.yml) it is a dry run: the same steps,
 # with the notes taken from "Não lançado" when needed and the files kept as the run's artifact. Nothing is published.
@@ -79,8 +80,10 @@ jobs:
         run: node --test "tests/js/*.test.mjs"
 
       # Item 12 signs FanPilot.exe here, before it goes into the zip.
+      - name: Inno Setup
+        run: if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup --no-progress -y }
       - name: Empacotar
-        run: ./scripts/package.ps1
+        run: ./scripts/package.ps1 -Installer
       # Nothing is published unless the zip's own exe starts and answers (smoke.spec.mjs).
       - name: Compilar (Debug, para a placa falsa)
         run: dotnet build src/FanPilot.csproj -c Debug --no-restore
@@ -108,7 +111,7 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          $files = @(Get-Item "dist/FanPilot-$env:VERSION-win-x64.zip", "dist/FanPilot-$env:VERSION-linux-x64.tar.gz")
+          $files = @(Get-Item "dist/FanPilot-$env:VERSION-win-x64.zip", "dist/FanPilot-$env:VERSION-win-x64-setup.exe", "dist/FanPilot-$env:VERSION-linux-x64.tar.gz")
           # sha256sum's format and LF line ends: "sha256sum -c SHA256SUMS.txt" checks it.
           $lines = $files | ForEach-Object { (Get-FileHash $_ -Algorithm SHA256).Hash.ToLowerInvariant() + "  " + $_.Name }
           [IO.File]::WriteAllText("$PWD/dist/SHA256SUMS.txt", ($lines -join "`n") + "`n")
@@ -122,7 +125,7 @@ jobs:
         run: |
           $extra = @()
           if ($env:VERSION.StartsWith('0.')) { $extra += '--prerelease' }
-          gh release create $env:GITHUB_REF_NAME "dist/FanPilot-$env:VERSION-win-x64.zip" "dist/FanPilot-$env:VERSION-linux-x64.tar.gz" dist/SHA256SUMS.txt `
+          gh release create $env:GITHUB_REF_NAME "dist/FanPilot-$env:VERSION-win-x64.zip" "dist/FanPilot-$env:VERSION-win-x64-setup.exe" "dist/FanPilot-$env:VERSION-linux-x64.tar.gz" dist/SHA256SUMS.txt `
             --title "FanPilot $env:VERSION" --notes-file dist/release-notes.md --verify-tag @extra
       - name: Guardar os arquivos do ensaio
         if: github.ref_type != 'tag'
@@ -131,6 +134,7 @@ jobs:
           name: release-ensaio-${{ steps.version.outputs.version }}
           path: |
             dist/FanPilot-*-win-x64.zip
+            dist/FanPilot-*-win-x64-setup.exe
             dist/FanPilot-*-linux-x64.tar.gz
             dist/SHA256SUMS.txt
             dist/release-notes.md

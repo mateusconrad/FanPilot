@@ -5,7 +5,8 @@
 # Replaces the scheduled task the older version of this script created. Run in an elevated PowerShell, from the
 # repository (bin\FanPilot.exe) or the release zip (FanPilot.exe next to scripts\); the service runs the exe from there,
 # so moving the folder means running this again. -Remove undoes it: the service, the tray icon, the shortcut and the old
-# task go, the data stays.
+# task go, the data stays. The installer (item 14c) runs it too, from Program Files, so both register FanPilot the
+# same way.
 param([switch]$Remove)
 $ErrorActionPreference = 'Stop'
 $name = 'FanPilot'

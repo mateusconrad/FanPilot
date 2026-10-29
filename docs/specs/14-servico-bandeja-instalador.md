@@ -98,7 +98,45 @@ tela do terminal (item 29) devia abrir a partir da bandeja, sem janela no logon.
   chave e fecha os ícones.
 - Testes: `TrayStatusTests` (o tooltip e a marca a partir do estado); na CI, a chave `Run` com a porta importada e o
   `-Remove` sem ela; as chaves `tray.*` nos dois idiomas pelo teste do i18n.
-- Falta: Parear celular, Turbo, Perfis e Ver log no menu; as notificações do Windows para os alertas (item 16).
+- Depois (29/10/2026), o resto do menu: Parear um celular (abre `/pair`, que só o PC abre) · ⚡ Turbo 100% (marcado
+  quando ligado) · Perfil de todos os fans (Personalizado, Silencioso, Padrão, Performance; o atual marcado) · Ver o
+  log. Turbo e perfil vêm de `/api/fans` cada vez que o menu abre, e mudam pelas mesmas rotas do painel; um erro do
+  servidor aparece num balão, no idioma do Windows.
+- "Ver o log": a pasta do serviço só abre para Administradores, então o fim do `fanpilot.log` (256 KB, a partir de
+  uma linha inteira) vem por `GET /api/log`, que só o próprio PC lê (como o pareamento: o log tem os endereços e
+  aparelhos que chegaram ao servidor), e o Bloco de Notas abre uma cópia em `%TEMP%\FanPilot\fanpilot.log`.
+- Notificações (item 16): cada alerta ativo que aparece vira um balão (uma notificação do Windows desde o 10), com o
+  título e o detalhe no idioma do Windows; vários de uma vez vão num só. Um alerta já reconhecido no painel fica
+  quieto; um que terminou e voltou aparece de novo. Um clique na notificação abre o painel.
+- Testes: `TrayStatusTests` (as notificações, os nomes dos perfis, o erro do servidor), `LogTests` (o fim do log) e
+  `WebServerTests` (`/api/log` responde ao PC e não à rede).
+
+### Andamento da 14c (29/10/2026)
+
+- `installer\FanPilot.iss` (Inno Setup 6), compilado por `scripts\package.ps1 -Installer` a partir dos mesmos arquivos
+  do zip: `dist\FanPilot-<versão>-win-x64-setup.exe`, em inglês ou português conforme o Windows. A CI e a release
+  instalam o Inno Setup quando a imagem do runner não o traz, e a release publica o instalador ao lado do zip, no
+  `SHA256SUMS.txt`. Sem assinatura (item 12 adiado).
+- Em vez de repetir o `sc create` e o `sc failure`, o instalador roda o `scripts\autostart.ps1` de `Program Files`:
+  um lugar só registra o serviço (automático, recuperação de 1 s, 5 s e 60 s, dados em `%ProgramData%\FanPilot`), o
+  atalho do menu Iniciar e a bandeja na chave `Run`, e abre o ícone sem elevação. O `firewall.ps1` cria a regra (perfil
+  Privado) na porta do `config.json` do serviço (8787 sem ele). O que eles escrevem vai para `{app}\install.log`; uma
+  falha do `autostart.ps1` aparece numa mensagem com o caminho dele.
+- PawnIO: duas tarefas com o mesmo texto, marcada sem o Gigabyte Control Center e desmarcada com ele; nenhuma aparece
+  com o PawnIO instalado. Instalado pelo `winget`, como o console fazia, antes de o serviço subir.
+- Atualização: o `PrepareToInstall` para o serviço e os ícones de todas as sessões; o `autostart.ps1` registra de
+  novo, com os dados mantidos. Desinstalação: `autostart.ps1 -Remove` (serviço, bandeja, atalho) e as regras
+  "FanPilot (TCP *)", com os arquivos ainda lá; depois pergunta se apaga `%ProgramData%\FanPilot` (a silenciosa os
+  mantém).
+- O item 5 mudou: o `autostart.ps1` continua valendo para a versão portátil, e o instalador o usa. A migração (item 6)
+  é o `--import-data` da 14a, com instruções no README.
+- Testes: na CI, o instalador num Windows limpo (sem o PawnIO): o serviço rodando e automático em `Program Files`, o
+  `/api/state` respondendo, a regra só no perfil Privado, a bandeja na chave `Run` e o atalho; parada e partida;
+  instalar de novo por cima (atualização) com os dados mantidos; a desinstalação sem arquivos, serviço, regra,
+  entrada da bandeja, atalho nem ícone aberto.
+- Falta, num PC: o ponto de parada da 14a na B760M e, num Windows 11 limpo (uma VM serve), os critérios de aceite com o
+  instalador interativo: as páginas em português, a caixa do PawnIO, a página de pareamento no fim e a pergunta dos
+  dados ao desinstalar.
 
 ## 14c · Instalador (Inno Setup)
 
@@ -111,7 +149,8 @@ tela do terminal (item 29) devia abrir a partir da bandeja, sem janela no logon.
    - inicia o serviço e, no fim, abre a página de pareamento.
 3. Atualização: para o serviço, troca os arquivos e inicia de novo, preservando os dados.
 4. Desinstalação: para e remove o serviço, a regra de firewall e a bandeja, e pergunta se apaga os dados.
-5. A versão portátil (zip) continua existindo, e o `scripts/autostart.ps1` passa a valer só para ela.
+5. A versão portátil (zip) continua existindo; o `scripts/autostart.ps1` serve a ela e é o que o instalador roda
+   para registrar o serviço, o atalho e a bandeja.
 6. Migração da versão portátil: `FanPilot.exe --import-data <pasta data antiga>` copia o estado (com a mesma checagem de máquina do `MachineData`), com instruções no README.
 
 ## Critérios de aceite
