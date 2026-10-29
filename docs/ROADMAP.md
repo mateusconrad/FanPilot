@@ -4,7 +4,7 @@ Os 27 itens de melhoria aprovados em 24/10/2026: os 25 da análise inicial e mai
 
 Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estado por labels (veja "Como o andamento é registrado").
 
-- **Status:** `a fazer` · `em andamento` · `concluído` · `bloqueado` (motivo em Notas)
+- **Status:** `a fazer` · `em andamento` · `concluído` · `bloqueado` (motivo em Notas) · `adiado` (débito técnico; motivo em Notas)
 - **Testes:** testes automatizados do item: `a fazer` · `ok` (commitados com o item; rodam na [CI](https://github.com/mateusconrad/FanPilot/actions) a cada push)
 - **Esforço**, em dias de trabalho focado: P ≈ 1 · P–M ≈ 2 · M ≈ 3 · G ≈ 10
 
@@ -25,7 +25,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 | 09 | [Projeto SDK-style (net472)](specs/09-projeto-sdk.md) | 1 | M | — | concluído | ok | [#9](https://github.com/mateusconrad/FanPilot/issues/9) | falta a verificação em hardware |
 | 10 | [Ponte Gigabyte sem dependência de compilação](specs/10-gigabyte-sem-compilacao.md) | 2 | M | 09 | concluído | ok | [#10](https://github.com/mateusconrad/FanPilot/issues/10) | contrato conferido com o GCC 8.0.8.2 instalado; falta a verificação em hardware |
 | 11 | [CI, versão e releases](specs/11-ci-versao-release.md) | 2 | P–M | 08, 09, 10 | concluído | ok | [#11](https://github.com/mateusconrad/FanPilot/issues/11) | CI verde (138 testes, sem ignorados) e ensaio da release aprovado; SDK fixado pelo `global.json`; a tag `v0.1.0` espera a verificação em hardware |
-| 12 | [Assinatura de código](specs/12-assinatura.md) | 2 | P + aprovação | 11 | bloqueado | a fazer | [#12](https://github.com/mateusconrad/FanPilot/issues/12) | espera a inscrição no SignPath Foundation e os segredos no GitHub (ação do dono); o README já explica o aviso do Windows e como conferir o hash |
+| 12 | [Assinatura de código](specs/12-assinatura.md) | 2 | P + aprovação | 11 | adiado | a fazer | [#12](https://github.com/mateusconrad/FanPilot/issues/12) | débito técnico (28/10/2026): o SignPath Foundation exige um site do projeto e outros requisitos ainda não definidos; as releases saem sem assinatura, com o `SHA256SUMS.txt`, e o README explica o aviso do Windows e como conferir o hash |
 | 13 | [Relatos de compatibilidade](specs/13-compatibilidade.md) | 2 | P | — | concluído | ok | [#13](https://github.com/mateusconrad/FanPilot/issues/13) | `--diagnose` sem números de série nem GUIDs e com o link do formulário; falta ver o formulário no GitHub logado |
 | 14 | [Serviço, bandeja e instalador](specs/14-servico-bandeja-instalador.md) | 3 | G | 03, 05, 06 | bloqueado | ok (14a) | [#14](https://github.com/mateusconrad/FanPilot/issues/14) | 14a feita (`--service`, `--data`, `--import-data`, testada na CI com um serviço de verdade); parada no ponto de verificação do serviço na B760M antes da 14b e da 14c |
 | 15 | [Curvas por software suaves](specs/15-curvas-suaves.md) | 3 | M | 08 | concluído | ok | [#15](https://github.com/mateusconrad/FanPilot/issues/15) | `SoftwareCurveEngine` com resposta Rápida/Equilibrada/Suave; falta a carga real numa placa no caminho LHM |
@@ -62,7 +62,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 - O 27 vem primeiro: automatiza o roteiro de hardware antes do 10, a mudança mais arriscada no caminho Gigabyte.
 - O 10 vem antes do 11: sem ele, a CI não gera a release completa.
 - O 26 vem depois do 11, para os testes de ponta a ponta já rodarem na CI.
-- Pedir a assinatura (12) logo no início da fase: a aprovação é externa e pode demorar.
+- A assinatura (12) ficou como débito técnico: os requisitos do SignPath (site do projeto e outros) ainda não estão definidos. As releases saem sem assinatura até lá.
 
 ### Fase C · Onda 3 · Produto (≈ 4,5 semanas)
 
@@ -123,7 +123,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 
 ## Como o andamento é registrado
 
-- **Issue:** ao começar, label `status: em andamento` e um comentário; o commit final fecha a issue pelo `Closes #N`, com um comentário do que foi feito; impedimento → `status: bloqueado` e um comentário com o motivo; concluído sem a verificação em hardware → label `verificar no hardware`.
+- **Issue:** ao começar, label `status: em andamento` e um comentário; o commit final fecha a issue pelo `Closes #N`, com um comentário do que foi feito; impedimento → `status: bloqueado` e um comentário com o motivo; adiado → label `débito técnico`, sem milestone, e um comentário com o motivo; concluído sem a verificação em hardware → label `verificar no hardware`.
 - **Este arquivo:** Status, Testes, Notas e o contador são atualizados no mesmo commit que conclui o item.
 - **Spec:** se a implementação mudar a solução, a spec (e o corpo da issue) é atualizada junto.
 

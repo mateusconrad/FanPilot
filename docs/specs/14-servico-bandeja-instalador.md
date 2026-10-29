@@ -82,7 +82,7 @@ Passando, seguem a 14b (bandeja) e a 14c (instalador).
 
 ## 14c · Instalador (Inno Setup)
 
-1. `installer/FanPilot.iss`, compilado na CI (item 11) e assinado (item 12).
+1. `installer/FanPilot.iss`, compilado na CI (item 11); sai sem assinatura enquanto o item 12 for débito técnico.
 2. Instala em `Program Files\FanPilot`. Depois:
    - cria o serviço (`sc create … start= auto`, `sc failure`, descrição);
    - cria a regra de firewall, só no perfil Privado;
