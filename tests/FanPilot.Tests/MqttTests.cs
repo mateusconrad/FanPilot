@@ -153,9 +153,9 @@ public sealed class MqttTests : IDisposable
         // ...and FanPilot comes back on its own, 5 s later.
         WaitFor(() => Retained(broker, "fanpilot/pc-test/availability") == "online", "de volta", 20);
 
-        // Stopping says offline itself.
+        // Stopping says offline itself (the broker keeps it a moment later, on its own thread).
         p.Stop();
-        Assert.Equal("offline", Retained(broker, "fanpilot/pc-test/availability"));
+        WaitFor(() => Retained(broker, "fanpilot/pc-test/availability") == "offline", "offline ao parar", 5);
     }
 
     // Every 5 s the state; the discovery only again when something in it changes (a fan renamed in the panel).
