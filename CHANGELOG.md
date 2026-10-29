@@ -114,6 +114,9 @@ Primeira versão publicada (será a 0.1.0).
 - Log com rotação a cada 5 MB (até 3 arquivos antigos) e sem a mesma mensagem repetida milhares de vezes.
 - Turbo e edição de fans não se atropelam mais em toques rápidos; o painel diz se a curva foi gravada no chip ou é
   executada pelo FanPilot; erros do pareamento aparecem na página.
+- Na Gigabyte, o serviço que sobe com o PC antes do `EasyTuneEngineService` responder não fica mais sem os fans até
+  ser reiniciado: ele pergunta de novo, e as curvas salvas voltam assim que o GCC mostra os fans, em vez de ficarem
+  como de outra placa ([#37](https://github.com/mateusconrad/FanPilot/issues/37)).
 
 ### Para quem compila
 

@@ -77,6 +77,51 @@ public sealed class GigabyteApiTests : IDisposable
         Assert.Contains("SetTemperatureInputSelection(Int32, Int32)", api.Problem.Text);
     }
 
+    // At boot FanPilot's service can start before EasyTuneEngineService listens: once it does, the fans are there (a
+    // connection made while it didn't used to be kept, and the bridge reported no fans for the whole session).
+    [Fact]
+    public void FansAppearOnceTheServiceListens()
+    {
+        var bridge = new GigabyteBridge(GigabyteApi.Load(GccStub.Build(_dir.Path)), CpuPackageMonitor.WithoutReading(null));
+        GccStub.Set(_dir.Path, "Unreachable", 100);
+        Assert.Throws<Unavailable>(() => bridge.CountFans());
+        Assert.Null(bridge.Notice); // not asked yet: no "no fan control" either
+        GccStub.Set(_dir.Path, "Unreachable", 0);
+        Assert.Equal(2, bridge.CountFans());
+        Assert.True(bridge.FanControlSupported);
+        Assert.Equal("gcc:1:System 2", bridge.GetCurve(1).Key);
+    }
+
+    // The service may answer "not supported" while it starts: the bridge asks again, and FanManager takes the fans and
+    // the curves saved for them instead of keeping them as orphans.
+    [Fact]
+    public void ANotSupportedAtBootIsAskedAgain()
+    {
+        GccStub.Build(_dir.Path);
+        using (var data = new TempDir())
+        {
+            var before = new FanManager(new GigabyteBridge(GigabyteApi.Load(_dir.Path)), new AppConfig(), data.Path);
+            before.Apply(0, new Dictionary<string, object> { { "mode", "fixed" }, { "percent", 40 } });
+
+            // The PC restarts.
+            GccStub.Set(_dir.Path, "NotReady", true);
+            var bridge = new GigabyteBridge(GigabyteApi.Load(_dir.Path), CpuPackageMonitor.WithoutReading(null)) { SupportRecheck = TimeSpan.Zero };
+            var fans = new FanManager(bridge, new AppConfig(), data.Path);
+            var starting = fans.Describe();
+            Assert.False((bool)starting["supported"]);
+            Assert.Equal("board.noGen3", bridge.Notice.Key);
+            Assert.Empty((List<object>)starting["fans"]);
+
+            GccStub.Set(_dir.Path, "NotReady", false);
+            var ready = fans.Describe();
+            Assert.True((bool)ready["supported"]);
+            Assert.Null(bridge.Notice);
+            Assert.Equal(2, ((List<object>)ready["fans"]).Count);
+            Assert.Empty((List<object>)ready["orphans"]);
+            Assert.Equal(102, bridge.GetCurve(0).Points[0][1]);
+        }
+    }
+
     [Fact]
     public void AMissingDllIsReported()
     {

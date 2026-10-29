@@ -77,12 +77,14 @@ sealed class FanManager
 
     // The first call that needs the board reads its headers, then the state files (migrating version 1 ones), and
     // saves the original curve of every header seen for the first time. Throws while the board does not answer;
-    // the next call tries again.
+    // the next call tries again. A board that reported no header is asked again on every call until it reports some:
+    // at boot, Gigabyte's service answers "no fan control" for a while (GigabyteBridge), and the saved curves must not
+    // stay orphans for the whole session.
     void EnsureLoaded()
     {
         lock (_sync)
         {
-            if (_keys != null) return;
+            if (_keys != null && (_keys.Length > 0 || _bridge.CountFans() == 0)) return;
             var curves = _bridge.GetCurves();
             _titles = curves.Select(c => c.Title ?? "").ToArray();
             _keys = curves.Select(KeyOf).ToArray();
@@ -114,9 +116,11 @@ sealed class FanManager
                 File.Delete(_turboPath);
                 Log.Info("turbo.json converted to global-mode.json.");
             }
-            foreach (var kv in _desired)
-                if (Array.IndexOf(_keys, kv.Key) < 0)
-                    Log.Warn("The settings saved for '" + TitleOf(kv.Value) + "' match no fan on this board and were not applied.");
+            // With no header at all, the board has not shown its fans (yet): nothing to say about the saved settings.
+            if (_keys.Length > 0)
+                foreach (var kv in _desired)
+                    if (Array.IndexOf(_keys, kv.Key) < 0)
+                        Log.Warn("The settings saved for '" + TitleOf(kv.Value) + "' match no fan on this board and were not applied.");
             CaptureBackups(curves);
         }
     }
