@@ -56,7 +56,7 @@ dotnet build src\FanPilot.csproj -c Debug; cd tests\e2e; npm ci; npx playwright 
 .\bin\FanPilot.exe --tui        # (no UAC) the same screen, attached to a FanPilot already running (the service)
 .\bin\FanPilot.exe --log        # the window shows the scrolling log instead
 .\scripts\firewall.ps1          # (admin, once) opens port 8787 on the Private network profile
-.\scripts\autostart.ps1         # (admin, optional) starts elevated at logon, without UAC
+.\scripts\autostart.ps1         # (admin, optional) starts it with the PC as a Windows service, no window; Start menu > FanPilot opens its screen
 .\scripts\package.ps1           # builds dist\FanPilot-<version>-win-x64.zip to hand out (without data\)
 .\bin\FanPilot.exe --version    # version and commit, e.g. FanPilot 0.1.0+1a2b3c4
 .\bin\FanPilot.exe --diagnose   # read-only report of the board (for boards nobody has tested yet)
@@ -267,8 +267,8 @@ the fastest the speed may rise and fall. Fixed mode isn't smoothed. The protecti
 - The speed is set again every second, undoing whatever the BIOS or a maker's app changed.
 - **Limitation:** if the process is **killed** (Task Manager > End task, `taskkill /f`) or the PC freezes, there's no
   way to react: the fan stays at its last speed until the BIOS or FanPilot takes over again. That's why the 20% floor
-  and the 100% required up to 90 °C hold here too, and why `autostart.ps1` sets the scheduled task to try to restart
-  FanPilot.
+  and the 100% required up to 90 °C hold here too, and why the service `autostart.ps1` installs is restarted by Windows
+  1 s after it dies.
 - Don't use it together with the maker's fan control (**ASUS Armoury Crate / AI Suite "Fan Xpert"**, MSI Center and
   so on): the two would fight over the fans. Turn the fan control off there.
 
@@ -370,7 +370,7 @@ Read only: nothing an integration does changes a fan.
 | "Invalid or expired code" | The code works once and lasts about 3 minutes; scan the current QR code again. Too many wrong attempts block the IP for a minute. |
 | The phone goes back to the lock screen | Session revoked on `/pair`, cookies cleared, or 30 days unused: pair again. |
 | Status "board sensors unavailable" | Gigabyte: `EasyTuneEngineService` stopped (`services.msc`), or the GCC was updated or removed. The GPU keeps working. |
-| "The PawnIO driver is missing" | A board without GCC: close FanPilot, open it from its window and answer `Y` to install it (or install it from the [site](https://pawnio.eu)). With autostart (`--no-browser`) it doesn't ask. |
+| "The PawnIO driver is missing" | A board without GCC: close FanPilot, open it from its window and answer `Y` to install it (or install it from the [site](https://pawnio.eu)). Run as a service (`autostart.ps1`) it doesn't ask. |
 | A board without GCC shows no fans | LibreHardwareMonitor doesn't recognize or can't control that board's chip. Run `FanPilot.exe --diagnose` and report through the link in the file it writes. |
 | FanPilot closes right after opening | It isn't running as Administrator, or the GCC isn't installed. See the log. |
 | "This motherboard has no fan control" | The board doesn't use the control path FanPilot implements; only monitoring works. |

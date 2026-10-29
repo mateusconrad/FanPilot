@@ -34,13 +34,36 @@ sealed class FanPilotService : ServiceBase
         return 0;
     }
 
+    // What autostart.ps1 registered before item 30: a task that opened FanPilot.exe in a window at every logon.
+    static bool OldTaskExists()
+    {
+        try
+        {
+            var psi = new ProcessStartInfo("schtasks.exe", "/Query /TN FanPilot") {
+                UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
+            using (var p = Process.Start(psi))
+            {
+                p.StandardOutput.ReadToEnd();
+                p.StandardError.ReadToEnd();
+                return p.WaitForExit(10000) && p.ExitCode == 0;
+            }
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception || ex is InvalidOperationException) { return false; }
+    }
+
     protected override void OnStart(string[] args)
     {
         // Opening the board can take seconds (the Gigabyte service over IPC): Windows is answered at once.
         new Thread(() =>
         {
             int code = _host.Start();
-            if (code == 0) return;
+            if (code == 0)
+            {
+                if (OldTaskExists())
+                    Log.Warn("The scheduled task 'FanPilot' of the old autostart.ps1 still exists: at logon it opens a second FanPilot " +
+                             "in a window. Run scripts\\autostart.ps1 again (as Administrator) to remove it.");
+                return;
+            }
             ExitCode = code;
             Stop();
         }) { IsBackground = true, Name = "start" }.Start();

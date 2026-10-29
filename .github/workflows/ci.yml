@@ -78,6 +78,36 @@ jobs:
           name: screenshots
           path: tests/e2e/screens
 
+      # Item 30: autostart.ps1 as someone with the older version installed runs it: the scheduled task with a window
+      # goes, the portable data\ comes along, the service comes up (automatic, answering), the Start menu shortcut opens
+      # --tui with the port, and -Remove undoes it all but the data. bin\FanPilot.exe is the Release build, on the
+      # runner's real board (no GCC, no PawnIO: monitoring only).
+      - name: Partida sem janela (autostart.ps1)
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Register-ScheduledTask -TaskName FanPilot -Action (New-ScheduledTaskAction -Execute cmd.exe -Argument '/c exit') -Trigger (New-ScheduledTaskTrigger -AtLogOn) | Out-Null
+          # A portable data\ as a FanPilot run by hand leaves it (another machine's id: its curves are set aside on import).
+          New-Item -ItemType Directory -Force bin\data | Out-Null
+          Set-Content bin\data\machine.json '{"machineId":"outro-pc","board":"Outra placa"}'
+          Set-Content bin\data\config.json '{"port": 8790}'
+          ./scripts/autostart.ps1
+          if (Get-ScheduledTask -TaskName FanPilot -ErrorAction SilentlyContinue) { throw 'a tarefa agendada antiga continua lá' }
+          $svc = Get-Service FanPilot
+          if ($svc.Status -ne 'Running' -or $svc.StartType -ne 'Automatic') { throw "serviço: $($svc.Status), $($svc.StartType)" }
+          if (-not (Test-Path "$env:ProgramData\FanPilot\config.json")) { throw 'a pasta data\ portátil não foi importada' }
+          $ok = $false
+          for ($i = 0; $i -lt 90 -and -not $ok; $i++) { Start-Sleep -Milliseconds 500; try { $ok = (Invoke-WebRequest -UseBasicParsing http://localhost:8790/api/info -TimeoutSec 2).StatusCode -eq 200 } catch { } }
+          if (-not $ok) { Get-Content "$env:ProgramData\FanPilot\fanpilot.log" -Tail 40; throw 'o serviço não respondeu na porta da pasta importada' }
+          $lnk = Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'FanPilot.lnk'
+          $s = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk)
+          if ($s.Arguments -notmatch '--tui --port 8790') { throw "atalho: $($s.TargetPath) $($s.Arguments)" }
+          Write-Host "atalho: $($s.TargetPath) $($s.Arguments)"
+          ./scripts/autostart.ps1 -Remove
+          if (Get-Service FanPilot -ErrorAction SilentlyContinue) { throw 'o serviço continua instalado' }
+          if (Test-Path $lnk) { throw 'o atalho continua lá' }
+          if (-not (Test-Path "$env:ProgramData\FanPilot\config.json")) { throw 'o -Remove apagou os dados' }
+
   # The Linux build (item 28): .NET 10, the tests on Linux as a plain user (the ones that need root are skipped, as
   # the ones that need Administrator are on a PC), the panel's, the terminal in a pseudo-terminal, the end-to-end tests
   # in Chromium, and the .tar.gz installed as a systemd service.
@@ -160,8 +190,11 @@ jobs:
           sleep 3
           up || { echo "o systemd não reiniciou o FanPilot"; exit 1; }
           [ "$(systemctl show -p MainPID --value fanpilot)" != "$pid" ]
+          # Item 30: "fanpilot" on the PATH and the menu entry open the terminal screen, without root.
+          [ "$(readlink /usr/local/bin/fanpilot)" = "/opt/fanpilot/FanPilot" ]
+          grep -q -F "Exec=/opt/fanpilot/FanPilot --tui --port 8787" /usr/share/applications/fanpilot.desktop
           export TERM=xterm-256color
-          (sleep 8; printf q) | script -qfec "stty cols 120 rows 30; /opt/fanpilot/FanPilot --tui" /tmp/tui2.out > /dev/null
+          (sleep 8; printf q) | script -qfec "stty cols 120 rows 30; fanpilot --tui --port 8787" /tmp/tui2.out > /dev/null
           grep -q -F "[q] quit" /tmp/tui2.out || { echo "o --tui não se ligou ao serviço"; tail -c 2000 /tmp/tui2.out; exit 1; }
           systemctl is-active fanpilot
           start=$(date +%s%N); sudo systemctl stop fanpilot; took=$(( ($(date +%s%N) - start) / 1000000 ))
@@ -169,3 +202,4 @@ jobs:
           sudo grep -F "Stopped in" /var/lib/fanpilot/fanpilot.log | tail -1
           sudo ./install.sh --remove
           [ ! -e /etc/systemd/system/fanpilot.service ] && [ ! -d /opt/fanpilot ] && [ -d /var/lib/fanpilot ]
+          [ ! -e /usr/local/bin/fanpilot ] && [ ! -e /usr/share/applications/fanpilot.desktop ]

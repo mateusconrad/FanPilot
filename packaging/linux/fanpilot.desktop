@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=FanPilot
+Comment=Temperaturas e coolers do FanPilot no terminal
+Comment[en]=FanPilot's temperatures and fans in the terminal
+Comment[pt_BR]=Temperaturas e coolers do FanPilot no terminal
+# install.sh fills in the port of the service's config.json, which a standard user can't read.
+Exec=/opt/fanpilot/FanPilot --tui --port 8787
+Terminal=true
+Icon=/opt/fanpilot/wwwroot/icon-192.png
+Categories=System;Monitor;
+Keywords=fan;temperature;cooler;hwmon;
