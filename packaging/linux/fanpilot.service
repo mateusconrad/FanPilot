@@ -1,0 +1,28 @@
+# FanPilot as a systemd service (item 28c): from boot, as root, with no terminal; restarted if it dies. install.sh puts
+# it in /etc/systemd/system. The terminal (FanPilot --tui, item 29) attaches to it without root.
+[Unit]
+Description=FanPilot (temperaturas e fans pelo celular)
+Documentation=https://github.com/mateusconrad/FanPilot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/opt/fanpilot/FanPilot --service --data /var/lib/fanpilot
+# After every stop, a kill -9 included: what FanPilot left taken goes back to the BIOS (/run/fanpilot/hwmon-restore.json).
+ExecStopPost=/opt/fanpilot/FanPilot --restore-fans --data /var/lib/fanpilot
+Restart=on-failure
+RestartSec=1
+TimeoutStopSec=10
+# Its output is in the journal (journalctl -u fanpilot); /var/lib/fanpilot/fanpilot.log has the same.
+StandardOutput=journal
+StandardError=journal
+# Hardening that still lets it write the fans (/sys, so no ProtectKernelTunables), its data, its key (/etc/fanpilot)
+# and /run/fanpilot.
+ProtectSystem=full
+ReadWritePaths=/etc/fanpilot
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

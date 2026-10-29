@@ -10,7 +10,8 @@ import { expect, test } from '@playwright/test';
 import { buildDir, freePort, isAdmin, powershell as ps, scratchRoot } from './fanpilot.mjs';
 
 const NAME = 'FanPilotE2E';
-const enabled = isAdmin && (!!process.env.CI || process.env.FANPILOT_SERVICE_TEST === '1');
+const enabled = process.platform === 'win32' && isAdmin && (!!process.env.CI || process.env.FANPILOT_SERVICE_TEST === '1');
+// Linux: the CI's linux job installs the systemd service with install.sh (item 28c).
 test.skip(!enabled, 'instala um serviço do Windows: roda na CI ou com FANPILOT_SERVICE_TEST=1 como Administrador');
 test.describe.configure({ mode: 'serial' });
 

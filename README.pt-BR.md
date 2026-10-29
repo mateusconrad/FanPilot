@@ -28,6 +28,7 @@ Como funciona por baixo: veja [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEE
 ## Requisitos
 
 - Windows 10/11 64-bit (o .NET Framework 4.x necessário já vem no Windows).
+- Ou Linux x64, em teste: veja [Linux](#linux-em-teste).
 - Executar como **Administrador** (o `.exe` já pede elevação).
 - Uma das duas formas de acesso à placa-mãe (o FanPilot escolhe sozinho):
   - **Placa Gigabyte com o Gigabyte Control Center** instalado e o serviço **EasyTune Engine Service** rodando.
@@ -67,20 +68,6 @@ Compilar exige o [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0
 este PC e a CI compilarem igual (com outro SDK, o lock file e a versão do C# mudariam). Para **rodar**, basta o Windows: o
 FanPilot usa o .NET Framework 4.7.2 que já vem nele.
 
-O suporte a Linux está a caminho ([#35](https://github.com/mateusconrad/FanPilot/issues/35)) e **em teste**: o mesmo
-projeto compila para o .NET 10 no Linux, alcança a placa-mãe pelos drivers hwmon do kernel (nct6775, it87,
-asus-ec-sensors…: o `sensors` do lm-sensors mostra se o kernel conhece o seu chip) e a GPU pelo NVML ou pelo driver
-amdgpu. O Gigabyte Control Center, a bandeja e o instalador ficam no Windows. Até o pacote e o serviço do systemd
-chegarem, ele é publicado à mão e roda como root:
-
-```bash
-dotnet restore FanPilot.sln
-dotnet publish src/FanPilot.csproj -c Release -f net10.0 -r linux-x64 --self-contained -p:PublishSingleFile=true --no-restore -o dist/linux-x64
-sudo dist/linux-x64/FanPilot --diagnose      # relatório da placa, só leitura
-sudo dist/linux-x64/FanPilot                 # o painel em http://localhost:8787
-sudo dist/linux-x64/FanPilot --restore-fans  # depois de um kill -9: devolve os fans à BIOS
-```
-
 O build não depende do Gigabyte Control Center: o FanPilot carrega as DLLs do GCC instalado só na hora de rodar, então
 um mesmo build (ou zip) atende as placas Gigabyte e as outras.
 
@@ -118,6 +105,29 @@ segundos depois de um toque: tela cheia e "Manter a tela ligada" (a Wake Lock AP
 um vídeo mudo em loop, que é o que funciona no HTTP sem criptografia da rede local). Para telas fixas:
 `/painel?escala=1.3&tema=claro` (`tema=auto` segue o aparelho; o padrão é escuro). Em telas OLED, tudo se desloca alguns
 pixels a cada 3 minutos.
+
+## Linux (em teste)
+
+O FanPilot também roda no Linux x64 (Ubuntu 24.04 e Fedora são a referência; qualquer distribuição com systemd e kernel
+6.1 ou mais novo deve funcionar), e está **em teste** em placas de verdade
+([#35](https://github.com/mateusconrad/FanPilot/issues/35)). Ele alcança a placa-mãe pelos drivers hwmon do kernel
+(nct6775, it87, asus-ec-sensors…: o `sensors`, do lm-sensors, mostra se o kernel conhece o seu chip; se não conhecer,
+o `sudo sensors-detect` diz qual módulo carregar) e a GPU pelo NVML (NVIDIA) ou pelo amdgpu (AMD). O FanPilot executa
+as curvas, como nas placas sem o Gigabyte Control Center, que, como a bandeja e o instalador, fica no Windows. O pacote
+leva o próprio .NET; do sistema, só precisa do ICU (`libicu`).
+
+```bash
+tar -xzf FanPilot-0.1.0-linux-x64.tar.gz && cd FanPilot-0.1.0-linux-x64
+sudo ./FanPilot --diagnose          # relatório da placa, só leitura, para experimentar antes
+sudo ./install.sh                   # instala em /opt/fanpilot como serviço do systemd, já rodando e no boot
+/opt/fanpilot/FanPilot --tui        # a tela do terminal, ligada ao serviço (sem sudo)
+sudo ./install.sh --remove          # remove; os dados ficam em /var/lib/fanpilot
+```
+
+O `install.sh --import-data <pasta>` traz curvas, pareamentos e nomes de uma pasta onde ele rodou antes; no fim, ele
+mostra como abrir a porta no `ufw` ou no `firewalld` só para a rede de casa. O serviço devolve os fans à BIOS ao parar,
+mesmo depois de um `kill -9` (`FanPilot --restore-fans`). Para gerar o pacote você mesmo, no Linux:
+`sh scripts/package.sh` (basta o .NET SDK 10).
 
 ## Versões e releases
 

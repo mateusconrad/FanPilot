@@ -58,6 +58,14 @@ conferido pelo `src/packages.lock.json`), e copiado sem modificação para a pas
 |---|---|---|---|
 | MQTTnet | 4.3.7.1207 | [MIT](https://licenses.nuget.org/MIT) — Copyright (c) .NET Foundation and Contributors | https://github.com/dotnet/MQTTnet |
 
+## .NET (distribuído dentro do `FanPilot` do pacote do Linux)
+
+O pacote do Linux (`FanPilot-<versão>-linux-x64.tar.gz`) é publicado self-contained: o runtime do .NET 10 vai dentro do
+executável, sem modificação. Licença [MIT](https://github.com/dotnet/runtime/blob/main/LICENSE.TXT) — Copyright (c)
+.NET Foundation and Contributors. Código-fonte e os avisos dos componentes que ele inclui:
+https://github.com/dotnet/runtime (`THIRD-PARTY-NOTICES.TXT`). O LibreHardwareMonitor e as suas dependências não vão
+no pacote do Linux.
+
 ## PawnIO
 
 Driver usado pelo LibreHardwareMonitor para acessar o chip da placa-mãe. **Não é distribuído** com o FanPilot:

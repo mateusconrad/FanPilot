@@ -10,7 +10,7 @@ import { expect, test } from '@playwright/test';
 import { freePort, hasExited, isAdmin, powershell, scratchRoot } from './fanpilot.mjs';
 
 const zip = process.env.FANPILOT_ZIP;
-test.skip(!zip, 'FANPILOT_ZIP não definido: o smoke do zip roda na CI');
+test.skip(!zip || process.platform !== 'win32', 'FANPILOT_ZIP não definido: o smoke do zip roda na CI do Windows');
 test.skip(!isAdmin, 'o FanPilot.exe da release precisa de Administrador');
 
 const version = zip && path.basename(zip).match(/^FanPilot-(.+)-win-x64\.zip$/)[1];

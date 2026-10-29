@@ -83,6 +83,8 @@ Primeira versão publicada (será a 0.1.0).
   CPU pelo `k10temp` ou `coretemp`; GPU pelo NVML ou pelo `amdgpu`; `--diagnose` com cada chip hwmon; e
   `--restore-fans`, que devolve à BIOS os fans de um FanPilot morto com `kill -9`
   ([#35](https://github.com/mateusconrad/FanPilot/issues/35)).
+- Pacote `FanPilot-<versão>-linux-x64.tar.gz` na release, com o .NET dentro, e `install.sh`, que instala o FanPilot
+  como serviço do systemd (no boot, reiniciado se morrer, devolvendo os fans ao parar) e o remove com `--remove`.
 
 ### Segurança
 

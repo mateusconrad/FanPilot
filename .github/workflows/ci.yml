@@ -79,7 +79,8 @@ jobs:
           path: tests/e2e/screens
 
   # The Linux build (item 28): .NET 10, the tests on Linux as a plain user (the ones that need root are skipped, as
-  # the ones that need Administrator are on a PC), and the panel's. The package and the end-to-end tests come with 28c.
+  # the ones that need Administrator are on a PC), the panel's, the terminal in a pseudo-terminal, the end-to-end tests
+  # in Chromium, and the .tar.gz installed as a systemd service.
   linux:
     runs-on: ubuntu-latest
     env:
@@ -119,3 +120,52 @@ jobs:
           for w in "Temperatures" "Fans" "RPM" "[q] close FanPilot" "Stopped in"; do
             grep -q -F "$w" /tmp/tui.out || { echo "A tela não mostrou: $w"; tail -c 3000 /tmp/tui.out; exit 1; }
           done
+
+      # The panel in Playwright's Chromium against FanPilot on the fake board, as a plain user (item 28c).
+      - name: Instalar o Playwright
+        working-directory: tests/e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Testes de ponta a ponta
+        working-directory: tests/e2e
+        run: npx playwright test
+      - name: Guardar o relatório do Playwright
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-linux
+          path: tests/e2e/playwright-report
+
+      - name: Empacotar
+        run: sh scripts/package.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          path: dist/FanPilot-*-linux-x64.tar.gz
+          archive: false
+
+      # The package as a user installs it, on a runner with systemd: the service comes up and answers, its data is
+      # root's alone, it is brought back after a kill -9, --tui attaches to it, it stops clean and --remove undoes it.
+      - name: Pacote e serviço do systemd
+        run: |
+          mkdir -p /tmp/pkg && tar -C /tmp/pkg -xzf dist/FanPilot-*-linux-x64.tar.gz
+          cd /tmp/pkg/FanPilot-*
+          sudo ./install.sh
+          up() { for i in $(seq 1 60); do curl -sf -o /dev/null -H 'Host: localhost:8787' http://127.0.0.1:8787/api/info && return 0; sleep 0.5; done; return 1; }
+          up || { sudo journalctl -u fanpilot --no-pager | tail -40; exit 1; }
+          curl -sf -H 'Host: localhost:8787' http://127.0.0.1:8787/api/info; echo
+          [ "$(sudo stat -c '%a %U' /var/lib/fanpilot)" = "700 root" ] || { echo "pasta de dados: $(sudo stat -c '%a %U' /var/lib/fanpilot)"; exit 1; }
+          pid=$(systemctl show -p MainPID --value fanpilot)
+          sudo kill -9 "$pid"
+          sleep 3
+          up || { echo "o systemd não reiniciou o FanPilot"; exit 1; }
+          [ "$(systemctl show -p MainPID --value fanpilot)" != "$pid" ]
+          export TERM=xterm-256color
+          (sleep 8; printf q) | script -qfec "stty cols 120 rows 30; /opt/fanpilot/FanPilot --tui" /tmp/tui2.out > /dev/null
+          grep -q -F "[q] quit" /tmp/tui2.out || { echo "o --tui não se ligou ao serviço"; tail -c 2000 /tmp/tui2.out; exit 1; }
+          systemctl is-active fanpilot
+          start=$(date +%s%N); sudo systemctl stop fanpilot; took=$(( ($(date +%s%N) - start) / 1000000 ))
+          echo "parada em $took ms"; [ "$took" -lt 3000 ]
+          sudo grep -F "Stopped in" /var/lib/fanpilot/fanpilot.log | tail -1
+          sudo ./install.sh --remove
+          [ ! -e /etc/systemd/system/fanpilot.service ] && [ ! -d /opt/fanpilot ] && [ -d /var/lib/fanpilot ]

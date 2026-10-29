@@ -44,7 +44,19 @@ body:
       options:
         - Gigabyte Control Center
         - LibreHardwareMonitor
+        - Linux hwmon
         - I don't know (não sei)
+    validations:
+      required: true
+  - type: dropdown
+    id: sistema
+    attributes:
+      label: System (sistema)
+      description: On Linux, write the distribution and the kernel (uname -r) in the notes; the diagnostics have both.
+      options:
+        - Windows 11
+        - Windows 10
+        - Linux
     validations:
       required: true
   - type: input
