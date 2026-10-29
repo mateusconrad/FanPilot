@@ -1,6 +1,6 @@
 # Roadmap do FanPilot
 
-Os 27 itens de melhoria aprovados em 24/10/2026: os 25 da análise inicial e mais dois de testes automatizados (26 e 27). O 28 (Linux) entrou em 28/10/2026. Cada item tem uma spec em [`docs/specs/`](specs/) e uma issue no GitHub.
+Os 27 itens de melhoria aprovados em 24/10/2026: os 25 da análise inicial e mais dois de testes automatizados (26 e 27). O 28 (Linux) entrou em 28/10/2026; o 29 (interface no terminal) e o 30 (partida sem janela), em 29/10/2026. Cada item tem uma spec em [`docs/specs/`](specs/) e uma issue no GitHub.
 
 Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estado por labels (veja "Como o andamento é registrado").
 
@@ -8,7 +8,7 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 - **Testes:** testes automatizados do item: `a fazer` · `ok` (commitados com o item; rodam na [CI](https://github.com/mateusconrad/FanPilot/actions) a cada push)
 - **Esforço**, em dias de trabalho focado: P ≈ 1 · P–M ≈ 2 · M ≈ 3 · G ≈ 10
 
-**Concluídos: 25 de 28** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 14a, 15, 16, 17, 18, 19, 20, 22, 23, 24, 25, 27, 28b (veja a seção própria)
+**Concluídos: 25 de 30** · verificação em hardware pendente: 01, 02, 04, 05, 09, 10, 11, 14a, 15, 16, 17, 18, 19, 20, 22, 23, 24, 25, 27, 28b (veja a seção própria)
 
 ## Andamento
 
@@ -42,6 +42,8 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 | 26 | [Testes de ponta a ponta (painel e executável)](specs/26-testes-ponta-a-ponta.md) | 2 | M | 08, 11 | concluído | ok | [#26](https://github.com/mateusconrad/FanPilot/issues/26) | 36 testes no Edge (~1 min na CI) e smoke do zip; acharam e corrigiram a reconexão do SSE depois de um 503 e o contraste do texto secundário |
 | 27 | [Teste automatizado na placa real](specs/27-teste-em-hardware.md) | 2 | P–M | 08 | concluído | ok | [#27](https://github.com/mateusconrad/FanPilot/issues/27) | falta a primeira execução na B760M |
 | 28 | [Linux](specs/28-linux.md) | 5 | G + M | 09, 11, 14a, 15 | em andamento | ok (28a, 28b) | [#35](https://github.com/mateusconrad/FanPilot/issues/35) | 28a e 28b feitas: `net472` e `net10.0`, placa pelo hwmon do kernel, GPU pelo NVML e pelo `amdgpu`, `--restore-fans`, `--diagnose` do Linux; parada no ponto de verificação num PC com Linux antes da 28c (systemd e pacote); o caminho Gigabyte fica só no Windows |
+| 29 | [Interface no terminal](specs/29-interface-terminal.md) | 6 | M | 21, 28a | a fazer | a fazer | [#36](https://github.com/mateusconrad/FanPilot/issues/36) | temperaturas e coolers em gráficos de caracteres, link do painel, Turbo; no console no lugar do log e em `--tui` ligada ao serviço; Windows e Linux |
+| 30 | [Partida sem janela](specs/30-partida-sem-janela.md) | 6 | P–M | 14a, 28c, 29 | a fazer | a fazer | [#37](https://github.com/mateusconrad/FanPilot/issues/37) | o serviço vira a partida automática (`autostart.ps1` e `install.sh`), atalho que abre a interface sem elevação |
 
 ## Ordem de execução
 
@@ -89,7 +91,16 @@ Este arquivo é a fonte de verdade do andamento. As issues mostram o mesmo estad
 - Na prática, a Fase E começou antes da C terminar (14b e 14c esperam a verificação na B760M): o Linux não depende da
   bandeja nem do instalador.
 
-**Total estimado:** ≈ 76 dias de trabalho focado (≈ 15 semanas), com o 28.
+### Fase F · Onda 6 · Uso no PC (≈ 1 semana)
+
+`29 → 30`
+
+- O 29 vem primeiro e não depende do serviço: no console, a interface substitui o log, e o `--tui` se liga a qualquer
+  FanPilot rodando.
+- O 30 espera o ponto de parada da 14a (o serviço na B760M) e a 28c (o systemd): ele só torna o serviço a partida
+  padrão e põe o atalho da interface no menu.
+
+**Total estimado:** ≈ 81 dias de trabalho focado (≈ 16 semanas), com o 28, o 29 e o 30.
 
 ## Estratégia de testes
 
@@ -172,6 +183,8 @@ Placa de referência: B760M GAMING X AX com Gigabyte Control Center 26.03.26.01.
 | 24/10/2026 | Logs em inglês; README principal em inglês, com versão em português | 21 | proposta |
 | 28/10/2026 | Suporte a Linux x64: alvo `net10.0` ao lado do `net472`, fans e sensores pelo hwmon do kernel, serviço do systemd; o caminho Gigabyte, a bandeja e o instalador ficam só no Windows | 28 | proposta |
 | 28/10/2026 | No Linux, os segredos usam AES-GCM com uma chave em `/etc/fanpilot/secret.key`, fora da pasta de dados, no lugar do DPAPI | 28 | proposta |
+| 29/10/2026 | Interface no terminal com renderização própria em ANSI, sem biblioteca (Spectre.Console como alternativa se crescer); no console, ela substitui o log rolando (`--log` mantém o de antes) | 29 | proposta |
+| 29/10/2026 | A partida automática passa a ser o serviço (Windows e systemd), no lugar da tarefa agendada com janela; o atalho do menu abre a interface no terminal | 30 | proposta |
 
 "Proposta" quer dizer que vale o que está escrito, a menos que você mude antes de o item ser implementado.
 
@@ -189,4 +202,6 @@ Placa de referência: B760M GAMING X AX com Gigabyte Control Center 26.03.26.01.
 | O kernel não controla o chip da placa (módulo ausente, conflito com a ACPI; o IT8689E da B760M talvez precise do `it87` de fora da árvore) | O `HwmonBoard` mostra o aviso com o que fazer e não toca nos fans; o `--diagnose` do Linux alimenta os relatos de compatibilidade (13); ponto de parada da 28b numa placa que o kernel controle |
 | Um FanPilot morto com `kill -9` no Linux deixa os fans no último PWM manual | `--restore-fans` no `ExecStopPost` da unit, com os `pwmN_enable` originais guardados em `/run/fanpilot/` |
 | Manter dois alvos (`net472` e `net10.0`) dobra o que pode quebrar | A CI compila e testa os dois a cada push; o que é de um sistema só fica fora do outro pelo `.csproj` e pela `Platform` |
+| O console do Windows sem modo VT (anterior ao Windows 10 1607) ou um terminal sem cores desenha lixo na interface do 29 | Liga o VT por `SetConsoleMode` e, se não conseguir, cai no `--log`; testada no conhost e no Windows Terminal |
+| O serviço como partida padrão (30) depende do ponto de parada da 14a, ainda não feito na B760M | O 30 só começa depois dele; até lá, o `autostart.ps1` de hoje continua valendo |
 | O suporte do SDK 8 termina em 10/11/2026 | Resolvido na 28a: o `global.json` pede o SDK 10, e o PC que compila precisa dele instalado. O FanPilot do Windows continua no .NET Framework 4.7.2 |
