@@ -12,7 +12,11 @@ sealed class GigabyteBridge : IBoard
     readonly GigabyteApi _api;
     readonly object _sync = new object();
     object _hw, _fan;
-    bool _supportLogged;
+    bool _supportLogged, _checked;
+    DateTime _checkedAt;
+
+    // How often a "not supported" is asked again (EnsureConnected); the tests ask every time.
+    internal TimeSpan SupportRecheck = TimeSpan.FromSeconds(15);
 
     public int FanControlCount { get; private set; }
     public string[] ControlTitles { get; private set; }
@@ -36,7 +40,8 @@ sealed class GigabyteBridge : IBoard
 
     public string BackendName { get { return "Gigabyte Control Center"; } }
     public bool HardwareCurves { get { return true; } }
-    public Msg Notice { get { return FanControlSupported ? null : new Msg("board.noGen3"); } }
+    // Only once the support check has answered: before it, "no fan control" would only mean "not asked yet".
+    public Msg Notice { get { return _checked && !FanControlSupported ? new Msg("board.noGen3") : null; } }
 
     // The curves run in the chip: there is nothing FanPilot hands back on its own.
     public List<Msg> ControlProblems() { return new List<Msg>(); }
@@ -71,24 +76,54 @@ sealed class GigabyteBridge : IBoard
         }
     }
 
+    // A connection is kept only once the fan module has answered the support check: at boot, FanPilot's service can
+    // start before EasyTuneEngineService listens, and a connection kept from such a try made the next call skip the
+    // check and report no fans for good. A "not supported" is asked again every SupportRecheck, for the same reason.
     void EnsureConnected()
     {
-        if (_hw != null) return;
-        _hw = _api.NewHardwareMonitor();
-        _fan = _api.NewFanModule();
-        try { var warmup = _api.IsSupported(_fan); } catch (System.Runtime.Remoting.RemotingException) { }
-
-        FanControlSupported = _api.IsSupported(_fan);
-        if (!FanControlSupported)
+        if (_hw != null)
         {
+            if (!FanControlSupported && DateTime.UtcNow - _checkedAt >= SupportRecheck) CheckSupport(_fan);
+            return;
+        }
+        object hw = null, fan = null;
+        try
+        {
+            hw = _api.NewHardwareMonitor();
+            fan = _api.NewFanModule();
+            try { var warmup = _api.IsSupported(fan); } catch (System.Runtime.Remoting.RemotingException) { }
+            CheckSupport(fan);
+        }
+        catch
+        {
+            try { _api.Dispose(hw); } catch { }
+            try { _api.Dispose(fan); } catch { }
+            throw;
+        }
+        _hw = hw;
+        _fan = fan;
+    }
+
+    void CheckSupport(object fan)
+    {
+        _checkedAt = DateTime.UtcNow;
+        bool supported = _api.IsSupported(fan);
+        _checked = true;
+        if (!supported)
+        {
+            FanControlSupported = false;
             FanControlCount = 0;
             if (!_supportLogged) Log.Warn("This motherboard doesn't expose the GCC's third-generation fan control; monitoring only.");
             _supportLogged = true;
             return;
         }
-        FanControlCount = _api.FanControlCount(_fan);
-        ControlTitles = Enumerable.Range(0, FanControlCount).Select(i => _api.SensorTitle(_fan, "Control", i)).ToArray();
-        TempInputTitles = Enumerable.Range(0, _api.TemperatureInputCount(_fan)).Select(i => _api.SensorTitle(_fan, "Temperature", i)).ToArray();
+        int count = _api.FanControlCount(fan);
+        ControlTitles = Enumerable.Range(0, count).Select(i => _api.SensorTitle(fan, "Control", i)).ToArray();
+        TempInputTitles = Enumerable.Range(0, _api.TemperatureInputCount(fan)).Select(i => _api.SensorTitle(fan, "Temperature", i)).ToArray();
+        FanControlCount = count;
+        if (_supportLogged) Log.Info("The GCC's third-generation fan control answers now: " + count + " fan(s).");
+        _supportLogged = false;
+        FanControlSupported = true;
     }
 
     void Reset()

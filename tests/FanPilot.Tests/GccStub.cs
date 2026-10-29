@@ -77,7 +77,18 @@ namespace Gigabyte.Engine.EnvironmentControl.CoolingDevice.Fan
         // Shared by every instance, like the service behind the IPC.
         static readonly Dictionary<int, SmartFanDataPointSet> Curves = new Dictionary<int, SmartFanDataPointSet>();
         static readonly Dictionary<int, int> Inputs = new Dictionary<int, int>();
-        public bool IsSupported { get { return true; } }
+        // Unreachable: how many calls fail as when the service doesn't listen yet (at boot); NotReady: answers ""not
+        // supported"", as the service may while it starts. GccStub.Set changes them.
+        public static int Unreachable;
+        public static bool NotReady;
+        public bool IsSupported
+        {
+            get
+            {
+                if (Unreachable > 0) { Unreachable--; throw new System.Runtime.Remoting.RemotingException(""Failed to connect to an IPC Port""); }
+                return !NotReady;
+            }
+        }
         public EnvironmentControllerInfo HardwareInfo { get { return new EnvironmentControllerInfo { FanControlCount = 2, TemperatureInputCount = 3 }; } }
         public void GetSensorTitle(SensorTypes sensorType, int sensorIndex, out string pTitle)
         {
@@ -126,6 +137,14 @@ namespace Gigabyte.Engine.EnvironmentControl.CoolingDevice.Fan
         File.Move(common, Path.Combine(dir, GigabyteApi.CommonDll));
         File.Move(engineDll, Path.Combine(dir, GigabyteApi.EngineDll));
         return dir;
+    }
+
+    // One of the fan module's switches above (Unreachable, NotReady), in the build loaded from dir.
+    public static void Set(string dir, string field, object value)
+    {
+        var full = System.IO.Path.GetFullPath(dir);
+        var engine = AppDomain.CurrentDomain.GetAssemblies().Single(a => !a.IsDynamic && a.Location.StartsWith(full, StringComparison.OrdinalIgnoreCase) && a.Location.EndsWith(GigabyteApi.EngineDll, StringComparison.OrdinalIgnoreCase));
+        engine.GetType("Gigabyte.Engine.EnvironmentControl.CoolingDevice.Fan.SmartGuardianFanControlCoordinateSystemModule").GetField(field).SetValue(null, value);
     }
 
     static void Compile(string source, string output, params string[] references)
