@@ -32,4 +32,25 @@ static partial class Diagnose
         string omitted = I18n.T(lang, "diag.omitted");
         return Guid.Replace(IdentifyingField.Replace(report, "${key}" + omitted), omitted);
     }
+
+    // How FanPilot would see this board (the same class the app uses; no curve is set, so nothing is written).
+    static void DescribeBoard(StringBuilder sb, IBoard board, string section, string lang)
+    {
+        string T(string key, params object[] args) { return new Msg(key, args).In(lang); }
+        sb.AppendLine(T(section));
+        sb.AppendLine(T("diag.notice", "notice", board.Notice != null ? board.Notice.In(lang) : T("diag.none")));
+        sb.AppendLine(T("diag.inputs"));
+        var titles = board.TempInputTitles;
+        System.Collections.Generic.List<float> temps, rpms;
+        board.ReadFanTach(out temps, out rpms);
+        for (int i = 0; i < titles.Length; i++)
+            sb.AppendLine("  [" + i + "] " + titles[i] + " = " + (i < temps.Count && !float.IsNaN(temps[i]) ? temps[i].ToString("0.0") + " °C" : T("diag.noReading")));
+        sb.AppendLine(T("diag.fans"));
+        var curves = board.GetCurves();
+        for (int i = 0; i < curves.Count; i++)
+            sb.AppendLine("  [" + i + "] " + curves[i].Title + " · " + (i < rpms.Count ? rpms[i].ToString("0") : "?") + " RPM");
+        if (curves.Count == 0) sb.AppendLine("  " + T("diag.none"));
+        sb.AppendLine(T("diag.readings"));
+        foreach (var r in board.ReadSensors()) sb.AppendLine("  " + r.Type + " | " + r.Title + " = " + r.Value + " " + r.Unit + "   (" + r.Id + ")");
+    }
 }

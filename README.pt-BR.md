@@ -65,9 +65,19 @@ Compilar exige o [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0
 este PC e a CI compilarem igual (com outro SDK, o lock file e a versão do C# mudariam). Para **rodar**, basta o Windows: o
 FanPilot usa o .NET Framework 4.7.2 que já vem nele.
 
-O suporte a Linux está a caminho ([#35](https://github.com/mateusconrad/FanPilot/issues/35)): o mesmo projeto também
-compila para o .NET 10 no Linux (`dotnet build -f net10.0`, depois `dotnet bin/net10.0/FanPilot.dll`), e os testes dele
-rodam lá na CI. Ele ainda não alcança a placa-mãe: os drivers hwmon do kernel vêm em seguida.
+O suporte a Linux está a caminho ([#35](https://github.com/mateusconrad/FanPilot/issues/35)) e **em teste**: o mesmo
+projeto compila para o .NET 10 no Linux, alcança a placa-mãe pelos drivers hwmon do kernel (nct6775, it87,
+asus-ec-sensors…: o `sensors` do lm-sensors mostra se o kernel conhece o seu chip) e a GPU pelo NVML ou pelo driver
+amdgpu. O Gigabyte Control Center, a bandeja e o instalador ficam no Windows. Até o pacote e o serviço do systemd
+chegarem, ele é publicado à mão e roda como root:
+
+```bash
+dotnet restore FanPilot.sln
+dotnet publish src/FanPilot.csproj -c Release -f net10.0 -r linux-x64 --self-contained -p:PublishSingleFile=true --no-restore -o dist/linux-x64
+sudo dist/linux-x64/FanPilot --diagnose      # relatório da placa, só leitura
+sudo dist/linux-x64/FanPilot                 # o painel em http://localhost:8787
+sudo dist/linux-x64/FanPilot --restore-fans  # depois de um kill -9: devolve os fans à BIOS
+```
 
 O build não depende do Gigabyte Control Center: o FanPilot carrega as DLLs do GCC instalado só na hora de rodar, então
 um mesmo build (ou zip) atende as placas Gigabyte e as outras.

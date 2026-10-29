@@ -70,6 +70,13 @@ Primeira versão publicada (será a 0.1.0).
   seguem o idioma do Windows, e o log é sempre em inglês, para buscar uma mensagem em qualquer issue. README e guia de
   teste em inglês e em português, e formulários de issue em inglês com os rótulos em português.
 
+### Linux (em teste)
+
+- O FanPilot roda no Linux como root: placa-mãe pelos drivers hwmon do kernel, com as curvas executadas pelo FanPilot;
+  CPU pelo `k10temp` ou `coretemp`; GPU pelo NVML ou pelo `amdgpu`; `--diagnose` com cada chip hwmon; e
+  `--restore-fans`, que devolve à BIOS os fans de um FanPilot morto com `kill -9`
+  ([#35](https://github.com/mateusconrad/FanPilot/issues/35)).
+
 ### Segurança
 
 - O header `Host` é validado: só são atendidas requisições endereçadas a este PC (as outras recebem `421`), o que
@@ -103,5 +110,5 @@ Primeira versão publicada (será a 0.1.0).
   release antes de publicar.
 - Compilar exige o .NET SDK 10 (o suporte do 8 termina em 10/11/2026); o FanPilot do Windows continua no .NET
   Framework 4.7.2.
-- O mesmo projeto compila também para o Linux (.NET 10), com os testes rodando no Ubuntu na CI; a placa-mãe no Linux
-  vem com o item 28b ([#35](https://github.com/mateusconrad/FanPilot/issues/35)).
+- O mesmo projeto compila também para o Linux (.NET 10), com os testes rodando no Ubuntu na CI
+  ([#35](https://github.com/mateusconrad/FanPilot/issues/35)).

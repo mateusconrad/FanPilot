@@ -54,7 +54,7 @@ public class I18nTests
     {
         var json = new Msg("gpu.unavailableWhy", "error", new Msg("gpu.noNvml")).ToJson();
         Assert.Equal("gpu.unavailableWhy", json["code"]);
-        Assert.Equal("GPU unavailable: NVML not found (nvml.dll): install the NVIDIA driver.", json["text"]);
+        Assert.Equal("GPU unavailable: NVML not found (it comes with the NVIDIA driver): without an NVIDIA card, nothing to do; with one, install its driver.", json["text"]);
         var error = (Dictionary<string, object>)((Dictionary<string, object>)json["params"])["error"];
         Assert.Equal("gpu.noNvml", error["code"]);
         Assert.False(new Msg("err.internal").ToJson().ContainsKey("params"));

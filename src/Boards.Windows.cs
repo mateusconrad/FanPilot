@@ -9,6 +9,7 @@ static class Boards
     // interactive: a person is at the console, so a missing PawnIO driver can be installed right away.
     public static IBoard Create(AppConfig cfg, bool interactive)
     {
+        if (cfg.Backend == "hwmon") throw new Unavailable("startup.backendOtherSystem", "backend", cfg.Backend);
         bool gcc = File.Exists(Path.Combine(GigabyteInstall.LibDir, GigabyteApi.EngineDll));
         var api = gcc && cfg.Backend != "lhm" ? GigabyteApi.Load(GigabyteInstall.LibDir) : null;
         if (Choose(cfg.Backend, gcc, api) == "gigabyte")
@@ -44,4 +45,8 @@ static class Boards
         string dll = Path.Combine(GigabyteInstall.LibDir, GigabyteApi.EngineDll);
         return board.BackendName.Contains("Gigabyte") && File.Exists(dll) ? " (GCC " + FileVersionInfo.GetVersionInfo(dll).FileVersion + ")" : "";
     }
+
+    // FanPilot --restore-fans is for Linux, where a killed FanPilot leaves headers taken (Boards.Linux.cs). Here
+    // LhmBoard hands every header back to the BIOS when it starts.
+    public static int RestoreFans() { return 0; }
 }
