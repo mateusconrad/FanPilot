@@ -69,6 +69,9 @@ Primeira versão publicada (será a 0.1.0).
   e ao Telegram saem no idioma do painel em que foram configurados. O console, o `--diagnose` e o `--hardware-test`
   seguem o idioma do Windows, e o log é sempre em inglês, para buscar uma mensagem em qualquer issue. README e guia de
   teste em inglês e em português, e formulários de issue em inglês com os rótulos em português.
+- Notebooks Uniwill/Tongfang (como o Avell G1513), em teste: o fan do notebook entra como mais um fan do caminho
+  LibreHardwareMonitor, pela mesma interface WMI do app da fabricante, sem driver. O EC só aceita 5 níveis e o boost,
+  então a curva vira o nível que resfria pelo menos o que ela pede; ao fechar, o fan volta para o controle do EC.
 
 ### Interface no terminal
 

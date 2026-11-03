@@ -42,7 +42,7 @@
 
   <!-- Tests of what only one system has, as in src\FanPilot.csproj. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
-    <Compile Remove="Gcc*.cs;Gigabyte*.cs;CpuTemperatureTests.cs;*.Windows.cs" />
+    <Compile Remove="Gcc*.cs;Gigabyte*.cs;Uniwill*.cs;CpuTemperatureTests.cs;*.Windows.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
     <Compile Remove="*.Linux.cs;Hwmon*.cs" />

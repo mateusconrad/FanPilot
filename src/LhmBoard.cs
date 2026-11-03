@@ -10,11 +10,42 @@
 //  - the control loop throws repeatedly -> every header goes back to the BIOS;
 //  - FanPilot exits (window closed, Ctrl+C, logoff/shutdown, unhandled exception) -> Shutdown() returns all to BIOS.
 // A forced kill cannot be intercepted: the header keeps its last duty. That is documented in the README.
+// Uniwill/Tongfang notebooks (UniwillEc.cs) have no Super I/O for LibreHardwareMonitor; their fan comes in as one more
+// header, written through the notebook's WMI, while the CPU sensors still come from LibreHardwareMonitor.
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using LibreHardwareMonitor.Hardware;
+
+// Where a header's speed goes: a LibreHardwareMonitor control, or a notebook's EC (UniwillFanOutput).
+interface IFanOutput
+{
+    // Sets the duty (0..100%) and returns what the hardware will really do, which may be coarser.
+    double Set(double percent);
+    // Hands the fan back to the BIOS / the EC's own control.
+    void Default();
+    // The fan's speed now; 0 when it has no tachometer.
+    float Rpm();
+}
+
+sealed class LhmFanOutput : IFanOutput
+{
+    readonly ISensor _control, _tach;
+
+    public LhmFanOutput(ISensor control, ISensor tach) { _control = control; _tach = tach; }
+
+    public double Set(double percent)
+    {
+        float p = (float)Math.Max(_control.Control.MinSoftwareValue, Math.Min(_control.Control.MaxSoftwareValue, percent));
+        _control.Control.SetSoftware(p);
+        return p;
+    }
+
+    public void Default() { _control.Control.SetDefault(); }
+
+    public float Rpm() { return _tach != null && _tach.Value.HasValue ? _tach.Value.Value : 0f; }
+}
 
 sealed class LhmBoard : IBoard, IFollowsGpu, IReportsDuty
 {
@@ -22,8 +53,7 @@ sealed class LhmBoard : IBoard, IFollowsGpu, IReportsDuty
 
     sealed class Header
     {
-        public ISensor Control;
-        public ISensor Tach;    // may be null: not every control has a tachometer
+        public IFanOutput Output;
         public string Title;
         public string Key;      // the control sensor's identifier, e.g. /lpc/nct6798d/0/control/1: stable across runs
         public FanCurve Curve;  // null = BIOS
@@ -38,6 +68,7 @@ sealed class LhmBoard : IBoard, IFollowsGpu, IReportsDuty
     readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
     double _lastApply;
     Computer _pc;
+    UniwillWmiEc _uniwill;
     List<ISensor> _temps = new List<ISensor>();
     List<Header> _headers = new List<Header>();
     List<SensorReading> _readings = new List<SensorReading>();
@@ -46,7 +77,7 @@ sealed class LhmBoard : IBoard, IFollowsGpu, IReportsDuty
     int _failures;
     bool _released;
 
-    public string BackendName { get { return "LibreHardwareMonitor"; } }
+    public string BackendName { get { return _uniwill != null ? "LibreHardwareMonitor + Uniwill EC" : "LibreHardwareMonitor"; } }
     public bool HardwareCurves { get { return false; } }
     public Msg Notice { get; private set; }
     public bool FanControlSupported { get { lock (_sync) return _headers.Count > 0; } }
@@ -103,8 +134,10 @@ sealed class LhmBoard : IBoard, IFollowsGpu, IReportsDuty
         {
             var tachs = hw.Sensors.Where(s => s.SensorType == SensorType.Fan).ToList();
             foreach (var c in hw.Sensors.Where(s => s.SensorType == SensorType.Control && s.Control != null).OrderBy(s => s.Index))
-                headers.Add(new Header { Control = c, Tach = tachs.FirstOrDefault(f => f.Index == c.Index), Title = c.Name, Key = c.Identifier.ToString() });
+                headers.Add(new Header { Output = new LhmFanOutput(c, tachs.FirstOrDefault(f => f.Index == c.Index)), Title = c.Name, Key = c.Identifier.ToString() });
         }
+        bool vendorApp = false;
+        if (superIo.Count == 0) vendorApp = OpenUniwill(headers);
         // A clean start: a FanPilot that was killed (or crashed) left its last duty on the headers. Everything goes
         // back to the BIOS, and FanManager then puts the saved curves back.
         foreach (var h in headers) TryDefault(h);
@@ -114,7 +147,11 @@ sealed class LhmBoard : IBoard, IFollowsGpu, IReportsDuty
             _temps = temps;
             _headers = headers;
             TempInputTitles = titles.ToArray();
-            if (!pawnIo)
+            if (_uniwill != null)
+                Notice = !pawnIo ? new Msg("board.uniwill.pawnioMissing")
+                       : vendorApp ? new Msg("board.uniwill.vendorApp")
+                       : new Msg("board.uniwill.levels");
+            else if (!pawnIo)
                 Notice = new Msg("board.pawnioMissing");
             else if (superIo.Count == 0)
                 Notice = BoardName.Length > 0 ? new Msg("board.noSuperIo.named", "board", BoardName) : new Msg("board.noSuperIo");
@@ -127,6 +164,36 @@ sealed class LhmBoard : IBoard, IFollowsGpu, IReportsDuty
         Log.Info("LibreHardwareMonitor: board " + (BoardName.Length > 0 ? BoardName : "?") + "; chips: " +
                  (superIo.Count > 0 ? string.Join(", ", superIo.Select(h => h.Name)) : "none") + "; " + headers.Count + " fans that can be controlled; " +
                  temps.Count + " temperature sensors" + (pawnIo ? "" : "; PawnIO NOT installed"));
+    }
+
+    // A Uniwill/Tongfang notebook's fan, when the WMI interface is there and the EC says it has the fan control.
+    // Returns whether the vendor's app is running too (it would fight FanPilot over the fan).
+    bool OpenUniwill(List<Header> headers)
+    {
+        var ec = UniwillWmiEc.TryOpen();
+        if (ec == null) return false;
+        int support;
+        try
+        {
+            if (!UniwillFan.HasFanControl(ec, out support))
+            {
+                Log.Info("Uniwill EC found, but its support byte (0x" + support.ToString("X2") + ") has no fan control: not used.");
+                ec.Dispose();
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("Uniwill EC found, but it did not answer: " + ex.Message);
+            ec.Dispose();
+            return false;
+        }
+        _uniwill = ec;
+        headers.Add(new Header { Output = new UniwillFanOutput(ec), Title = "Notebook fan", Key = "uniwill/ec/0751" });
+        var running = UniwillFan.VendorProcesses.Where(n => System.Diagnostics.Process.GetProcessesByName(n).Length > 0).ToList();
+        Log.Info("Uniwill EC: the notebook's fan is controlled through WMI (levels 1-5 and boost; support byte 0x" + support.ToString("X2") + ")." +
+                 (running.Count > 0 ? " The vendor's app is running (" + string.Join(", ", running) + "): close it, both write the fan." : ""));
+        return running.Count > 0;
     }
 
     internal static void Collect(IHardware hw, List<IHardware> into)
@@ -203,7 +270,7 @@ sealed class LhmBoard : IBoard, IFollowsGpu, IReportsDuty
         CpuRoles.Assign(readings, null, false, null); // the "CPU" reading here is already the package
         _readings = readings;
         _tempValues = _temps.Select(s => s.Value.HasValue ? s.Value.Value : float.NaN).ToList();
-        _rpmValues = _headers.Select(h => h.Tach != null && h.Tach.Value.HasValue ? h.Tach.Value.Value : 0f).ToList();
+        _rpmValues = _headers.Select(h => h.Output.Rpm()).ToList();
     }
 
     static SensorReading Reading(string type, string id, string title, double value, string unit)
@@ -232,16 +299,14 @@ sealed class LhmBoard : IBoard, IFollowsGpu, IReportsDuty
             }
             if (h.OnBiosFallback) Log.Info("Fan " + h.Title + ": the reference sensor is back; FanPilot's curve applied again.");
             h.OnBiosFallback = false;
-            float percent = (float)Math.Max(h.Control.Control.MinSoftwareValue, Math.Min(h.Control.Control.MaxSoftwareValue, duty.Value));
-            h.Control.Control.SetSoftware(percent);
-            h.Duty = percent;
+            h.Duty = h.Output.Set(duty.Value);
         }
     }
 
     static void TryDefault(Header h)
     {
         h.Duty = null;
-        try { h.Control.Control.SetDefault(); } catch (Exception ex) { Log.Warn("Fan " + h.Title + ": SetDefault failed: " + ex.Message); }
+        try { h.Output.Default(); } catch (Exception ex) { Log.Warn("Fan " + h.Title + ": SetDefault failed: " + ex.Message); }
     }
 
     public List<Msg> ControlProblems()
@@ -327,6 +392,7 @@ sealed class LhmBoard : IBoard, IFollowsGpu, IReportsDuty
             int handed = 0;
             foreach (var h in _headers) if (h.Curve != null || h.OnBiosFallback) { TryDefault(h); handed++; }
             try { if (_pc != null) _pc.Close(); } catch { }
+            try { if (_uniwill != null) _uniwill.Dispose(); } catch { }
             if (handed > 0) Log.Info("LibreHardwareMonitor: " + handed + " fan(s) handed back to the BIOS.");
         }
     }

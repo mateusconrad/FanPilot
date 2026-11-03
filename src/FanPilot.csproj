@@ -48,13 +48,15 @@
     <Reference Include="System.Security" />
     <!-- The terminal's client of the local API (item 29); .NET 10 has it built in. -->
     <Reference Include="System.Net.Http" />
+    <!-- The fan of Uniwill/Tongfang notebooks, through the BIOS's WMI (UniwillEc.cs). -->
+    <Reference Include="System.Management" />
   </ItemGroup>
 
   <!-- What only one system has. Windows: Gigabyte Control Center, LibreHardwareMonitor with PawnIO, the Windows service
        and *.Windows.cs. Linux: *.Linux.cs and the kernel's hwmon (Hwmon*.cs). Each *.Windows.cs has a *.Linux.cs with the
        same members. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
-    <Compile Remove="Gigabyte*.cs;Lhm*.cs;CpuTemperature.cs;PawnIoSetup.cs;FanPilotService.cs;*.Windows.cs" />
+    <Compile Remove="Gigabyte*.cs;Lhm*.cs;Uniwill*.cs;CpuTemperature.cs;PawnIoSetup.cs;FanPilotService.cs;*.Windows.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
     <Compile Remove="*.Linux.cs;Hwmon*.cs" />
