@@ -7,6 +7,8 @@
 
 <p align="center"><b>English</b> · <a href="README.pt-BR.md">Português</a></p>
 
+<p align="center"><a href="https://fanpilot.macoxa.com.br/"><b>fanpilot.macoxa.com.br</b></a>: downloads, screenshots and how it's built</p>
+
 # FanPilot
 
 Temperature monitoring and fan control from your phone.
