@@ -10,7 +10,10 @@ data (`## [0.1.0] - AAAA-MM-DD`), e as notas da release no GitHub são tiradas d
 
 ## [Não lançado]
 
-Primeira versão publicada (será a 0.1.0).
+## [0.1.0] - 2026-11-04
+
+Primeira versão publicada, como pre-release: parte do que ela faz ainda não foi conferida em todas as placas
+(veja a [verificação em hardware pendente](docs/ROADMAP.md#verificação-em-hardware-pendente)).
 
 ### Adicionado
 
