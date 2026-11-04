@@ -42,7 +42,7 @@ Cada push na `main` é compilado e testado automaticamente, e cada tag gera uma 
 
 - [x] Cada push na `main` mostra o check da CI e o zip como artefato.
 - [x] Um `.ps1` com acento e sem BOM faz a CI falhar (o `check-encoding.ps1` sai com 1 e lista o arquivo).
-- [ ] A tag `v0.1.0` gera uma release com o zip, o `SHA256SUMS.txt` e as notas. O ensaio do workflow passa; a tag espera a verificação em hardware dos itens pendentes.
+- [x] A tag `v0.1.0` gera uma release com o zip, o `SHA256SUMS.txt` e as notas. O ensaio do workflow passa. A [`v0.1.0`](https://github.com/mateusconrad/FanPilot/releases/tag/v0.1.0) saiu em 04/11/2026 como pre-release (com o instalador e o pacote do Linux), a pedido do dono, antes da verificação em hardware, que continua pendente no ROADMAP.
 - [x] `FanPilot.exe --version`, o log, o `--diagnose` e o painel mostram a mesma versão (todos usam `AppVersion.Text`; a CI confere o `--version`).
 - [x] Uma tag diferente da versão do projeto faz a release falhar (antes de compilar).
 
