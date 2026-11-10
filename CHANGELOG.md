@@ -10,6 +10,10 @@ data (`## [0.1.0] - AAAA-MM-DD`), e as notas da release no GitHub são tiradas d
 
 ## [Não lançado]
 
+### Adicionado
+
+- Botão "Sponsor" no repositório e uma seção nos READMEs para apoiar o projeto pelo GitHub Sponsors.
+
 ## [0.1.0] - 2026-11-04
 
 Primeira versão publicada, como pre-release: parte do que ela faz ainda não foi conferida em todas as placas

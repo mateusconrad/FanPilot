@@ -461,6 +461,12 @@ docs/       relatório da engenharia reversa, guia para testar outras placas (no
             roadmap e specs
 ```
 
+## Apoie o projeto
+
+O FanPilot é gratuito e vai continuar sendo. Se ele te serve e você quiser ajudar a mantê-lo (mais placas testadas,
+mais tempo para correções), dá para apoiar pelo [GitHub Sponsors](https://github.com/sponsors/mateusconrad).
+Relatar um bug ou testar na sua placa ajuda tanto quanto.
+
 ## Licença
 
 [MIT](LICENSE). Componentes de terceiros: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

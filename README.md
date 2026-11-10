@@ -462,6 +462,12 @@ docs/       the reverse engineering report, the guide to testing other boards (i
             roadmap and specs (in Portuguese)
 ```
 
+## Support the project
+
+FanPilot is free and will stay that way. If it's useful to you and you'd like to help keep it going (more boards
+tested, more time for fixes), you can sponsor it on [GitHub Sponsors](https://github.com/sponsors/mateusconrad).
+Reporting a bug or testing it on your board helps just as much.
+
 ## License
 
 [MIT](LICENSE). Third-party components: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
