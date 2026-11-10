@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.10.0.schema.json
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.28.0.schema.json
 
 PackageIdentifier: MateusConrad.FanPilot
 PackageVersion: 0.1.0
@@ -22,4 +22,4 @@ Installers:
   InstallerUrl: https://github.com/mateusconrad/FanPilot/releases/download/v0.1.0/FanPilot-0.1.0-win-x64-setup.exe
   InstallerSha256: 21222C90C0368096B7BFE45012CB0CA8C5BC32AA9E52FE2A0A530BB3344DA58A
 ManifestType: installer
-ManifestVersion: 1.10.0
+ManifestVersion: 1.28.0

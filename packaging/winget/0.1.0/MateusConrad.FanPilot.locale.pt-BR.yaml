@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://aka.ms/winget-manifest.locale.1.10.0.schema.json
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.locale.1.28.0.schema.json
 
 PackageIdentifier: MateusConrad.FanPilot
 PackageVersion: 0.1.0
@@ -13,4 +13,4 @@ Description: |-
   10 minutos a 7 dias, curvas de fan da placa-mãe e fan da GPU. Na rede local, o celular só entra depois de parear
   com um QR code exibido no PC. Roda como serviço do Windows, com ícone na bandeja.
 ManifestType: locale
-ManifestVersion: 1.10.0
+ManifestVersion: 1.28.0

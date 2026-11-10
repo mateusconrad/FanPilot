@@ -20,13 +20,13 @@ antivírus continua olhando o arquivo, e a assinatura (item 12) continua desejá
 
 ## Solução
 
-1. **Manifestos** em [`packaging/winget/0.1.0/`](../../packaging/winget/0.1.0/), no formato 1.10 do winget-pkgs:
+1. **Manifestos** em [`packaging/winget/0.1.0/`](../../packaging/winget/0.1.0/), no schema 1.28 que o winget-pkgs pede:
    instalador `inno`, escopo `machine`, `ElevationRequirement: elevatesSelf` (o próprio setup pede o UAC), o
    `ProductCode` do Inno (`{AppId}_is1`) e o `Publisher` "FanPilot" do Adicionar ou Remover Programas, para o winget
    reconhecer o que já está instalado (também por um setup baixado à mão) e fazer o `upgrade`. Textos em
    inglês (`en-US`, o padrão) e português (`pt-BR`). O `winget validate` passa neles.
 2. **Primeira versão à mão:** um PR no [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs) com esses
-   arquivos em `manifests/m/MateusConrad/FanPilot/0.1.0/`. A pasta `packaging/winget/0.1.0/` fica como registro;
+   arquivos em `manifests/m/MateusConrad/FanPilot/0.1.0/`: [#476873](https://github.com/microsoft/winget-pkgs/pull/476873). A pasta `packaging/winget/0.1.0/` fica como registro;
    as próximas versões não passam por ela.
 3. **Próximas versões pela CI:** o job `winget` do `release.yml`, depois do `release`, só em tag, roda a
    [WinGet Releaser](https://github.com/vedantmgoyal9/winget-releaser) (Komac), pinada por SHA porque recebe um token
