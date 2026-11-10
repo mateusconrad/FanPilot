@@ -10,6 +10,11 @@ data (`## [0.1.0] - AAAA-MM-DD`), e as notas da release no GitHub são tiradas d
 
 ## [Não lançado]
 
+### Adicionado
+
+- Instalação pelo winget: `winget install MateusConrad.FanPilot` (assim que o pacote for aceito no repositório do
+  winget). Cada versão nova chega lá sozinha.
+
 ## [0.1.0] - 2026-11-04
 
 Primeira versão publicada, como pre-release: parte do que ela faz ainda não foi conferida em todas as placas

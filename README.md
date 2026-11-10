@@ -137,6 +137,8 @@ the BIOS when it stops, even after a `kill -9` (`FanPilot --restore-fans`). To b
   `FanPilot-<version>-win-x64-setup.exe` (the installer) and `FanPilot-<version>-win-x64.zip` (the portable version),
   with a `SHA256SUMS.txt` to check the download (`Get-FileHash .\FanPilot-0.1.0-win-x64.zip` must give the same hash).
   `0.x` versions come out as pre-releases.
+- **winget:** `winget install MateusConrad.FanPilot` runs the same installer, without the SmartScreen warning (once
+  the package passes its review at winget-pkgs); `winget upgrade MateusConrad.FanPilot` updates it.
 - **Installer:** installs in `Program Files\FanPilot`, registers the service (starts with the PC, before logon, and
   comes back by itself if it closes; data in `%ProgramData%\FanPilot`), opens the port in the firewall on the Private
   profile only, puts the tray icon at every logon and "FanPilot" in the Start menu, offers to install PawnIO (checked

@@ -1,7 +1,8 @@
 # A tag vX.Y.Z publishes that version: the tag must match Directory.Build.props, then build, tests, the zip and its
 # smoke test (with the end-to-end tests), the installer (item 14c; the CI installs and removes it on every push), the
 # Linux .tar.gz (item 28c; the CI installs it as a service on every push),
-# SHA256SUMS.txt and the GitHub release, with the version's CHANGELOG.md section as its notes (0.x = pre-release).
+# SHA256SUMS.txt and the GitHub release, with the version's CHANGELOG.md section as its notes (0.x = pre-release),
+# and then the winget pull request for the new installer (item 33).
 # Started by hand (Actions > Release > Run workflow, or gh workflow run release.yml) it is a dry run: the same steps,
 # with the notes taken from "Não lançado" when needed and the files kept as the run's artifact. Nothing is published.
 name: Release
@@ -138,3 +139,24 @@ jobs:
             dist/FanPilot-*-linux-x64.tar.gz
             dist/SHA256SUMS.txt
             dist/release-notes.md
+
+  # Item 33: a pull request at microsoft/winget-pkgs with the new version of MateusConrad.FanPilot (Komac updates the
+  # manifest from the release's setup.exe). It needs the WINGET_TOKEN secret (a classic token with public_repo) and a
+  # winget-pkgs fork under the repository owner; without the secret the step is skipped and the release stands.
+  # The package's first version went in by hand (packaging/winget/0.1.0): Komac only updates a package that exists.
+  winget:
+    needs: release
+    if: github.ref_type == 'tag'
+    runs-on: windows-latest
+    env:
+      WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+    steps:
+      - name: Sem WINGET_TOKEN
+        if: env.WINGET_TOKEN == ''
+        run: echo "::warning::WINGET_TOKEN não configurado; a versão não foi enviada ao winget."
+      - uses: vedantmgoyal9/winget-releaser@b7370d4d152efdce803a26cc6ca9eee58cb2ad54 # v2
+        if: env.WINGET_TOKEN != ''
+        with:
+          identifier: MateusConrad.FanPilot
+          installers-regex: '-win-x64-setup\.exe$'
+          token: ${{ secrets.WINGET_TOKEN }}

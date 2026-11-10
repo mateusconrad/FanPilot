@@ -138,6 +138,8 @@ mesmo depois de um `kill -9` (`FanPilot --restore-fans`). Para gerar o pacote vo
   `FanPilot-<versão>-win-x64-setup.exe` (o instalador) e `FanPilot-<versão>-win-x64.zip` (a versão portátil), com um
   `SHA256SUMS.txt` para conferir o download (`Get-FileHash .\FanPilot-0.1.0-win-x64.zip` deve dar o mesmo hash).
   Versões `0.x` saem como pre-release.
+- **winget:** `winget install MateusConrad.FanPilot` roda o mesmo instalador, sem o aviso do SmartScreen (assim que o
+  pacote passar pela revisão no winget-pkgs); `winget upgrade MateusConrad.FanPilot` atualiza.
 - **Instalador:** instala em `Program Files\FanPilot`, registra o serviço (sobe com o PC, antes do logon, e volta
   sozinho se fechar; dados em `%ProgramData%\FanPilot`), libera a porta no firewall só no perfil Privado, põe o ícone
   na bandeja a cada logon e "FanPilot" no menu Iniciar, oferece instalar o PawnIO (marcado só sem o Gigabyte Control
