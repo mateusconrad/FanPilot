@@ -3,19 +3,25 @@ on:
   push:
     branches: [winget-debug]
 jobs:
-  silent:
+  manifest:
     runs-on: windows-latest
     timeout-minutes: 25
     steps:
-      - name: Instalar como o winget (sem desligar o PawnIO)
+      - name: winget install --manifest (como a validação)
         run: |
           winget --version
-          Invoke-WebRequest https://github.com/mateusconrad/FanPilot/releases/download/v0.1.0/FanPilot-0.1.0-win-x64-setup.exe -OutFile setup.exe -UseBasicParsing
-          $p = Start-Process .\setup.exe -ArgumentList '/SP-', '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/LOG=$PWD\setup.log" -PassThru
+          winget settings --enable LocalManifestFiles
+          $base = 'https://raw.githubusercontent.com/mateusconrad/winget-pkgs/MateusConrad.FanPilot-0.1.0/manifests/m/MateusConrad/FanPilot/0.1.0'
+          New-Item -ItemType Directory m | Out-Null
+          foreach ($f in 'MateusConrad.FanPilot.yaml', 'MateusConrad.FanPilot.installer.yaml', 'MateusConrad.FanPilot.locale.en-US.yaml', 'MateusConrad.FanPilot.locale.pt-BR.yaml') {
+            Invoke-WebRequest "$base/$f" -OutFile "m\$f" -UseBasicParsing
+          }
+          $p = Start-Process winget -ArgumentList 'install', '--manifest', "$PWD\m", '--silent', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity', '--verbose-logs' -NoNewWindow -PassThru
           if (-not $p.WaitForExit(600000)) {
-            "=== TRAVOU depois de 10 min; processos:"
+            "=== TRAVOU depois de 10 min; processos novos:"
             Get-CimInstance Win32_Process | Where-Object { $_.CreationDate -gt (Get-Date).AddMinutes(-11) } |
               Select-Object ProcessId, ParentProcessId, Name, CommandLine | Format-List | Out-String -Width 400
-          } else { "=== saiu com código $($p.ExitCode)" }
-          "=== setup.log (fim)"; Get-Content setup.log -Tail 40
-          "=== install.log"; Get-Content "$env:ProgramFiles\FanPilot\install.log" -ErrorAction SilentlyContinue
+          } else { "=== winget saiu com código $($p.ExitCode)" }
+          "=== install.log"; Get-Content "$env:ProgramFiles\FanPilot\install.log" -ErrorAction SilentlyContinue | Select-Object -Last 30
+          "=== logs do winget"; Get-ChildItem "$env:LOCALAPPDATA\Packages\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\LocalState\DiagOutputDir" -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime | Select-Object -Last 3 | ForEach-Object { "--- $($_.Name)"; Get-Content $_.FullName -Tail 25 }
