@@ -11,6 +11,9 @@ jobs:
         run: |
           winget --version
           winget settings --enable LocalManifestFiles
+          New-Item -Force 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\System' | Out-Null
+          Set-ItemProperty 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\System' EnableSmartScreen 0 -Type DWord
+          Set-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer' SmartScreenEnabled 'Off'
           $base = 'https://raw.githubusercontent.com/mateusconrad/winget-pkgs/MateusConrad.FanPilot-0.1.0/manifests/m/MateusConrad/FanPilot/0.1.0'
           New-Item -ItemType Directory m | Out-Null
           foreach ($f in 'MateusConrad.FanPilot.yaml', 'MateusConrad.FanPilot.installer.yaml', 'MateusConrad.FanPilot.locale.en-US.yaml', 'MateusConrad.FanPilot.locale.pt-BR.yaml') {
