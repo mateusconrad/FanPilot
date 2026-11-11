@@ -37,6 +37,20 @@ jobs:
             $bmp.Save("$PWD\screen.png")
             "=== janelas com título:"
             Get-Process | Where-Object MainWindowTitle | Select-Object Id, Name, MainWindowTitle | Format-Table -AutoSize | Out-String -Width 300
+            "=== textos das janelas do winget (UIAutomation):"
+            Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+            $root = [System.Windows.Automation.AutomationElement]::RootElement
+            $cond = New-Object System.Windows.Automation.PropertyCondition ([System.Windows.Automation.AutomationElement]::ProcessIdProperty), $p.Id
+            foreach ($w in $root.FindAll([System.Windows.Automation.TreeScope]::Children, $cond)) {
+              "--- janela: $($w.Current.Name)"
+              foreach ($e in $w.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition)) {
+                if ($e.Current.Name) { "  [$($e.Current.ControlType.ProgrammaticName)] $($e.Current.Name)" }
+              }
+            }
+            "=== árvore abaixo do winget:"
+            $all = Get-CimInstance Win32_Process
+            function Tree($id, $d) { foreach ($c in $all | Where-Object ParentProcessId -eq $id) { (' ' * $d) + "$($c.ProcessId) $($c.Name) :: $($c.CommandLine)"; Tree $c.ProcessId ($d + 2) } }
+            Tree $p.Id 0
             "=== filhos do winget:"
             Get-CimInstance Win32_Process -Filter "ParentProcessId=$($p.Id)" | Select-Object ProcessId, Name, CommandLine | Format-List | Out-String -Width 400
           } else { "=== winget saiu com código $($p.ExitCode)" }
